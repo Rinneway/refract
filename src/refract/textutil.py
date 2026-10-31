@@ -138,3 +138,25 @@ def script_share(text: str, lang: str) -> float:
     latin = sum("a" <= ch <= "z" for ch in letters)
     own = cyrillic if (lang or "").lower().startswith("ru") else latin
     return own / len(letters)
+
+
+# Where a sentence can end without losing its meaning: before “, но” / “, but”, a semicolon, a dash or a colon.
+_CLAUSE = re.compile(
+    r",\s+(?:но|а|однако|хотя|при этом|причём|but|while|although|whereas|yet)\b|;|\s[—–-]\s|:\s",
+    re.IGNORECASE,
+)
+
+
+def trim_sentence(text: str, limit: int = 160, min_len: int = 40) -> str:
+    """Shorten a one-sentence text to `limit` characters.
+
+    The cut is made at the last clause boundary that keeps at least `min_len` characters (“X may do Y, but Z…” →
+    “X may do Y”), so the result is still a whole statement; only without a boundary is it cut at a word with “…”.
+    """
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    cuts = [m.start() for m in _CLAUSE.finditer(text) if min_len <= m.start() <= limit]
+    if cuts:
+        return text[: max(cuts)].rstrip(" ,;:—–-")
+    return text[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:—–- ") + "…"

@@ -6,7 +6,7 @@ from ..i18n import norm_lang
 from ..schemas import IMPACT_LEVEL_DEFINITIONS, ImpactLevel
 from . import output_language, rule
 
-VERSION = "insight-v8"
+VERSION = "insight-v9"
 
 SYSTEM = {
     "ru": """Ты — аналитик {institution_gen}. Ты готовишь персональный инсайт для читателя — руководителя компании, \
@@ -32,7 +32,9 @@ SYSTEM = {
 «Признаки». Не выдумывай ключи. Не приписывай субъекту продуктов, операций, контрагентов и показателей, которых нет \
 в признаках. Продукты в признаках — только продукты {institution_gen}: если вывод зависит от неизвестного (есть ли \
 долг в других банках, импорт, запасы), формулируй условно («если вы привлекаете кредиты…») и помечай \
-origin=hypothesis с оговоркой.
+origin=hypothesis с оговоркой. В why_it_matters — только origin ai или hypothesis: позицию института не повторяй, \
+она в блоке house_view. Если событие — проект, предложение или прогноз, а не принятое решение, пиши условно \
+(«если закон примут, вы…»).
 2. Числа — только из контекста. Не придумывай суммы, проценты, даты и прогнозы. Если оценить эффект в деньгах или \
 процентах нельзя, оставь estimate пустым. Доля контрагента в платежах — это доля потока платежей, а не выручки и не \
 закупок: так и пиши («31% входящих платежей»).
@@ -93,7 +95,9 @@ Rules:
 Do not invent keys. Do not attribute to the subject products, operations, counterparties or figures that are not \
 in the features. Products in the features are only those held with {institution}: if a conclusion depends on \
 something unknown (debt at other banks, imports, inventory), phrase it conditionally ("if you borrow…") and mark it \
-origin=hypothesis with a caveat.
+origin=hypothesis with a caveat. why_it_matters uses only origin ai or hypothesis: do not repeat the house view, it \
+belongs in house_view. If the event is a bill, a proposal or a forecast rather than a decision, write conditionally \
+("if the law is passed, you…").
 2. Numbers only from the context. Do not invent amounts, percentages, dates or forecasts. If the effect cannot be \
 estimated in money or percent, leave estimate empty. A counterparty's share of payments is a share of the payment \
 flow, not of revenue or purchases: say so ("31% of incoming payments").

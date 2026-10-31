@@ -15,8 +15,9 @@ Input: a subject profile, a news event, a reader role and a language. Output: an
 | Rule checks | grounding rules, feature keys, numbers absent from the context (including the headline), impact above the ceiling, an empty house view while theses exist, text not in the run language (a warning) | — | `agent/checks.py` |
 | Review | a second model sees the author's full context and flags contradictions, invented numbers, misattributed house views, retelling, the headline; it may ask for more searches | `verify` | `prompts/verify.py` |
 | Lifting false alarms | a reviewer's error on a fact or house-view statement becomes a warning if the statement is nearly verbatim from the cited source, all its numbers are there and it has no inference connective; a structural error (unknown or missing source, duplicate id, wrong language) stands only if the rule check found it too | — | `checks.confirm_by_sources`, `checks.overrule_structural` |
+| Reconciling the reviewer | small reviewers often write “does not contradict the context, but too categorical” and mark it an error. Code makes the severity agree with the explanation: a contradiction or house-view error becomes a warning when its own message (quotes excluded) calls it wording (“too categorical”, “soften”, “generalisation”) or an assumption, when it is a house-view finding on a statement that does not credit the institution, or a “no source” finding while a research source is cited. Numbers are never reconciled. At finalisation the statement gets a caveat and confidence ≤ 0.6; an assumption becomes a `hypothesis` (≤ 0.5); a reconciled headline is rewritten | — | `checks.reconcile`, `checks.soften` |
 | Revise | with errors: first extra research searches if the reviewer asked, then a revision of the draft by the findings; `max_iterations` rounds (default 1) | `revise` | `prompts/revise.py` |
-| Finalize | cut statements with unresolved errors and actions that rely on them; restore a required block with a caveat if it became empty, with the actions that relied on it; if nothing can be restored, word the block by code — the first key fact of the news, or the strongest event–subject link with its feature (confidence ≤ 0.5, with a caveat); restore the house view from cited theses in the run language if the review removed all of it; rewrite a rejected headline; clamp the impact to the ceiling; enforce the action policy; keep only cited sources | `headline` (if needed) | `agent/orchestrator.py` |
+| Finalize | cut statements with unresolved errors and actions that rely on them; restore a required block with a caveat if it became empty, with the actions that relied on it; if nothing can be restored, word the block by code — the first key fact of the news, or the strongest event–subject link with its feature (confidence ≤ 0.5, with a caveat); restore the house view from cited theses in the run language if the review removed all of it; remove a house view repeated in “why it matters”; rewrite a rejected headline (a long rewrite is cut at a clause boundary such as “, but”, never mid-thought; the fallback is the first conclusion about the subject, not a repeated house view); keep an action while at least one statement it relies on stays; clamp the impact to the ceiling; enforce the action policy; keep only cited sources | `headline` (if needed) | `agent/orchestrator.py` |
 
 ## Provenance
 
@@ -84,10 +85,11 @@ A chat turn is a small agent on the insight's context: the model classifies the 
 | `no_verifier` | no second-model review (rule checks stay) |
 | `no_rules` | no rule checks; the result is not validated (`Insight.validated = false`) |
 | `no_revise` | no revision rounds; unresolved errors are cut |
-| `no_self_check` | no review, no rule checks, no revision, no pruning, no attribution repair |
+| `no_self_check` | no review, no rule checks, no revision, no pruning, no attribution repair, no reconciling |
 | `no_cap` | no impact ceiling in the context and no clamping |
 | `no_policy` | no action rules in the context and no enforcement |
 | `no_attribution` | no code repair of missing features and sources |
+| `no_reconcile` | the reviewer's severity is taken as is |
 
 ## Progress events
 

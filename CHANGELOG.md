@@ -16,9 +16,12 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - `why_it_matters` statements use `SubjectClaim`: `features` is required in the JSON schema, while a missing field is still parsed.
 - A required block that review emptied comes back with the actions that relied on it; if nothing can come back, code words it from the first key fact or the strongest event–subject link.
 - Structural findings of the reviewer (unknown or missing source, duplicate id, wrong language) stand only if the rule check confirms them.
-- Reviewer prompt `verify-v6`: overstated certainty (a bill presented as law) is a warning with a fix hint, not a contradiction. Insight prompt `insight-v8`.
+- Reconciling the reviewer: an error whose own explanation calls it wording (“does not contradict, but too categorical”) or an assumption becomes a warning; the statement keeps a caveat or becomes a hypothesis instead of being cut, and no revision round is spent on it. New ablation `no_reconcile`.
+- Headlines: an over-long headline (in the draft or a rewrite) is cut at a clause boundary instead of being rejected; the fallback headline is the first conclusion about the subject; a softened headline is rewritten.
+- A house view repeated in “why it matters” is flagged by the rule check and removed at finalisation; an action stays while one of the statements it relies on stays.
+- Prompts: `verify-v7` — overstated certainty and self-described wording remarks are warnings; `insight-v9` — “why it matters” is the model's own conclusion, a bill or a proposal is written conditionally.
 - Duplicate plan steps run once.
-- Regression test replaying the real run (`tests/fixtures/qwen_usn_run.json`).
+- Regression tests replaying two real runs answer by answer (`tests/fixtures/qwen_usn_run.json`).
 
 ## 0.1.0 — 2026-10-31
 

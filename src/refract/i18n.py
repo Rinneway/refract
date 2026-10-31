@@ -161,6 +161,22 @@ STRINGS: dict[str, dict[Language, str]] = {
         "ru": "Проверка не подтвердила формулировку полностью — сверьте с источником.",
         "en": "The review could not fully confirm this wording — check it against the source.",
     },
+    "note.overstated": {
+        "ru": "Это вывод, а не установленный факт: проверка сочла формулировку слишком уверенной.",
+        "en": "An inference, not an established fact: the review found the wording too certain.",
+    },
+    "note.assumption": {
+        "ru": "Допущение: данных, чтобы его подтвердить, нет.",
+        "en": "An assumption: there is no data to confirm it.",
+    },
+    "note.softened": {
+        "ru": "добавлены оговорки по замечаниям о формулировке: {ids}",
+        "en": "caveats added after remarks on wording: {ids}",
+    },
+    "note.duplicate": {
+        "ru": "из «почему важно» убран повтор позиции института: {ids}",
+        "en": "removed from “why it matters” as a repeat of the house view: {ids}",
+    },
     "note.headline_rewritten": {
         "ru": "заголовок не прошёл проверку — переписан по проверенным утверждениям",
         "en": "headline failed review — rewritten from verified claims",

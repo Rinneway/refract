@@ -6,7 +6,7 @@ from ..i18n import norm_lang
 from ..schemas import InsightContent
 from . import rule
 
-VERSION = "verify-v6"
+VERSION = "verify-v7"
 
 SYSTEM = {
     "ru": """Ты — строгий проверяющий аналитических материалов. Тебе дан тот же контекст, что видел автор \
@@ -30,7 +30,7 @@ no_subject_link или retelling. Вывод, сводящийся к очеви
 
 severity error — только если читатель получит неверную информацию: противоречие контексту, выдуманное число, \
 приписанная институту позиция. Неточная или слишком сильная формулировка, нехватка глубины, слабая связь с \
-субъектом — warning с fix_hint. Укажи claim_id каждой проблемы. passed=true, только если ошибок уровня error нет. \
+субъектом — warning с fix_hint. Если ты сам пишешь «не противоречит», «слишком категорично», «смягчить» или «это предположение» — это warning, а не error. Укажи claim_id каждой проблемы. passed=true, только если ошибок уровня error нет. \
 Пиши замечания по-русски.
 """,
     "en": """You are a strict reviewer of analytical materials. You see the same context the draft's author saw: \
@@ -57,7 +57,7 @@ headline problems with claim_id="headline".
 
 severity error — only if the reader would get wrong information: a contradiction with the context, an invented \
 number, a position wrongly attributed to the institution. Imprecise or overly strong wording, lack of depth, a weak \
-link to the subject — warning with a fix_hint. Give the claim_id of every problem. passed=true only if there are no \
+link to the subject — warning with a fix_hint. If you yourself write "does not contradict", "too categorical", "soften" or "this is an assumption", it is a warning, not an error. Give the claim_id of every problem. passed=true only if there are no \
 error-level problems. Write your findings in English.
 """,
 }

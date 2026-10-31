@@ -13,6 +13,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
+from ..textutil import trim_sentence
 from .common import (
     SCHEMA_VERSION,
     Confidence,
@@ -117,6 +118,14 @@ class InsightContent(Contract):
     actions: list[Action] = Field(default_factory=list)
     overall_impact: ImpactLevel
     overall_direction: Direction
+
+    @model_validator(mode="before")
+    @classmethod
+    def _trim_headline(cls, data: object) -> object:
+        # Models often overshoot the length; a headline cut at a clause boundary beats a rejected draft.
+        if isinstance(data, dict) and isinstance(data.get("headline"), str) and len(data["headline"]) > 160:
+            return {**data, "headline": trim_sentence(data["headline"], 160)}
+        return data
 
     def all_claims(self) -> list[Claim]:
         return [*self.what_happened, *self.why_it_matters, *self.risks, *self.opportunities, *self.house_view]

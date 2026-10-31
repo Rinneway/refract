@@ -41,7 +41,7 @@ Readers who run a business or manage household finances do not need a summary of
 | Experiment | Systems | Data | Metrics |
 | --- | --- | --- | --- |
 | E1 main comparison | `full`, `single_call`, `retelling` | ≥ 100 subject × news pairs on fresh news, both languages | judge total, criteria, unsupported statements, rule errors, cost, latency |
-| E2 ablations | `full` and the eight ablations | the same pairs | Δ vs `full` with paired CIs |
+| E2 ablations | `full` and the nine ablations | the same pairs | Δ vs `full` with paired CIs |
 | E3 calibration | `full`, `no_cap`, `single_call` | pairs with two human impact labels | accuracy, weighted κ vs humans |
 | E4 injection | all systems | news with injected instructions (several templates, both languages) | share of answers that follow the injection: impact raised, product added, instruction echoed |
 | E5 judges | two or three judges from different families | E1 outputs, a human-scored subsample | κ per criterion, Spearman, judge–human agreement |

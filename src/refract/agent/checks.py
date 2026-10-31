@@ -17,10 +17,19 @@ from ..schemas import (
     InsightContent,
     IssueCode,
     Origin,
+    SourceType,
     VerificationIssue,
     violations,
 )
-from ..textutil import invented_numbers, lexical_support, normalize, numbers, script_share, stems
+from ..textutil import (
+    invented_numbers,
+    lexical_support,
+    normalize,
+    numbers,
+    script_share,
+    stems,
+    trim_sentence,
+)
 from .context import InsightContext, known_feature
 from .impact import above
 
@@ -95,6 +104,32 @@ _MSG = {
         "ru": " [снято кодом: структура в порядке]",
         "en": " [lifted by code: the structure is fine]",
     },
+    "why_house": {
+        "ru": "{cid}: в «почему важно» — позиция института; она уже в блоке house_view, здесь нужен вывод для субъекта",
+        "en": "{cid}: “why it matters” repeats the house view, which belongs in house_view; say what it means here",
+    },
+    "why_house_hint": {
+        "ru": "origin=ai: что эта позиция значит для субъекта, через его признаки",
+        "en": "origin=ai: what the position means for the subject, through its features",
+    },
+    "softened": {
+        "ru": " [понижено кодом: сама проверка называет это формулировкой, а не ошибкой]",
+        "en": " [downgraded by code: the review itself calls this wording, not an error]",
+    },
+    "softened_note": {
+        "ru": "{cid}: «{code}» понижено до предупреждения — {why}",
+        "en": "{cid}: “{code}” downgraded to a warning — {why}",
+    },
+    "why_wording": {"ru": "замечание о формулировке", "en": "a remark on wording"},
+    "why_assumption": {
+        "ru": "это допущение — станет гипотезой",
+        "en": "an assumption — becomes a hypothesis",
+    },
+    "why_unattributed": {
+        "ru": "утверждение не приписано институту",
+        "en": "the statement is not attributed to the institution",
+    },
+    "why_cited": {"ru": "ссылка на аналитику есть", "en": "a research source is cited"},
 }
 
 
@@ -130,6 +165,18 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
                     claim_id=c.claim_id,
                     message=_m("features", lang, bad=bad),
                     fix_hint=_m("features_hint", lang),
+                )
+            )
+
+    for c in content.why_it_matters:
+        if c.origin is Origin.HOUSE_VIEW:
+            issues.append(
+                VerificationIssue(
+                    code=IssueCode.RETELLING,
+                    severity="warning",
+                    claim_id=c.claim_id,
+                    message=_m("why_house", lang, cid=c.claim_id),
+                    fix_hint=_m("why_house_hint", lang),
                 )
             )
 
@@ -209,13 +256,18 @@ def errors(issues: list[VerificationIssue]) -> list[VerificationIssue]:
 
 
 def drop_claims(content: InsightContent, claim_ids: set[str]) -> InsightContent:
-    """Last line of defence: remove statements with unresolved errors and the actions that rely on them."""
+    """Last line of defence: remove statements with unresolved errors and the actions left without support.
+
+    An action that relied on several statements stays while at least one of them stays, citing only those.
+    """
 
     def keep(items):
         return [c for c in items if c.claim_id not in claim_ids]
 
     actions = [
-        a for a in content.actions if a.action_id not in claim_ids and not set(a.claim_ids) & claim_ids
+        a.model_copy(update={"claim_ids": [c for c in a.claim_ids if c not in claim_ids]})
+        for a in content.actions
+        if a.action_id not in claim_ids and not (a.claim_ids and set(a.claim_ids) <= claim_ids)
     ]
     return content.model_copy(
         update={
@@ -258,14 +310,16 @@ def house_view_from_theses(ctx: InsightContext, removed: list[Claim]) -> list[Cl
 
 
 def short_headline(content: InsightContent, limit: int = 160) -> str:
-    """Fallback headline: the first verified “why it matters” statement."""
-    blocks = content.why_it_matters or content.what_happened
+    """Fallback headline: the first verified conclusion about the subject, cut at a clause boundary if long.
+
+    A model's own conclusion (ai, hypothesis) is preferred: a house view repeated in “why it matters” describes the
+    market, not the reader.
+    """
+    own = [c for c in content.why_it_matters if c.origin in (Origin.AI, Origin.HYPOTHESIS)]
+    blocks = own or content.why_it_matters or content.what_happened
     if not blocks:
-        return content.headline[:limit]
-    text = blocks[0].text
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:—- ") + "…"
+        return trim_sentence(content.headline, limit)
+    return trim_sentence(blocks[0].text, limit)
 
 
 REQUIRED_BLOCKS = ("what_happened", "why_it_matters")
@@ -404,6 +458,134 @@ def overrule_structural(
             continue
         out.append(i)
     return out, notes
+
+
+# The review's own words that it found a wording problem, not wrong information (quoted fragments are ignored).
+_QUOTED = re.compile(r'"[^"]*"|«[^»]*»|“[^”]*”')
+_WORDING = re.compile(
+    r"не противоречит|не является противоречием|это не противоречие|слишком (?:категорич|сильн|уверен|общ)"
+    r"|излишне (?:категорич|уверен)|чрезмерно (?:категорич|уверен)|смягч|более осторожн|осторожнее"
+    r"|интерпретаци|обобщени|перефразир|не прямой цитат|(?:необходимо|следует|нужно) уточнить"
+    r"|does not contradict|doesn't contradict|is not a contradiction|not a contradiction"
+    r"|too (?:strong|categorical|certain|confident|broad)|overly (?:strong|categorical|certain|confident)"
+    r"|overstat|soften|more cautious|interpretation|paraphras|generali[sz]|should be clarified|clarif",
+    re.IGNORECASE,
+)
+_ASSUMPTION = re.compile(
+    r"предположени|допущени|не может быть выведено как факт|нет данных, подтверждающих|не подтвержд\w* данными"
+    r"|an assumption|is assumed|speculat|not supported by (?:the )?data|no data (?:to )?(?:support|confirm)",
+    re.IGNORECASE,
+)
+_NO_SOURCE = re.compile(
+    r"нет (?:явной )?ссылк|нет ссылок|отсутству\w* ссылк|без ссылк|не указан\w* источник"
+    r"|no (?:source|citation|reference)|does not cite|missing (?:source|citation)",
+    re.IGNORECASE,
+)
+_RECONCILED = {IssueCode.CONTRADICTION, IssueCode.HOUSE_VIEW_WITHOUT_RESEARCH}
+
+
+def _names_institution(text: str, ctx: InsightContext) -> bool:
+    inst, low = ctx.institution, normalize(text)
+    stem = normalize(inst.name_ru)[:-1] if len(inst.name_ru) > 4 else normalize(inst.name_ru)
+    return stem in low or any(normalize(n) in low for n in (inst.name, inst.name_gen) if n)
+
+
+def reconcile(
+    issues: list[VerificationIssue], content: InsightContent, ctx: InsightContext
+) -> tuple[list[VerificationIssue], list[str], dict[str, str]]:
+    """Make the reviewer's severity agree with its own explanation (small reviewers often do not).
+
+    An error on contradiction or the house view becomes a warning when
+    - the message says the statement is an assumption — at finalisation it is relabelled as a hypothesis;
+    - the message itself says it is a wording problem (“does not contradict, but too categorical”, “soften”,
+      “generalisation”) — the statement gets a caveat at finalisation;
+    - it is a house-view finding on a statement that does not credit the institution (a labelling issue);
+    - it is a house-view finding about a missing source while the statement cites the institution's research.
+    Numbers are never reconciled: invented numbers are rule-check errors. Returns the issues, trace notes and
+    {claim_id: "wording" | "assumption"} for the statements to soften.
+    """
+    lang = ctx.lang
+    claims = {c.claim_id: c for c in content.all_claims()}
+    research = {s.source_id for s in ctx.sources() if s.type is SourceType.RESEARCH}
+    out, notes, kinds = [], [], {}
+    for i in issues:
+        cid = i.claim_id or ""
+        c = claims.get(cid)
+        why, kind = None, None
+        if i.severity == "error" and i.code in _RECONCILED and (c is not None or cid == HEADLINE):
+            text = _QUOTED.sub(" ", f"{i.message} {i.fix_hint or ''}")
+            if _ASSUMPTION.search(text):
+                why, kind = "why_assumption", ("wording" if cid == HEADLINE else "assumption")
+            elif _WORDING.search(text):
+                why, kind = "why_wording", "wording"
+            elif i.code is IssueCode.HOUSE_VIEW_WITHOUT_RESEARCH and c is not None:
+                if c.origin is not Origin.HOUSE_VIEW and not _names_institution(c.text, ctx):
+                    why = "why_unattributed"
+                elif _NO_SOURCE.search(text) and set(c.source_ids) & research:
+                    why = "why_cited"
+        if why is None:
+            out.append(i)
+            continue
+        out.append(i.model_copy(update={"severity": "warning", "message": i.message + _m("softened", lang)}))
+        notes.append(_m("softened_note", lang, cid=cid, code=i.code.value, why=_m(why, lang)))
+        if kind and kinds.get(cid) != "assumption":
+            kinds[cid] = kind
+    return out, notes, kinds
+
+
+def soften(
+    content: InsightContent, kinds: dict[str, str], lang: str = "ru"
+) -> tuple[InsightContent, list[str]]:
+    """Apply what `reconcile` found: a caveat and lower confidence; an assumption becomes a hypothesis."""
+    done: list[str] = []
+
+    def fix(items: list) -> list:
+        out = []
+        for c in items:
+            kind = kinds.get(c.claim_id)
+            if kind == "assumption" and c.origin in (Origin.AI, Origin.FACT):
+                c = c.model_copy(
+                    update={
+                        "origin": Origin.HYPOTHESIS,
+                        "caveat": c.caveat or t("note.assumption", lang),
+                        "confidence": min(c.confidence, 0.5),
+                    }
+                )
+                done.append(c.claim_id)
+            elif kind:
+                c = c.model_copy(
+                    update={
+                        "caveat": c.caveat or t("note.overstated", lang),
+                        "confidence": min(c.confidence, 0.6),
+                    }
+                )
+                done.append(c.claim_id)
+            out.append(c)
+        return out
+
+    update = {
+        b: fix(getattr(content, b))
+        for b in ("what_happened", "why_it_matters", "risks", "opportunities", "house_view")
+    }
+    if not done:
+        return content, []
+    return content.model_copy(update=update), [t("note.softened", lang, ids=done)]
+
+
+DUPLICATE_MIN = 0.6
+
+
+def dedupe_house_view(content: InsightContent, lang: str = "ru") -> tuple[InsightContent, list[str]]:
+    """A house view repeated in “why it matters” is removed there, if the block keeps another statement."""
+    dup = [
+        w.claim_id
+        for w in content.why_it_matters
+        if w.origin is Origin.HOUSE_VIEW
+        and any(lexical_support(w.text, b.text) >= DUPLICATE_MIN for b in content.house_view)
+    ]
+    if not dup or len(dup) >= len(content.why_it_matters):
+        return content, []
+    return drop_claims(content, set(dup)), [t("note.duplicate", lang, ids=dup)]
 
 
 def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightContent, list[str]]:

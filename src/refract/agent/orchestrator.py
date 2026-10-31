@@ -51,7 +51,7 @@ from ..schemas import (
     VerificationIssue,
     VerificationReport,
 )
-from ..textutil import invented_numbers
+from ..textutil import invented_numbers, trim_sentence
 from . import checks
 from .actions import enforce_actions
 from .context import InsightContext
@@ -85,6 +85,7 @@ class AgentConfig:
     prune: bool = True  # False — statements with unresolved errors stay in the result
     max_plan_steps: int = 6
     auto_attribution: bool = True  # False — no code repair of missing features and sources
+    reconcile: bool = True  # False — the reviewer's severity is taken as is
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -102,10 +103,12 @@ ABLATIONS: dict[str, dict[str, Any]] = {
         "max_iterations": 0,
         "prune": False,
         "auto_attribution": False,
+        "reconcile": False,
     },
     "no_cap": {"impact_cap": False},
     "no_policy": {"action_policy": False},
     "no_attribution": {"auto_attribution": False},
+    "no_reconcile": {"reconcile": False},
 }
 
 
@@ -215,6 +218,7 @@ class Agent:
         )
         tools = Toolbox(self.store, profile_id, current_event_id=event.event_id, lang=lang, institution=inst)
         self._models, self._need_more = set(), []
+        self._softened: dict[str, str] = {}
 
         # 1. The profile always comes first, without the model.
         profile = self._tool(trace, tools, ToolCall(call_id="c0", tool=ToolName.GET_PROFILE)).data
@@ -433,6 +437,7 @@ class Agent:
                     issues=[f"{i.severity}: {i.message}" for i in rule][:20],
                 ),
             )
+        self._softened = {}
         if not self.config.llm_verifier:
             self._need_more = []
             return rule
@@ -448,8 +453,12 @@ class Agent:
         confirmed: list[str] = []
         if self.config.rule_checks:
             llm_issues, confirmed = checks.confirm_by_sources(llm_issues, draft, ctx)
-            llm_issues, overruled = checks.overrule_structural(llm_issues, rule, self.lang)
-            confirmed += overruled
+        if self.config.reconcile:
+            if self.config.rule_checks:
+                llm_issues, overruled = checks.overrule_structural(llm_issues, rule, self.lang)
+                confirmed += overruled
+            llm_issues, reconciled, self._softened = checks.reconcile(llm_issues, draft, ctx)
+            confirmed += reconciled
         merged = checks.merge(rule, llm_issues)
         self._need_more = res.value.need_more_data if res.value else []
         trace.steps[-1].verdict = "ok" if not checks.errors(merged) else "issues"
@@ -491,6 +500,9 @@ class Agent:
                 verdict, notes = "issues", [t("note.pruned", lang, ids=sorted(bad)), *restored]
             draft, fallback_notes = checks.fallback_blocks(draft, ctx)
             notes += fallback_notes
+            draft, softened = checks.soften(draft, self._softened, lang)
+            draft, deduped = checks.dedupe_house_view(draft, lang)
+            notes += softened + deduped
             fallback = (
                 checks.house_view_from_theses(ctx, removed_house)
                 if cfg.prune and not draft.house_view and removed_house
@@ -499,8 +511,8 @@ class Agent:
             if fallback:
                 draft = draft.model_copy(update={"house_view": fallback})
                 notes.append(t("note.house_view_restored", lang))
-            if checks.HEADLINE in errs and cfg.prune:
-                reasons = [i.message for i in checks.errors(issues) if i.claim_id == checks.HEADLINE]
+            if cfg.prune and (checks.HEADLINE in errs or checks.HEADLINE in self._softened):
+                reasons = [i.message for i in issues if i.claim_id == checks.HEADLINE]
                 headline, note = self._rewrite_headline(trace, ctx, draft, reasons)
                 draft = draft.model_copy(update={"headline": headline})
                 verdict = "issues"
@@ -608,8 +620,8 @@ class Agent:
         """The headline failed the review: a short headline from verified statements, else the first statement."""
         msgs = headline_prompt.build_messages(draft, reasons, self.lang, ctx.inst())
         res = self._llm(trace, StepKind.REVISE, "headline", msgs, headline_prompt.HeadlineOut)
-        new = res.value.headline.strip() if res.value else ""
-        if new and len(new) <= 160 and not invented_numbers([new], ctx.render()):
+        new = trim_sentence(res.value.headline, 160) if res.value else ""
+        if new and not new.endswith("…") and not invented_numbers([new], ctx.render()):
             return new, t("note.headline_rewritten", self.lang)
         return checks.short_headline(draft), t("note.headline_fallback", self.lang)
 

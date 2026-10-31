@@ -166,7 +166,7 @@ refract eval judge  --out runs/exp1 --judges verifier,judge2
 refract eval report --out runs/exp1 --reference full
 ```
 
-- **Systems:** the full agent, eight ablations (`no_plan`, `no_verifier`, `no_rules`, `no_revise`, `no_self_check`, `no_cap`, `no_policy`, `no_attribution`) and two baselines (`single_call` — the same prompt and house view in one call; `retelling` — one call with a plain prompt).
+- **Systems:** the full agent, nine ablations (`no_plan`, `no_verifier`, `no_rules`, `no_revise`, `no_self_check`, `no_cap`, `no_policy`, `no_attribution`, `no_reconcile`) and two baselines (`single_call` — the same prompt and house view in one call; `retelling` — one call with a plain prompt).
 - **Judge metrics:** six questions scored 0–2 (what happened, why it matters, consequences, actions, house view, grounding), overall 1–5, unsupported statements, retelling and impact calibration.
 - **Code metrics** that need no judge: rule errors reaching the reader, invented numbers, impact above the computed ceiling, answers not in the requested language, cost, latency; results are also split by output language.
 - **Statistics:** 95% bootstrap CIs, paired differences, sign tests, quadratic-weighted κ and Spearman between judges, accuracy and κ against human labels.
@@ -189,7 +189,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          85 tests on a scripted model — no network needed
+tests/          91 tests on a scripted model — no network needed
 ```
 
 ## Data and confidentiality

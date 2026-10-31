@@ -296,7 +296,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument(
         "--ablation",
         default="full",
-        help="full, no_plan, no_verifier, no_rules, no_revise, no_self_check, no_cap, no_policy, no_attribution",
+        help="full, no_plan, no_verifier, no_rules, no_revise, no_self_check, no_cap, no_policy, no_attribution, no_reconcile",
     )
     sp.add_argument("--iterations", type=int, help="revise rounds (default 1)")
     sp.add_argument("--out", help="folder to save insight, trace and state")
