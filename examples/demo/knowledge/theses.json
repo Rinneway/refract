@@ -1,0 +1,369 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t1",
+    "topic": "policy_rate",
+    "statement": "Демо-банк ожидает, что ключевая ставка останется на уровне 14% до конца 2026 года; снижение возможно не раньше весны.",
+    "figures": [
+      {
+        "name": "ключевая ставка",
+        "value": 14.0,
+        "unit": "%",
+        "period": "конец 2026"
+      }
+    ],
+    "horizon": "до конца 2026 года",
+    "factors": [
+      "policy_rate"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 2,
+    "quote": "Мы ожидаем, что центральный банк сохранит ключевую ставку на уровне 14% до конца 2026 года.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t2",
+    "topic": "policy_rate",
+    "statement": "Базовый прогноз Демо-банка по ключевой ставке на конец 2027 года — 12%.",
+    "figures": [
+      {
+        "name": "ключевая ставка",
+        "value": 12.0,
+        "unit": "%",
+        "period": "конец 2027"
+      }
+    ],
+    "horizon": "конец 2027 года",
+    "factors": [
+      "policy_rate"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 2,
+    "quote": "Наш базовый прогноз ставки на конец 2027 года — 12%.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t3",
+    "topic": "credit",
+    "statement": "По оценке Демо-банка, расходы заёмщиков с плавающей ставкой на обслуживание долга в ближайшие два квартала не снизятся.",
+    "figures": [],
+    "horizon": "ближайшие два квартала",
+    "factors": [
+      "policy_rate",
+      "credit_market"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 2,
+    "quote": "Для заёмщиков с плавающей ставкой это означает, что расходы на обслуживание долга в ближайшие два квартала не снизятся.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t4",
+    "topic": "inflation",
+    "statement": "Демо-банк ожидает замедления годовой инфляции до 6,5% к концу 2026 года и до 4,5% к концу 2027 года.",
+    "figures": [
+      {
+        "name": "инфляция",
+        "value": 6.5,
+        "unit": "%",
+        "period": "конец 2026"
+      },
+      {
+        "name": "инфляция",
+        "value": 4.5,
+        "unit": "%",
+        "period": "конец 2027"
+      }
+    ],
+    "horizon": "2026–2027",
+    "factors": [
+      "inflation"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 3,
+    "quote": "Мы ожидаем замедления годовой инфляции до 6,5% к концу 2026 года и до 4,5% к концу 2027 года.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t5",
+    "topic": "fx",
+    "statement": "Прогноз Демо-банка на IV квартал: юань — 11,5–12,5 рубля, доллар — 84–90 рублей; укрепление рубля банк считает временным.",
+    "figures": [
+      {
+        "name": "CNY/RUB",
+        "value": "11,5–12,5",
+        "unit": "руб.",
+        "period": "IV кв. 2026"
+      },
+      {
+        "name": "USD/RUB",
+        "value": "84–90",
+        "unit": "руб.",
+        "period": "IV кв. 2026"
+      }
+    ],
+    "horizon": "IV квартал 2026",
+    "factors": [
+      "fx:CNY",
+      "fx:USD"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 4,
+    "quote": "Наш прогноз среднего курса юаня на IV квартал — 11,5–12,5 рубля, доллара — 84–90 рублей.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_macro_2026q4_t6",
+    "topic": "credit",
+    "statement": "Демо-банк ожидает замедления роста корпоративного кредитного портфеля до 9% в 2026 году; компании чаще выбирают фиксированную ставку.",
+    "figures": [
+      {
+        "name": "рост корпоративного кредита",
+        "value": 9.0,
+        "unit": "%",
+        "period": "2026"
+      }
+    ],
+    "horizon": "2026 год",
+    "factors": [
+      "credit_market",
+      "policy_rate"
+    ],
+    "doc_id": "demo_macro_2026q4",
+    "doc_title": "Макрообзор Демо-банка: ставка, инфляция и курс (IV квартал 2026)",
+    "doc_date": "2026-10-01",
+    "page": 5,
+    "quote": "Мы ожидаем, что рост корпоративного кредитного портфеля замедлится до 9% в 2026 году.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_sme_2026_t1",
+    "topic": "taxes",
+    "statement": "По оценке Демо-банка, снижение порога НДС на упрощёнке сильнее всего затронет общепит и розницу; для них ставка 5% без вычетов обычно выгоднее общей.",
+    "figures": [],
+    "horizon": null,
+    "factors": [
+      "taxes",
+      "sector:56",
+      "sector:47"
+    ],
+    "doc_id": "demo_sme_2026",
+    "doc_title": "Малый бизнес в 2026 году: налоги, спрос и поддержка",
+    "doc_date": "2026-09-20",
+    "page": 2,
+    "quote": "По нашей оценке, снижение порога доходов для уплаты НДС на упрощённой системе затронет прежде всего общепит и розницу: у них низкая доля входящего НДС и мало вычетов.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_sme_2026_t2",
+    "topic": "taxes",
+    "statement": "Демо-банк рекомендует предпринимателям заранее пересчитать цены и проверить, не выгоднее ли другой налоговый режим.",
+    "figures": [],
+    "horizon": null,
+    "factors": [
+      "taxes"
+    ],
+    "doc_id": "demo_sme_2026",
+    "doc_title": "Малый бизнес в 2026 году: налоги, спрос и поддержка",
+    "doc_date": "2026-09-20",
+    "page": 2,
+    "quote": "Мы рекомендуем предпринимателям заранее пересчитать цены и проверить, не выгоднее ли перейти на другой налоговый режим.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_sme_2026_t3",
+    "topic": "consumption",
+    "statement": "Демо-банк ожидает замедления роста реальных расходов на кафе и рестораны до 3% в 2026 году после 9% годом ранее.",
+    "figures": [
+      {
+        "name": "рост расходов на общепит",
+        "value": 3.0,
+        "unit": "%",
+        "period": "2026"
+      }
+    ],
+    "horizon": "2026 год",
+    "factors": [
+      "consumer_demand",
+      "sector:56"
+    ],
+    "doc_id": "demo_sme_2026",
+    "doc_title": "Малый бизнес в 2026 году: налоги, спрос и поддержка",
+    "doc_date": "2026-09-20",
+    "page": 3,
+    "quote": "Мы ожидаем, что рост расходов населения на кафе и рестораны замедлится до 3% в реальном выражении в 2026 году после 9% годом ранее.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_sme_2026_t4",
+    "topic": "sme",
+    "statement": "По оценке Демо-банка, ставка по льготным кредитам для микробизнеса в 1,5–2 раза ниже рыночной; спрос на них в общепите вырастет.",
+    "figures": [],
+    "horizon": null,
+    "factors": [
+      "sme_support",
+      "credit_market"
+    ],
+    "doc_id": "demo_sme_2026",
+    "doc_title": "Малый бизнес в 2026 году: налоги, спрос и поддержка",
+    "doc_date": "2026-09-20",
+    "page": 4,
+    "quote": "Льготные программы кредитования остаются важным источником финансирования для микробизнеса: ставка по ним в 1,5–2 раза ниже рыночной.",
+    "language": "ru",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_fxcom_2026m10_t1",
+    "topic": "fx",
+    "statement": "Demo Bank expects the dollar to stay strong into year-end; its GBP/USD forecast for the end of 2026 is 1.24.",
+    "figures": [
+      {
+        "name": "GBP/USD",
+        "value": 1.24,
+        "unit": null,
+        "period": "end-2026"
+      }
+    ],
+    "horizon": "end of 2026",
+    "factors": [
+      "fx:USD"
+    ],
+    "doc_id": "demo_fxcom_2026m10",
+    "doc_title": "Demo Bank Research — FX and commodities monthly (October 2026)",
+    "doc_date": "2026-10-10",
+    "page": 2,
+    "quote": "Our forecast for GBP/USD at the end of 2026 is 1.24, down from 1.29 a month ago.",
+    "language": "en",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_fxcom_2026m10_t2",
+    "topic": "fx",
+    "statement": "Demo Bank recommends that UK exporters billing in dollars hedge at least half of expected dollar receipts for the next two quarters.",
+    "figures": [],
+    "horizon": "next two quarters",
+    "factors": [
+      "fx:USD"
+    ],
+    "doc_id": "demo_fxcom_2026m10",
+    "doc_title": "Demo Bank Research — FX and commodities monthly (October 2026)",
+    "doc_date": "2026-10-10",
+    "page": 2,
+    "quote": "we recommend hedging at least half of the expected dollar receipts for the next two quarters.",
+    "language": "en",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_fxcom_2026m10_t3",
+    "topic": "commodities",
+    "statement": "Demo Bank expects Black Sea milling wheat at USD 235–255 a tonne until year-end; freight is the main risk to exporters' margins.",
+    "figures": [
+      {
+        "name": "milling wheat",
+        "value": "235–255",
+        "unit": "USD/t",
+        "period": "to end-2026"
+      }
+    ],
+    "horizon": "until the end of 2026",
+    "factors": [
+      "agri",
+      "logistics"
+    ],
+    "doc_id": "demo_fxcom_2026m10",
+    "doc_title": "Demo Bank Research — FX and commodities monthly (October 2026)",
+    "doc_date": "2026-10-10",
+    "page": 3,
+    "quote": "We expect Black Sea milling wheat prices to stay in the range of USD 235–255 a tonne until the end of the year.",
+    "language": "en",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_fxcom_2026m10_t4",
+    "topic": "commodities",
+    "statement": "According to Demo Bank, every 10% rise in freight cuts a grain exporter's margin by about 1.5 percentage points.",
+    "figures": [],
+    "horizon": null,
+    "factors": [
+      "logistics",
+      "agri"
+    ],
+    "doc_id": "demo_fxcom_2026m10",
+    "doc_title": "Demo Bank Research — FX and commodities monthly (October 2026)",
+    "doc_date": "2026-10-10",
+    "page": 3,
+    "quote": "every 10% rise in freight cuts the exporter's margin by about 1.5 percentage points.",
+    "language": "en",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_housing_2026_t1",
+    "topic": "real_estate",
+    "statement": "Demo Bank expects new-build sales to fall by 15–20% in 2026 while market mortgage rates stay above 20%.",
+    "figures": [],
+    "horizon": "2026",
+    "factors": [
+      "construction",
+      "credit_market"
+    ],
+    "doc_id": "demo_housing_2026",
+    "doc_title": "Demo Bank Research — Housing market note",
+    "doc_date": "2026-09-15",
+    "page": 2,
+    "quote": "We expect new-build sales to fall by 15–20% in 2026 as market mortgage rates stay above 20%.",
+    "language": "en",
+    "is_stale": false
+  },
+  {
+    "schema_version": "1.0.0",
+    "thesis_id": "demo_housing_2026_t2",
+    "topic": "real_estate",
+    "statement": "Demo Bank sees longer receivables, rather than lower volumes, as the main risk for building-materials wholesalers.",
+    "figures": [],
+    "horizon": null,
+    "factors": [
+      "construction",
+      "sector:46"
+    ],
+    "doc_id": "demo_housing_2026",
+    "doc_title": "Demo Bank Research — Housing market note",
+    "doc_date": "2026-09-15",
+    "page": 3,
+    "quote": "We see the main risk for building-materials wholesalers in longer receivables rather than in lower volumes.",
+    "language": "en",
+    "is_stale": false
+  }
+]

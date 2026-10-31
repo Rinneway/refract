@@ -1,0 +1,656 @@
+{
+  "$defs": {
+    "Affiliation": {
+      "additionalProperties": false,
+      "description": "A related party: confirmed (same group) or a hypothesis (shared person).",
+      "properties": {
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "group",
+            "shared_person"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "kind",
+        "origin",
+        "confidence",
+        "evidence"
+      ],
+      "title": "Affiliation",
+      "type": "object"
+    },
+    "Counterparty": {
+      "additionalProperties": false,
+      "description": "A payment link. Transfers to oneself are excluded before profiling.",
+      "properties": {
+        "counterparty_id": {
+          "title": "Counterparty Id",
+          "type": "string"
+        },
+        "role": {
+          "description": "supplier — the subject pays them; customer — they pay the subject",
+          "enum": [
+            "supplier",
+            "customer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "amount": {
+          "minimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "payments_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Payments Count",
+          "type": "integer"
+        },
+        "share_of_flow": {
+          "description": "Share of incoming or outgoing payment flow",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share Of Flow",
+          "type": "number"
+        },
+        "industry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Industry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None — the counterparty's activity is unknown"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "same_group": {
+          "default": false,
+          "title": "Same Group",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "counterparty_id",
+        "role",
+        "amount",
+        "share_of_flow"
+      ],
+      "title": "Counterparty",
+      "type": "object"
+    },
+    "DataQuality": {
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "title": "DataQuality",
+      "type": "object"
+    },
+    "Direction": {
+      "enum": [
+        "negative",
+        "positive",
+        "mixed",
+        "unclear"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "Exposure": {
+      "additionalProperties": false,
+      "description": "Sensitivity of the subject to an external factor.",
+      "properties": {
+        "factor": {
+          "description": "Factor from the vocabulary: policy_rate, fx:CNY, sector:46, country:CN…",
+          "title": "Factor",
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "strength": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Strength",
+          "type": "number"
+        },
+        "via": {
+          "default": "own",
+          "enum": [
+            "own",
+            "counterparty",
+            "group"
+          ],
+          "title": "Via",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "evidence_fields": {
+          "description": "Features it is derived from",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "direction",
+        "strength",
+        "reason"
+      ],
+      "title": "Exposure",
+      "type": "object"
+    },
+    "ForeignTrade": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": false,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "countries": {
+          "description": "ISO 3166-1 alpha-2 codes or names",
+          "items": {
+            "type": "string"
+          },
+          "title": "Countries",
+          "type": "array"
+        },
+        "direction": {
+          "default": "unknown",
+          "enum": [
+            "import",
+            "export",
+            "both",
+            "unknown"
+          ],
+          "title": "Direction",
+          "type": "string"
+        }
+      },
+      "title": "ForeignTrade",
+      "type": "object"
+    },
+    "Industry": {
+      "additionalProperties": false,
+      "description": "Activity code. NACE Rev. 2 and OKVED 2 share sections (A–U) and two-digit divisions.",
+      "properties": {
+        "code": {
+          "description": "Activity code, e.g. 46.73",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Section letter A–U",
+          "title": "Section"
+        },
+        "scheme": {
+          "default": "nace",
+          "enum": [
+            "nace",
+            "okved",
+            "other"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "name"
+      ],
+      "title": "Industry",
+      "type": "object"
+    },
+    "IndustryPosition": {
+      "additionalProperties": false,
+      "properties": {
+        "peers_in_sample": {
+          "description": "Subjects with the same activity code in the sample",
+          "minimum": 0,
+          "title": "Peers In Sample",
+          "type": "integer"
+        },
+        "revenue_percentile": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revenue Percentile"
+        },
+        "method": {
+          "description": "How it was computed — shown to the reader",
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "peers_in_sample",
+        "method"
+      ],
+      "title": "IndustryPosition",
+      "type": "object"
+    },
+    "Origin": {
+      "description": "Where a statement comes from. The reader always sees it next to the statement.",
+      "enum": [
+        "fact",
+        "house_view",
+        "ai",
+        "hypothesis"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "Products": {
+      "additionalProperties": false,
+      "description": "Financial products the subject holds with the institution. Unknown elsewhere.",
+      "properties": {
+        "current_account": {
+          "default": false,
+          "title": "Current Account",
+          "type": "boolean"
+        },
+        "loans": {
+          "default": false,
+          "title": "Loans",
+          "type": "boolean"
+        },
+        "mortgage": {
+          "default": false,
+          "title": "Mortgage",
+          "type": "boolean"
+        },
+        "leasing": {
+          "default": false,
+          "title": "Leasing",
+          "type": "boolean"
+        },
+        "deposits": {
+          "default": false,
+          "title": "Deposits",
+          "type": "boolean"
+        },
+        "payroll": {
+          "default": false,
+          "title": "Payroll",
+          "type": "boolean"
+        },
+        "factoring": {
+          "default": false,
+          "title": "Factoring",
+          "type": "boolean"
+        },
+        "guarantees": {
+          "default": false,
+          "title": "Guarantees",
+          "type": "boolean"
+        },
+        "acquiring": {
+          "default": false,
+          "title": "Acquiring",
+          "type": "boolean"
+        },
+        "fx_account": {
+          "default": false,
+          "title": "Fx Account",
+          "type": "boolean"
+        },
+        "investments": {
+          "default": false,
+          "title": "Investments",
+          "type": "boolean"
+        }
+      },
+      "title": "Products",
+      "type": "object"
+    },
+    "Scale": {
+      "additionalProperties": false,
+      "properties": {
+        "revenue": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Annual revenue in `currency`",
+          "title": "Revenue"
+        },
+        "group_revenue": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Revenue of the group of companies",
+          "title": "Group Revenue"
+        },
+        "currency": {
+          "default": "RUB",
+          "description": "ISO 4217 currency of the amounts",
+          "title": "Currency",
+          "type": "string"
+        },
+        "segment": {
+          "default": "unknown",
+          "enum": [
+            "large",
+            "medium",
+            "small",
+            "micro",
+            "household",
+            "unknown"
+          ],
+          "title": "Segment",
+          "type": "string"
+        },
+        "employees": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Headcount bucket, e.g. 51-250",
+          "title": "Employees"
+        },
+        "age_years": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Age bucket of the business",
+          "title": "Age Years"
+        }
+      },
+      "title": "Scale",
+      "type": "object"
+    },
+    "SubjectKind": {
+      "enum": [
+        "company",
+        "sole_proprietor",
+        "self_employed",
+        "individual"
+      ],
+      "title": "SubjectKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/SubjectKind",
+      "default": "company"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Display name",
+      "title": "Name"
+    },
+    "country": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "ISO 3166-1 alpha-2 country of residence",
+      "title": "Country"
+    },
+    "region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Region"
+    },
+    "city": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "City"
+    },
+    "industry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Industry"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Main activity; may be empty for individuals"
+    },
+    "tax_regime": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tax regime, e.g. simplified 6%, patent, VAT payer",
+      "title": "Tax Regime"
+    },
+    "scale": {
+      "$ref": "#/$defs/Scale"
+    },
+    "industry_position": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IndustryPosition"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "products": {
+      "$ref": "#/$defs/Products"
+    },
+    "foreign_trade": {
+      "$ref": "#/$defs/ForeignTrade"
+    },
+    "group_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Group Id"
+    },
+    "group_members": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Group Members",
+      "type": "array"
+    },
+    "counterparties": {
+      "items": {
+        "$ref": "#/$defs/Counterparty"
+      },
+      "title": "Counterparties",
+      "type": "array"
+    },
+    "affiliations": {
+      "items": {
+        "$ref": "#/$defs/Affiliation"
+      },
+      "title": "Affiliations",
+      "type": "array"
+    },
+    "exposures": {
+      "items": {
+        "$ref": "#/$defs/Exposure"
+      },
+      "title": "Exposures",
+      "type": "array"
+    },
+    "user_provided": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "What the reader said about themselves; treated as untrusted text",
+      "title": "User Provided",
+      "type": "object"
+    },
+    "data_quality": {
+      "$ref": "#/$defs/DataQuality"
+    },
+    "summary": {
+      "description": "Short description for prompts, 2–6 sentences",
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_id",
+    "summary"
+  ],
+  "title": "Profile",
+  "type": "object"
+}

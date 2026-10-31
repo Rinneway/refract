@@ -1,0 +1,245 @@
+{
+  "$defs": {
+    "EventType": {
+      "enum": [
+        "monetary_policy",
+        "inflation",
+        "fx",
+        "commodities",
+        "macro_stats",
+        "financial_markets",
+        "regulation",
+        "tax",
+        "sanctions",
+        "trade",
+        "industry",
+        "company",
+        "labor",
+        "logistics",
+        "other"
+      ],
+      "title": "EventType",
+      "type": "string"
+    },
+    "KeyFact": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fragment of the source text",
+          "title": "Quote"
+        },
+        "article_id": {
+          "title": "Article Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact_id",
+        "text",
+        "article_id"
+      ],
+      "title": "KeyFact",
+      "type": "object"
+    },
+    "NewsArticle": {
+      "additionalProperties": false,
+      "properties": {
+        "article_id": {
+          "title": "Article Id",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "publisher": {
+          "title": "Publisher",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Full text, if you are allowed to store it",
+          "title": "Text"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ru, en…",
+          "title": "Language"
+        }
+      },
+      "required": [
+        "article_id",
+        "url",
+        "publisher",
+        "title",
+        "published_at"
+      ],
+      "title": "NewsArticle",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "An event is one or more articles about the same thing (duplicates merged).",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "event_id": {
+      "title": "Event Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "event_type": {
+      "$ref": "#/$defs/EventType",
+      "default": "other"
+    },
+    "published_at": {
+      "description": "Time of the first publication",
+      "format": "date-time",
+      "title": "Published At",
+      "type": "string"
+    },
+    "articles": {
+      "items": {
+        "$ref": "#/$defs/NewsArticle"
+      },
+      "minItems": 1,
+      "title": "Articles",
+      "type": "array"
+    },
+    "key_facts": {
+      "items": {
+        "$ref": "#/$defs/KeyFact"
+      },
+      "title": "Key Facts",
+      "type": "array"
+    },
+    "industry_codes": {
+      "description": "Two-digit NACE/OKVED divisions the event names directly",
+      "items": {
+        "type": "string"
+      },
+      "title": "Industry Codes",
+      "type": "array"
+    },
+    "industry_sections": {
+      "description": "Affected sections A–U",
+      "items": {
+        "type": "string"
+      },
+      "title": "Industry Sections",
+      "type": "array"
+    },
+    "regions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Regions",
+      "type": "array"
+    },
+    "countries": {
+      "description": "ISO codes or names of countries involved",
+      "items": {
+        "type": "string"
+      },
+      "title": "Countries",
+      "type": "array"
+    },
+    "commodities": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Commodities",
+      "type": "array"
+    },
+    "macro_factors": {
+      "description": "Up to three factors from the vocabulary, the main one first",
+      "items": {
+        "type": "string"
+      },
+      "title": "Macro Factors",
+      "type": "array"
+    },
+    "entities": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "importance": {
+      "default": 0.5,
+      "description": "Strength of the event regardless of the subject",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Importance",
+      "type": "number"
+    },
+    "language": {
+      "default": "ru",
+      "description": "Language of the articles",
+      "title": "Language",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "title",
+    "summary",
+    "published_at",
+    "articles"
+  ],
+  "title": "NewsEvent",
+  "type": "object"
+}

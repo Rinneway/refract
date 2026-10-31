@@ -1,0 +1,65 @@
+# Copy to refract.toml (ignored by git). Environment variables override these values.
+
+language = "ru"                 # ru | en — language of insights
+data_dir = "examples/demo"      # profiles/, events/, knowledge/
+
+[llm]
+base_urls = ["https://openrouter.ai/api/v1"]   # tried in order on network errors and HTTP 5xx
+currency = "USD"                               # currency of costs in traces and reports
+timeout_s = 120
+cache_dir = ".cache/llm"
+log_path = "logs/llm_calls.jsonl"
+
+# Model aliases. `main` drafts, plans and chats; `verifier` reviews drafts and judges evaluations.
+# Prices (per 1M tokens) are used only when the provider reports no cost.
+# `extra_body` is passed to the provider as is — e.g. to switch reasoning off.
+# The ids below are the models of the original experiments as named on OpenRouter (checked 2026-10-31); see what
+# your endpoint offers with `refract models`. `usage = { include = true }` asks OpenRouter to report the cost of
+# each call; prices are OpenRouter list prices of that day, used only when no cost is reported.
+[models.main]
+id = "z-ai/glm-5.3-flash"
+extra_body = { reasoning = { enabled = false }, usage = { include = true } }
+price_in = 0.0163
+price_out = 0.1479
+
+[models.verifier]
+id = "deepseek/deepseek-v4.1-flash"
+extra_body = { reasoning = { enabled = false }, usage = { include = true } }
+price_in = 0.045
+price_out = 0.5
+
+[models.judge2]
+id = "qwen/qwen3.6-35b-a3b"
+extra_body = { reasoning = { enabled = false }, usage = { include = true } }
+price_in = 0.1
+price_out = 0.9
+
+# Per-step routing: model alias, fallback alias, token limit, timeout, temperature.
+[routes.draft_insight]
+model = "main"
+fallback = "verifier"
+max_tokens = 4000
+timeout_s = 90
+
+[routes.verify]
+model = "verifier"
+fallback = "main"
+max_tokens = 2500
+timeout_s = 60
+
+[retrieval]
+# embedding_model = "openai/text-embedding-3-small"
+
+[institution]
+# Whose research is the "house view" and whose products the action policy may suggest.
+name = "Demo Bank"
+name_ru = "Демо-банк"
+name_gen = "Демо-банка"   # Russian genitive: «позиция Демо-банка»
+
+[actions]
+offer_products = true     # false — keep the advice, never suggest products
+
+[policies]
+# Your own reader roles and action rules (same format as src/refract/policies/*.json).
+# roles = "my_policies/roles.json"
+# actions = "my_policies/actions.json"

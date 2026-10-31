@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "ev_wheat_en",
+  "title": "Wheat export prices climb as Black Sea shipments slow",
+  "summary": "Export prices for milling wheat rose to USD 248 a tonne as port congestion and higher freight rates slowed Black Sea shipments.",
+  "event_type": "commodities",
+  "published_at": "2026-10-26T08:00:00Z",
+  "articles": [
+    {
+      "article_id": "art_wheat_en",
+      "url": "https://example.org/demo-news/ev_wheat_en",
+      "publisher": "Demo Wire (synthetic source)",
+      "title": "Wheat export prices climb as Black Sea shipments slow",
+      "published_at": "2026-10-26T08:00:00Z",
+      "text": "Export prices for milling wheat from Black Sea ports rose to USD 248 a tonne this week, up 6% from a month earlier, traders said.\n\nShipments slowed because of port congestion and a 15% jump in freight rates for Handysize vessels. Buyers in Turkey and Egypt, the largest importers in the region, delayed new purchases while waiting for prices to settle.\n\nAnalysts expect prices to stay firm until the end of the year, but warn that a stronger local currency could cut exporters' earnings when converted.",
+      "language": "en"
+    }
+  ],
+  "key_facts": [
+    {
+      "fact_id": "art_wheat_en_f1",
+      "text": "Milling wheat export prices rose to USD 248 a tonne, up 6% in a month",
+      "quote": null,
+      "article_id": "art_wheat_en"
+    },
+    {
+      "fact_id": "art_wheat_en_f2",
+      "text": "Freight rates for Handysize vessels jumped 15%",
+      "quote": null,
+      "article_id": "art_wheat_en"
+    }
+  ],
+  "industry_codes": [
+    "01",
+    "46"
+  ],
+  "industry_sections": [
+    "A",
+    "G"
+  ],
+  "regions": [],
+  "countries": [
+    "TR",
+    "EG"
+  ],
+  "commodities": [
+    "wheat"
+  ],
+  "macro_factors": [
+    "agri",
+    "logistics"
+  ],
+  "entities": [],
+  "importance": 0.6,
+  "language": "en"
+}

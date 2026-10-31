@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_designer_npd",
+  "kind": "self_employed",
+  "name": "Самозанятый дизайнер (вымышленный)",
+  "country": "RU",
+  "region": "Санкт-Петербург",
+  "city": null,
+  "industry": {
+    "code": "74.10",
+    "name": "Деятельность специализированная в области дизайна",
+    "section": "M",
+    "scheme": "okved"
+  },
+  "tax_regime": "НПД (налог на профессиональный доход)",
+  "scale": {
+    "revenue": 2400000.0,
+    "group_revenue": null,
+    "currency": "RUB",
+    "segment": "micro",
+    "employees": "1",
+    "age_years": null
+  },
+  "industry_position": null,
+  "products": {
+    "current_account": true,
+    "loans": false,
+    "mortgage": false,
+    "leasing": false,
+    "deposits": true,
+    "payroll": false,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": false,
+    "fx_account": true,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": true,
+    "countries": [
+      "KZ",
+      "AE"
+    ],
+    "direction": "export"
+  },
+  "group_id": null,
+  "group_members": [],
+  "counterparties": [],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "taxes",
+      "direction": "negative",
+      "strength": 0.8,
+      "via": "own",
+      "reason": "работает на НПД: лимит дохода и ставки определяют, можно ли остаться самозанятым",
+      "evidence_fields": [
+        "tax_regime"
+      ]
+    },
+    {
+      "factor": "fx:USD",
+      "direction": "positive",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "часть заказчиков платит в долларах",
+      "evidence_fields": [
+        "products.fx_account",
+        "foreign_trade"
+      ]
+    },
+    {
+      "factor": "policy_rate",
+      "direction": "positive",
+      "strength": 0.4,
+      "via": "own",
+      "reason": "свободные средства лежат на депозите",
+      "evidence_fields": [
+        "products.deposits"
+      ]
+    }
+  ],
+  "user_provided": {
+    "plans": "Хочу в следующем году нанять помощника и думаю, не перейти ли в ИП"
+  },
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "Самозанятый графический дизайнер из Санкт-Петербурга (вымышленный): доход около 2,4 млн руб. в год, работает на НПД. Часть заказчиков — в Казахстане и ОАЭ, есть валютный счёт и депозит. Думает о переходе в ИП, чтобы нанять помощника."
+}

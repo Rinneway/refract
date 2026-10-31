@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "ev_housing_en",
+  "title": "New-build sales slow sharply as mortgage rates stay high",
+  "summary": "Developers reported a 22% year-on-year drop in new-build sales in the third quarter as market mortgage rates stayed above 20%.",
+  "event_type": "industry",
+  "published_at": "2026-10-21T07:30:00Z",
+  "articles": [
+    {
+      "article_id": "art_housing_en",
+      "url": "https://example.org/demo-news/ev_housing_en",
+      "publisher": "Demo Wire (synthetic source)",
+      "title": "New-build sales slow sharply as mortgage rates stay high",
+      "published_at": "2026-10-21T07:30:00Z",
+      "text": "Residential developers sold 22% fewer new-build flats in the third quarter than a year earlier, according to an industry survey of the 30 largest developers.\n\nMarket mortgage rates stayed above 20%, while subsidised programmes now cover only families with children. Developers responded by postponing new projects: the number of new construction starts fell by 18%.\n\nSuppliers of building materials report longer payment terms from developers and a slowdown in orders for the winter season.",
+      "language": "en"
+    }
+  ],
+  "key_facts": [
+    {
+      "fact_id": "art_housing_en_f1",
+      "text": "New-build sales fell 22% year on year in Q3",
+      "quote": null,
+      "article_id": "art_housing_en"
+    },
+    {
+      "fact_id": "art_housing_en_f2",
+      "text": "Market mortgage rates stayed above 20%",
+      "quote": null,
+      "article_id": "art_housing_en"
+    },
+    {
+      "fact_id": "art_housing_en_f3",
+      "text": "New construction starts fell 18%",
+      "quote": null,
+      "article_id": "art_housing_en"
+    }
+  ],
+  "industry_codes": [
+    "41"
+  ],
+  "industry_sections": [
+    "F"
+  ],
+  "regions": [],
+  "countries": [],
+  "commodities": [],
+  "macro_factors": [
+    "construction",
+    "credit_market"
+  ],
+  "entities": [],
+  "importance": 0.7,
+  "language": "en"
+}

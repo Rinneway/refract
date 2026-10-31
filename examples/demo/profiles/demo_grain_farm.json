@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_grain_farm",
+  "kind": "company",
+  "name": "АО «Демо-Агро» (вымышленная компания)",
+  "country": "RU",
+  "region": "Краснодарский край",
+  "city": null,
+  "industry": {
+    "code": "01.11",
+    "name": "Выращивание зерновых (кроме риса), зернобобовых культур и семян масличных культур",
+    "section": "A",
+    "scheme": "okved"
+  },
+  "tax_regime": null,
+  "scale": {
+    "revenue": 6800000000.0,
+    "group_revenue": null,
+    "currency": "RUB",
+    "segment": "medium",
+    "employees": "251-1000",
+    "age_years": null
+  },
+  "industry_position": null,
+  "products": {
+    "current_account": true,
+    "loans": true,
+    "mortgage": false,
+    "leasing": false,
+    "deposits": false,
+    "payroll": false,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": false,
+    "fx_account": true,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": true,
+    "countries": [
+      "TR",
+      "EG"
+    ],
+    "direction": "export"
+  },
+  "group_id": null,
+  "group_members": [],
+  "counterparties": [
+    {
+      "counterparty_id": "cp_trader_411",
+      "role": "customer",
+      "amount": 2600000000.0,
+      "payments_count": 180,
+      "share_of_flow": 0.38,
+      "industry": {
+        "code": "46.21",
+        "name": "Торговля оптовая зерном, необработанным табаком, семенами и кормами для сельскохозяйственных животных",
+        "section": "G",
+        "scheme": "okved"
+      },
+      "region": "Ростовская область",
+      "same_group": false
+    },
+    {
+      "counterparty_id": "cp_fert_512",
+      "role": "supplier",
+      "amount": 900000000.0,
+      "payments_count": 60,
+      "share_of_flow": 0.27,
+      "industry": {
+        "code": "20.15",
+        "name": "Производство удобрений и азотных соединений",
+        "section": "C",
+        "scheme": "okved"
+      },
+      "region": "Ставропольский край",
+      "same_group": false
+    }
+  ],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "agri",
+      "direction": "mixed",
+      "strength": 0.9,
+      "via": "own",
+      "reason": "выручка зависит от цен на зерно",
+      "evidence_fields": [
+        "industry"
+      ]
+    },
+    {
+      "factor": "fx:USD",
+      "direction": "positive",
+      "strength": 0.7,
+      "via": "own",
+      "reason": "экспортная выручка в долларах: слабый рубль повышает выручку в рублях",
+      "evidence_fields": [
+        "foreign_trade"
+      ]
+    },
+    {
+      "factor": "logistics",
+      "direction": "negative",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "экспорт морем через южные порты",
+      "evidence_fields": [
+        "foreign_trade"
+      ]
+    },
+    {
+      "factor": "policy_rate",
+      "direction": "negative",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "сезонные кредиты на посевную",
+      "evidence_fields": [
+        "products.loans"
+      ]
+    }
+  ],
+  "user_provided": {},
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "Среднее сельхозпредприятие из Краснодарского края (вымышленное): выращивает зерновые и масличные, выручка 6,8 млрд руб. Экспортирует в Турцию и Египет, крупнейший покупатель — зернотрейдер (38% входящих платежей). Берёт сезонные кредиты, есть валютный счёт."
+}

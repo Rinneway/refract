@@ -1,0 +1,165 @@
+{
+  "$defs": {
+    "Figure": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "Figure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A position of the institution on a topic, with numbers and the exact quote it rests on.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "thesis_id": {
+      "title": "Thesis Id",
+      "type": "string"
+    },
+    "topic": {
+      "description": "Topic from the vocabulary: policy_rate, inflation, fx, taxes…",
+      "title": "Topic",
+      "type": "string"
+    },
+    "statement": {
+      "description": "The position in one or two sentences",
+      "title": "Statement",
+      "type": "string"
+    },
+    "figures": {
+      "items": {
+        "$ref": "#/$defs/Figure"
+      },
+      "title": "Figures",
+      "type": "array"
+    },
+    "horizon": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "E.g. “by the end of 2027”",
+      "title": "Horizon"
+    },
+    "factors": {
+      "description": "Vocabulary factors the thesis touches",
+      "items": {
+        "type": "string"
+      },
+      "title": "Factors",
+      "type": "array"
+    },
+    "doc_id": {
+      "title": "Doc Id",
+      "type": "string"
+    },
+    "doc_title": {
+      "title": "Doc Title",
+      "type": "string"
+    },
+    "doc_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doc Date"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page"
+    },
+    "quote": {
+      "description": "Exact quote from the document",
+      "title": "Quote",
+      "type": "string"
+    },
+    "language": {
+      "default": "ru",
+      "title": "Language",
+      "type": "string"
+    },
+    "is_stale": {
+      "default": false,
+      "description": "The document is too old for current conclusions",
+      "title": "Is Stale",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "thesis_id",
+    "topic",
+    "statement",
+    "doc_id",
+    "doc_title",
+    "quote"
+  ],
+  "title": "Thesis",
+  "type": "object"
+}

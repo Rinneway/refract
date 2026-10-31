@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_family_saver",
+  "kind": "individual",
+  "name": "Семья из Новосибирска (вымышленная)",
+  "country": "RU",
+  "region": "Новосибирская область",
+  "city": "Новосибирск",
+  "industry": null,
+  "tax_regime": null,
+  "scale": {
+    "revenue": 2100000.0,
+    "group_revenue": null,
+    "currency": "RUB",
+    "segment": "household",
+    "employees": null,
+    "age_years": null
+  },
+  "industry_position": null,
+  "products": {
+    "current_account": true,
+    "loans": false,
+    "mortgage": true,
+    "leasing": false,
+    "deposits": true,
+    "payroll": false,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": false,
+    "fx_account": false,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": false,
+    "countries": [],
+    "direction": "unknown"
+  },
+  "group_id": null,
+  "group_members": [],
+  "counterparties": [],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "policy_rate",
+      "direction": "mixed",
+      "strength": 0.7,
+      "via": "own",
+      "reason": "ипотека с плавающей ставкой и депозит: ставка меняет и платёж, и доход по вкладу",
+      "evidence_fields": [
+        "products.mortgage",
+        "products.deposits"
+      ]
+    },
+    {
+      "factor": "inflation",
+      "direction": "negative",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "расходы семьи растут быстрее дохода",
+      "evidence_fields": [
+        "scale.revenue"
+      ]
+    },
+    {
+      "factor": "sme_support",
+      "direction": "positive",
+      "strength": 0.4,
+      "via": "own",
+      "reason": "планирует открыть мини-пекарню",
+      "evidence_fields": [
+        "user.plans"
+      ]
+    }
+  ],
+  "user_provided": {
+    "plans": "Через год хотим открыть небольшую пекарню и взять для этого льготный кредит"
+  },
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "Семья из Новосибирска (вымышленная): доход около 2,1 млн руб. в год, ипотека с плавающей ставкой и депозит. Через год планирует открыть мини-пекарню."
+}

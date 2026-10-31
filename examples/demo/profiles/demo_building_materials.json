@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_building_materials",
+  "kind": "company",
+  "name": "ООО «Демо-Стройснаб» (вымышленная компания)",
+  "country": "RU",
+  "region": "Свердловская область",
+  "city": "Екатеринбург",
+  "industry": {
+    "code": "46.73",
+    "name": "Торговля оптовая лесоматериалами, строительными материалами и санитарно-техническим оборудованием",
+    "section": "G",
+    "scheme": "okved"
+  },
+  "tax_regime": null,
+  "scale": {
+    "revenue": 12600000000.0,
+    "group_revenue": 18400000000.0,
+    "currency": "RUB",
+    "segment": "large",
+    "employees": "251-1000",
+    "age_years": "16-25"
+  },
+  "industry_position": {
+    "peers_in_sample": 412,
+    "revenue_percentile": 97.5,
+    "method": "Перцентиль выручки среди субъектов с тем же кодом в синтетической выборке"
+  },
+  "products": {
+    "current_account": true,
+    "loans": true,
+    "mortgage": false,
+    "leasing": true,
+    "deposits": false,
+    "payroll": true,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": false,
+    "fx_account": false,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": true,
+    "countries": [
+      "CN"
+    ],
+    "direction": "import"
+  },
+  "group_id": "grp_demo_ural",
+  "group_members": [
+    "demo_ural_logistics",
+    "demo_ural_property"
+  ],
+  "counterparties": [
+    {
+      "counterparty_id": "cp_dev_101",
+      "role": "customer",
+      "amount": 3900000000.0,
+      "payments_count": 1240,
+      "share_of_flow": 0.31,
+      "industry": {
+        "code": "41.20",
+        "name": "Строительство жилых и нежилых зданий",
+        "section": "F",
+        "scheme": "okved"
+      },
+      "region": "Свердловская область",
+      "same_group": false
+    },
+    {
+      "counterparty_id": "cp_cement_205",
+      "role": "supplier",
+      "amount": 2100000000.0,
+      "payments_count": 410,
+      "share_of_flow": 0.22,
+      "industry": {
+        "code": "23.51",
+        "name": "Производство цемента",
+        "section": "C",
+        "scheme": "okved"
+      },
+      "region": "Челябинская область",
+      "same_group": false
+    },
+    {
+      "counterparty_id": "cp_import_309",
+      "role": "supplier",
+      "amount": 1300000000.0,
+      "payments_count": 95,
+      "share_of_flow": 0.14,
+      "industry": null,
+      "region": null,
+      "same_group": false
+    }
+  ],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "policy_rate",
+      "direction": "negative",
+      "strength": 0.8,
+      "via": "own",
+      "reason": "есть кредиты и лизинг — стоимость обслуживания зависит от ставки",
+      "evidence_fields": [
+        "products.loans",
+        "products.leasing"
+      ]
+    },
+    {
+      "factor": "construction",
+      "direction": "negative",
+      "strength": 0.8,
+      "via": "counterparty",
+      "reason": "крупнейший покупатель — застройщик (31% входящих платежей)",
+      "evidence_fields": [
+        "counterparties.customer.cp_dev_101"
+      ]
+    },
+    {
+      "factor": "fx:CNY",
+      "direction": "negative",
+      "strength": 0.7,
+      "via": "own",
+      "reason": "импорт из Китая: дорожание юаня повышает закупочные цены",
+      "evidence_fields": [
+        "foreign_trade"
+      ]
+    },
+    {
+      "factor": "sector:41",
+      "direction": "negative",
+      "strength": 0.7,
+      "via": "counterparty",
+      "reason": "спрос зависит от строительства зданий",
+      "evidence_fields": [
+        "counterparties.customer.cp_dev_101"
+      ]
+    }
+  ],
+  "user_provided": {},
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "Крупный оптовик строительных материалов из Екатеринбурга (вымышленная компания), выручка 12,6 млрд руб., входит в группу из трёх юрлиц. Импортирует часть товаров из Китая. Пользуется кредитами, лизингом и зарплатным проектом. Крупнейший покупатель — застройщик (31% входящих платежей), крупнейший поставщик — производитель цемента (22% исходящих)."
+}

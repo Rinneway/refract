@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_coffee_ip",
+  "kind": "sole_proprietor",
+  "name": "ИП — кофейня «Демо-кофе» (вымышленный)",
+  "country": "RU",
+  "region": "Республика Татарстан",
+  "city": "Казань",
+  "industry": {
+    "code": "56.30",
+    "name": "Подача напитков",
+    "section": "I",
+    "scheme": "okved"
+  },
+  "tax_regime": "УСН «доходы минус расходы», 15%",
+  "scale": {
+    "revenue": 18000000.0,
+    "group_revenue": null,
+    "currency": "RUB",
+    "segment": "micro",
+    "employees": "1-15",
+    "age_years": null
+  },
+  "industry_position": null,
+  "products": {
+    "current_account": true,
+    "loans": true,
+    "mortgage": false,
+    "leasing": false,
+    "deposits": false,
+    "payroll": false,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": true,
+    "fx_account": false,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": false,
+    "countries": [],
+    "direction": "unknown"
+  },
+  "group_id": null,
+  "group_members": [],
+  "counterparties": [
+    {
+      "counterparty_id": "cp_roaster_77",
+      "role": "supplier",
+      "amount": 3100000.0,
+      "payments_count": 52,
+      "share_of_flow": 0.25,
+      "industry": {
+        "code": "10.83",
+        "name": "Производство чая и кофе",
+        "section": "C",
+        "scheme": "okved"
+      },
+      "region": "Республика Татарстан",
+      "same_group": false
+    },
+    {
+      "counterparty_id": "cp_acq_channel",
+      "role": "customer",
+      "amount": 15800000.0,
+      "payments_count": 9400,
+      "share_of_flow": 0.88,
+      "industry": null,
+      "region": null,
+      "same_group": false
+    }
+  ],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "consumer_demand",
+      "direction": "negative",
+      "strength": 0.7,
+      "via": "own",
+      "reason": "выручка зависит от трат горожан на кофе и выпечку",
+      "evidence_fields": [
+        "industry"
+      ]
+    },
+    {
+      "factor": "taxes",
+      "direction": "negative",
+      "strength": 0.8,
+      "via": "own",
+      "reason": "работает на УСН: изменение режима сразу меняет налоговую нагрузку",
+      "evidence_fields": [
+        "tax_regime"
+      ]
+    },
+    {
+      "factor": "inflation",
+      "direction": "negative",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "закупочные цены на кофе, молоко и аренду",
+      "evidence_fields": [
+        "counterparties.supplier.cp_roaster_77"
+      ]
+    },
+    {
+      "factor": "sme_support",
+      "direction": "positive",
+      "strength": 0.5,
+      "via": "own",
+      "reason": "микробизнес в общепите может подпадать под программы поддержки",
+      "evidence_fields": [
+        "scale.segment"
+      ]
+    }
+  ],
+  "user_provided": {},
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "Индивидуальный предприниматель из Казани (вымышленный) с одной кофейней: выручка около 18 млн руб. в год, до 15 сотрудников, УСН «доходы минус расходы». Почти все поступления идут через эквайринг. Есть небольшой кредит на оборудование, крупнейший поставщик — обжарщик кофе (25% исходящих платежей)."
+}

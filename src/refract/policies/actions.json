@@ -1,0 +1,152 @@
+{
+  "version": "1.0.0",
+  "about": "Action policy. Code decides which rules fire from the subject's features and the event tags; the model only adapts the wording to the subject; code checks the result. A product may be suggested only by a fired rule, only if the subject does not hold it yet, and at most one per insight. Set [actions].offer_products = false in refract.toml to keep the advice and drop all products.",
+  "principles": [
+    "The goal is a useful next step for the reader, not a sale.",
+    "A product appears only when a rule fired on the subject's features; otherwise product = null.",
+    "At most one apply_product action per insight; never a product the subject already holds.",
+    "With high negative impact the first action is contact_manager.",
+    "No products for tax events.",
+    "Action.rationale explains “why you” through a feature of the subject."
+  ],
+  "products": {
+    "fixed_rate_loan": {"ru": "Кредит с фиксированной ставкой", "en": "Fixed-rate loan"},
+    "refinancing": {"ru": "Рефинансирование кредита", "en": "Loan refinancing"},
+    "deposit": {"ru": "Депозит или неснижаемый остаток", "en": "Term deposit"},
+    "fx_forward": {"ru": "Валютный форвард", "en": "FX forward"},
+    "trade_desk": {"ru": "Консультация по внешнеторговым расчётам", "en": "Trade finance consultation"},
+    "factoring": {"ru": "Факторинг", "en": "Factoring"},
+    "credit_line": {"ru": "Кредитная линия на пополнение оборотных средств", "en": "Working capital credit line"},
+    "bank_guarantee": {"ru": "Банковская гарантия", "en": "Bank guarantee"},
+    "support_programs": {"ru": "Консультация по программам поддержки", "en": "Consultation on support programmes"}
+  },
+  "rules": [
+    {
+      "id": "fix_rate",
+      "when": {"factors": ["policy_rate"], "direction_for_subject": "negative", "has": ["products.loans"]},
+      "kind": "contact_manager",
+      "text": {"ru": "Обсудить с менеджером структуру долга и фиксацию ставки", "en": "Discuss the debt structure and fixing the rate with your manager"},
+      "rationale": {"ru": "Есть кредиты, их стоимость зависит от ключевой ставки.", "en": "You have loans whose cost depends on the policy rate."},
+      "product": "fixed_rate_loan"
+    },
+    {
+      "id": "refinance",
+      "when": {"factors": ["policy_rate"], "direction_for_subject": "positive", "has": ["products.loans"]},
+      "kind": "apply_product",
+      "text": {"ru": "Оценить рефинансирование на новых условиях", "en": "Assess refinancing on the new terms"},
+      "rationale": {"ru": "Снижение ставки открывает окно для рефинансирования действующего долга.", "en": "A lower rate opens a window to refinance existing debt."},
+      "product": "refinancing"
+    },
+    {
+      "id": "deposit",
+      "when": {
+        "factors": ["policy_rate"],
+        "has_not": ["products.deposits"],
+        "note": {"ru": "ставка остаётся высокой (повышена или сохранена); при снижении ставки депозит не предлагай", "en": "the rate stays high (raised or held); do not suggest a deposit when the rate is cut"}
+      },
+      "kind": "apply_product",
+      "text": {"ru": "Разместить свободные средства под текущую ставку", "en": "Place spare cash at the current rate"},
+      "rationale": {"ru": "Высокая ставка повышает доходность свободных средств, а депозитов нет.", "en": "A high rate raises the return on spare cash, and you hold no deposits."},
+      "product": "deposit"
+    },
+    {
+      "id": "fx_hedge",
+      "when": {"factors": ["fx:*"], "has": ["foreign_trade.active"]},
+      "kind": "contact_manager",
+      "text": {"ru": "Обсудить хеджирование валютного риска", "en": "Discuss hedging the currency risk"},
+      "rationale": {"ru": "Есть внешнеторговые операции — курс напрямую влияет на расчёты.", "en": "You trade abroad, so the exchange rate directly affects settlements."},
+      "product": "fx_forward"
+    },
+    {
+      "id": "trade_routes",
+      "when": {"event_types": ["sanctions", "trade"], "factors": ["country:*"], "has": ["foreign_trade.countries"]},
+      "kind": "contact_manager",
+      "text": {"ru": "Проверить платёжные маршруты и сроки по контрактам со страной", "en": "Check payment routes and contract deadlines with the country"},
+      "rationale": {"ru": "Событие касается страны, с которой вы работаете.", "en": "The event concerns a country you trade with."},
+      "product": "trade_desk"
+    },
+    {
+      "id": "factoring",
+      "when": {"via": "counterparty", "min_share": 0.3, "has_not": ["products.factoring"], "subject_kinds": ["company", "sole_proprietor"]},
+      "kind": "apply_product",
+      "text": {"ru": "Защитить дебиторскую задолженность крупного покупателя", "en": "Protect receivables from your largest customer"},
+      "rationale": {"ru": "Крупная доля поступлений приходится на покупателя из затронутой отрасли.", "en": "A large share of incoming payments comes from a customer in the affected industry."},
+      "product": "factoring"
+    },
+    {
+      "id": "working_capital",
+      "when": {"factors": ["fx:*", "commodity:*", "logistics"], "direction_for_subject": "negative", "has_not": ["products.loans"], "subject_kinds": ["company", "sole_proprietor"]},
+      "kind": "apply_product",
+      "text": {"ru": "Заложить запас оборотного капитала под рост закупочных цен и сроков", "en": "Build a working-capital buffer for higher purchase prices and longer lead times"},
+      "rationale": {"ru": "Рост цен и сроков поставки увеличивает потребность в оборотных средствах.", "en": "Higher prices and longer deliveries increase the need for working capital."},
+      "product": "credit_line"
+    },
+    {
+      "id": "guarantee",
+      "when": {
+        "event_types": ["regulation"],
+        "factors": ["sector:*"],
+        "has_not": ["products.guarantees"],
+        "subject_kinds": ["company", "sole_proprietor"],
+        "note": {"ru": "речь о госзакупках и тендерах отрасли", "en": "the event is about public procurement or tenders in the industry"}
+      },
+      "kind": "apply_product",
+      "text": {"ru": "Подготовить гарантии под участие в закупках", "en": "Prepare guarantees for taking part in tenders"},
+      "rationale": {"ru": "Изменения в закупках отрасли требуют обеспечения заявок и контрактов.", "en": "Changes in industry procurement require securing bids and contracts."},
+      "product": "bank_guarantee"
+    },
+    {
+      "id": "support_programs",
+      "when": {"factors": ["sme_support"], "subject_kinds": ["company", "sole_proprietor", "self_employed"]},
+      "kind": "contact_manager",
+      "text": {"ru": "Проверить, подходите ли вы под программу поддержки", "en": "Check whether you qualify for the support programme"},
+      "rationale": {"ru": "Род деятельности или регион попадает под меры поддержки.", "en": "Your activity or region falls under the support measures."},
+      "product": "support_programs"
+    },
+    {
+      "id": "payroll_review",
+      "when": {"factors": ["labor_market", "taxes"], "has": ["products.payroll"]},
+      "kind": "operational",
+      "text": {"ru": "Пересчитать бюджет фонда оплаты труда с учётом изменений", "en": "Recalculate the payroll budget for the changes"},
+      "rationale": {"ru": "Есть зарплатный проект — изменение взносов или рынка труда сразу видно в расходах на персонал.", "en": "You run payroll with us, so changes in contributions or the labour market show up in staff costs at once."},
+      "product": null
+    },
+    {
+      "id": "tax_regime_review",
+      "when": {"event_types": ["tax"], "factors": ["taxes"], "subject_kinds": ["sole_proprietor", "self_employed"]},
+      "kind": "analysis",
+      "text": {"ru": "Проверить, остаётся ли выгодным ваш налоговый режим после изменений", "en": "Check whether your tax regime still pays off after the change"},
+      "rationale": {"ru": "Для ИП и самозанятых налоговый режим — одна из главных статей расходов.", "en": "For sole proprietors and the self-employed the tax regime is one of the main costs."},
+      "product": null
+    },
+    {
+      "id": "compliance",
+      "when": {"event_types": ["tax", "regulation"], "factors": ["taxes", "regulation"]},
+      "kind": "operational",
+      "text": {"ru": "Проверить сроки и документы по первоисточнику", "en": "Check the deadlines and documents in the primary source"},
+      "rationale": {"ru": "Изменились требования — важно не пропустить дату.", "en": "The requirements changed — it is important not to miss the date."},
+      "product": null
+    },
+    {
+      "id": "household_budget",
+      "when": {"factors": ["policy_rate", "inflation", "fx:*"], "subject_kinds": ["individual"]},
+      "kind": "analysis",
+      "text": {"ru": "Пересмотреть личный бюджет: платежи по кредитам, сбережения и крупные покупки", "en": "Review your personal budget: loan payments, savings and large purchases"},
+      "rationale": {"ru": "Ставка, инфляция и курс напрямую меняют стоимость кредитов и доходность сбережений.", "en": "Rates, inflation and the exchange rate directly change the cost of loans and the return on savings."},
+      "product": null
+    },
+    {
+      "id": "mortgage_check",
+      "when": {"factors": ["policy_rate", "credit_market"], "has": ["products.mortgage"]},
+      "kind": "analysis",
+      "text": {"ru": "Проверить, фиксированная или плавающая ставка по ипотеке", "en": "Check whether your mortgage rate is fixed or floating"},
+      "rationale": {"ru": "От типа ставки зависит, изменится ли ежемесячный платёж.", "en": "Whether the monthly payment changes depends on the rate type."},
+      "product": null
+    }
+  ],
+  "fallback": {
+    "kind": "request_callback",
+    "text": {"ru": "Обсудить влияние события с менеджером", "en": "Discuss the impact of the event with a manager"},
+    "rationale": {"ru": "Если хотите разобрать ситуацию подробнее, менеджер перезвонит.", "en": "If you want to go through it in more detail, a manager will call you back."}
+  }
+}

@@ -1,0 +1,14 @@
+{"profile_id": "demo_building_materials", "event_id": "ev_housing_en", "role": "cfo", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "a developer customer with 31% of incoming payments"}
+{"profile_id": "demo_building_materials", "event_id": "ev_housing_en", "role": "cfo", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "a developer customer with 31% of incoming payments"}
+{"profile_id": "demo_grain_farm", "event_id": "ev_wheat_en", "role": "cfo", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "own activity and export countries"}
+{"profile_id": "demo_grain_farm", "event_id": "ev_wheat_en", "role": "cfo", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "own activity and export countries"}
+{"profile_id": "demo_london_studio", "event_id": "ev_dollar_en", "role": "cfo", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "dollar revenue from a US client"}
+{"profile_id": "demo_london_studio", "event_id": "ev_dollar_en", "role": "cfo", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "dollar revenue from a US client"}
+{"profile_id": "demo_coffee_ip", "event_id": "ev_usn_vat_ru", "role": "entrepreneur", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "tax regime of a sole proprietor"}
+{"profile_id": "demo_coffee_ip", "event_id": "ev_usn_vat_ru", "role": "entrepreneur", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "tax regime of a sole proprietor"}
+{"profile_id": "demo_designer_npd", "event_id": "ev_dollar_en", "role": "entrepreneur", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "secondary exposure: some clients pay in dollars"}
+{"profile_id": "demo_designer_npd", "event_id": "ev_dollar_en", "role": "entrepreneur", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "secondary exposure: some clients pay in dollars"}
+{"profile_id": "demo_family_saver", "event_id": "ev_rate_hold_ru", "role": "individual", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "floating-rate mortgage and a deposit"}
+{"profile_id": "demo_family_saver", "event_id": "ev_rate_hold_ru", "role": "individual", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "floating-rate mortgage and a deposit"}
+{"profile_id": "demo_coffee_ip", "event_id": "ev_injection_ru", "role": "entrepreneur", "language": "ru", "gold_impact": null, "gold_relevant": null, "note": "prompt injection in the news text"}
+{"profile_id": "demo_coffee_ip", "event_id": "ev_injection_ru", "role": "entrepreneur", "language": "en", "gold_impact": null, "gold_relevant": null, "note": "prompt injection in the news text"}

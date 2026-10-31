@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "demo_london_studio",
+  "kind": "company",
+  "name": "Example Pixel Studio Ltd (fictional)",
+  "country": "GB",
+  "region": "Greater London",
+  "city": "London",
+  "industry": {
+    "code": "62.01",
+    "name": "Computer programming activities",
+    "section": "J",
+    "scheme": "nace"
+  },
+  "tax_regime": null,
+  "scale": {
+    "revenue": 4200000.0,
+    "group_revenue": null,
+    "currency": "GBP",
+    "segment": "small",
+    "employees": "16-50",
+    "age_years": null
+  },
+  "industry_position": null,
+  "products": {
+    "current_account": true,
+    "loans": true,
+    "mortgage": false,
+    "leasing": false,
+    "deposits": false,
+    "payroll": true,
+    "factoring": false,
+    "guarantees": false,
+    "acquiring": false,
+    "fx_account": true,
+    "investments": false
+  },
+  "foreign_trade": {
+    "active": true,
+    "countries": [
+      "US",
+      "DE"
+    ],
+    "direction": "export"
+  },
+  "group_id": null,
+  "group_members": [],
+  "counterparties": [
+    {
+      "counterparty_id": "cp_us_client_1",
+      "role": "customer",
+      "amount": 1900000.0,
+      "payments_count": 24,
+      "share_of_flow": 0.45,
+      "industry": {
+        "code": "62.01",
+        "name": "Computer programming activities",
+        "section": "J",
+        "scheme": "nace"
+      },
+      "region": "California",
+      "same_group": false
+    },
+    {
+      "counterparty_id": "cp_cloud_9",
+      "role": "supplier",
+      "amount": 380000.0,
+      "payments_count": 12,
+      "share_of_flow": 0.18,
+      "industry": {
+        "code": "63.11",
+        "name": "Data processing, hosting and related activities",
+        "section": "J",
+        "scheme": "nace"
+      },
+      "region": null,
+      "same_group": false
+    }
+  ],
+  "affiliations": [],
+  "exposures": [
+    {
+      "factor": "fx:USD",
+      "direction": "positive",
+      "strength": 0.8,
+      "via": "own",
+      "reason": "45% of incoming payments come from a US client billed in dollars",
+      "evidence_fields": [
+        "counterparties.customer.cp_us_client_1",
+        "foreign_trade"
+      ]
+    },
+    {
+      "factor": "policy_rate",
+      "direction": "negative",
+      "strength": 0.5,
+      "via": "own",
+      "reason": "a floating-rate working-capital loan",
+      "evidence_fields": [
+        "products.loans"
+      ]
+    },
+    {
+      "factor": "labor_market",
+      "direction": "negative",
+      "strength": 0.6,
+      "via": "own",
+      "reason": "developer salaries are the main cost line",
+      "evidence_fields": [
+        "products.payroll",
+        "scale.employees"
+      ]
+    }
+  ],
+  "user_provided": {},
+  "data_quality": {
+    "missing": [],
+    "flags": [],
+    "notes": []
+  },
+  "summary": "A small London software studio (fictional) with about GBP 4.2m in annual revenue and 16–50 staff. Almost half of incoming payments come from one US client billed in dollars; it also works for German clients. It has a floating-rate working-capital loan and runs payroll with the bank."
+}

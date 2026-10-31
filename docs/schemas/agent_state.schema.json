@@ -1,0 +1,2249 @@
+{
+  "$defs": {
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A product — only when an action-policy rule fired",
+          "title": "Product"
+        },
+        "claim_ids": {
+          "description": "Statements the action relies on",
+          "items": {
+            "type": "string"
+          },
+          "title": "Claim Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_id",
+        "text",
+        "kind",
+        "rationale"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "ActionKind": {
+      "enum": [
+        "analysis",
+        "operational",
+        "financial",
+        "contact_manager",
+        "request_callback",
+        "apply_product"
+      ],
+      "title": "ActionKind",
+      "type": "string"
+    },
+    "Affiliation": {
+      "additionalProperties": false,
+      "description": "A related party: confirmed (same group) or a hypothesis (shared person).",
+      "properties": {
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "group",
+            "shared_person"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "kind",
+        "origin",
+        "confidence",
+        "evidence"
+      ],
+      "title": "Affiliation",
+      "type": "object"
+    },
+    "AgentContext": {
+      "additionalProperties": false,
+      "description": "Everything the agent gathered about the subject and the event — one context for all steps.",
+      "properties": {
+        "profile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Profile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "event": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NewsEvent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "theses": {
+          "items": {
+            "$ref": "#/$defs/Thesis"
+          },
+          "title": "Theses",
+          "type": "array"
+        },
+        "research": {
+          "items": {
+            "$ref": "#/$defs/KnowledgeChunk"
+          },
+          "title": "Research",
+          "type": "array"
+        },
+        "related_events": {
+          "items": {
+            "$ref": "#/$defs/NewsEvent"
+          },
+          "title": "Related Events",
+          "type": "array"
+        },
+        "sources": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "object"
+        }
+      },
+      "title": "AgentContext",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "description": "One statement with its origin, sources and the subject's features it relies on.",
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "features": {
+          "description": "Feature keys of the subject the statement relies on, e.g. products.loans",
+          "items": {
+            "type": "string"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caveat: an assumption, missing data or disagreement with the house view",
+          "title": "Caveat"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "origin",
+        "confidence"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Counterparty": {
+      "additionalProperties": false,
+      "description": "A payment link. Transfers to oneself are excluded before profiling.",
+      "properties": {
+        "counterparty_id": {
+          "title": "Counterparty Id",
+          "type": "string"
+        },
+        "role": {
+          "description": "supplier — the subject pays them; customer — they pay the subject",
+          "enum": [
+            "supplier",
+            "customer"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "amount": {
+          "minimum": 0,
+          "title": "Amount",
+          "type": "number"
+        },
+        "payments_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Payments Count",
+          "type": "integer"
+        },
+        "share_of_flow": {
+          "description": "Share of incoming or outgoing payment flow",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share Of Flow",
+          "type": "number"
+        },
+        "industry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Industry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None — the counterparty's activity is unknown"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "same_group": {
+          "default": false,
+          "title": "Same Group",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "counterparty_id",
+        "role",
+        "amount",
+        "share_of_flow"
+      ],
+      "title": "Counterparty",
+      "type": "object"
+    },
+    "DataQuality": {
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Flags",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "title": "DataQuality",
+      "type": "object"
+    },
+    "Direction": {
+      "enum": [
+        "negative",
+        "positive",
+        "mixed",
+        "unclear"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "Effect": {
+      "additionalProperties": false,
+      "description": "A risk or an opportunity for the subject.",
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "features": {
+          "description": "Feature keys of the subject the statement relies on, e.g. products.loans",
+          "items": {
+            "type": "string"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caveat: an assumption, missing data or disagreement with the house view",
+          "title": "Caveat"
+        },
+        "kind": {
+          "enum": [
+            "risk",
+            "opportunity"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "impact": {
+          "$ref": "#/$defs/ImpactLevel"
+        },
+        "horizon": {
+          "$ref": "#/$defs/Horizon"
+        },
+        "estimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QuantEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "origin",
+        "confidence",
+        "kind",
+        "impact",
+        "horizon"
+      ],
+      "title": "Effect",
+      "type": "object"
+    },
+    "EventType": {
+      "enum": [
+        "monetary_policy",
+        "inflation",
+        "fx",
+        "commodities",
+        "macro_stats",
+        "financial_markets",
+        "regulation",
+        "tax",
+        "sanctions",
+        "trade",
+        "industry",
+        "company",
+        "labor",
+        "logistics",
+        "other"
+      ],
+      "title": "EventType",
+      "type": "string"
+    },
+    "Exposure": {
+      "additionalProperties": false,
+      "description": "Sensitivity of the subject to an external factor.",
+      "properties": {
+        "factor": {
+          "description": "Factor from the vocabulary: policy_rate, fx:CNY, sector:46, country:CN…",
+          "title": "Factor",
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "strength": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Strength",
+          "type": "number"
+        },
+        "via": {
+          "default": "own",
+          "enum": [
+            "own",
+            "counterparty",
+            "group"
+          ],
+          "title": "Via",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "evidence_fields": {
+          "description": "Features it is derived from",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "direction",
+        "strength",
+        "reason"
+      ],
+      "title": "Exposure",
+      "type": "object"
+    },
+    "Figure": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "title": "Figure",
+      "type": "object"
+    },
+    "ForeignTrade": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": false,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "countries": {
+          "description": "ISO 3166-1 alpha-2 codes or names",
+          "items": {
+            "type": "string"
+          },
+          "title": "Countries",
+          "type": "array"
+        },
+        "direction": {
+          "default": "unknown",
+          "enum": [
+            "import",
+            "export",
+            "both",
+            "unknown"
+          ],
+          "title": "Direction",
+          "type": "string"
+        }
+      },
+      "title": "ForeignTrade",
+      "type": "object"
+    },
+    "Horizon": {
+      "enum": [
+        "immediate",
+        "short",
+        "medium",
+        "long"
+      ],
+      "title": "Horizon",
+      "type": "string"
+    },
+    "ImpactLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ImpactLevel",
+      "type": "string"
+    },
+    "Industry": {
+      "additionalProperties": false,
+      "description": "Activity code. NACE Rev. 2 and OKVED 2 share sections (A–U) and two-digit divisions.",
+      "properties": {
+        "code": {
+          "description": "Activity code, e.g. 46.73",
+          "title": "Code",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Section letter A–U",
+          "title": "Section"
+        },
+        "scheme": {
+          "default": "nace",
+          "enum": [
+            "nace",
+            "okved",
+            "other"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "name"
+      ],
+      "title": "Industry",
+      "type": "object"
+    },
+    "IndustryPosition": {
+      "additionalProperties": false,
+      "properties": {
+        "peers_in_sample": {
+          "description": "Subjects with the same activity code in the sample",
+          "minimum": 0,
+          "title": "Peers In Sample",
+          "type": "integer"
+        },
+        "revenue_percentile": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revenue Percentile"
+        },
+        "method": {
+          "description": "How it was computed — shown to the reader",
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "peers_in_sample",
+        "method"
+      ],
+      "title": "IndustryPosition",
+      "type": "object"
+    },
+    "InsightContent": {
+      "additionalProperties": false,
+      "description": "The part of the insight the model generates (structured output).",
+      "properties": {
+        "headline": {
+          "description": "What the event means for this subject, one sentence",
+          "maxLength": 160,
+          "title": "Headline",
+          "type": "string"
+        },
+        "what_happened": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "minItems": 1,
+          "title": "What Happened",
+          "type": "array"
+        },
+        "why_it_matters": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "minItems": 1,
+          "title": "Why It Matters",
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "title": "Risks",
+          "type": "array"
+        },
+        "opportunities": {
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "title": "Opportunities",
+          "type": "array"
+        },
+        "scenarios": {
+          "items": {
+            "$ref": "#/$defs/Scenario"
+          },
+          "title": "Scenarios",
+          "type": "array"
+        },
+        "house_view": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "House View",
+          "type": "array"
+        },
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Action"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "overall_impact": {
+          "$ref": "#/$defs/ImpactLevel"
+        },
+        "overall_direction": {
+          "$ref": "#/$defs/Direction"
+        }
+      },
+      "required": [
+        "headline",
+        "what_happened",
+        "why_it_matters",
+        "overall_impact",
+        "overall_direction"
+      ],
+      "title": "InsightContent",
+      "type": "object"
+    },
+    "IssueCode": {
+      "enum": [
+        "unknown_source",
+        "missing_source",
+        "number_not_in_sources",
+        "house_view_without_research",
+        "no_subject_link",
+        "contradiction",
+        "retelling",
+        "shallow",
+        "insufficient_data",
+        "duplicate_id",
+        "wrong_language",
+        "schema_error"
+      ],
+      "title": "IssueCode",
+      "type": "string"
+    },
+    "KeyFact": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fragment of the source text",
+          "title": "Quote"
+        },
+        "article_id": {
+          "title": "Article Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fact_id",
+        "text",
+        "article_id"
+      ],
+      "title": "KeyFact",
+      "type": "object"
+    },
+    "KnowledgeChunk": {
+      "additionalProperties": false,
+      "description": "A fragment of a research document for retrieval.",
+      "properties": {
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "doc_id": {
+          "title": "Doc Id",
+          "type": "string"
+        },
+        "doc_title": {
+          "title": "Doc Title",
+          "type": "string"
+        },
+        "doc_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doc Date"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "language": {
+          "default": "ru",
+          "title": "Language",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "chunk_id",
+        "doc_id",
+        "doc_title",
+        "text"
+      ],
+      "title": "KnowledgeChunk",
+      "type": "object"
+    },
+    "NewsArticle": {
+      "additionalProperties": false,
+      "properties": {
+        "article_id": {
+          "title": "Article Id",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "publisher": {
+          "title": "Publisher",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Full text, if you are allowed to store it",
+          "title": "Text"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ru, en…",
+          "title": "Language"
+        }
+      },
+      "required": [
+        "article_id",
+        "url",
+        "publisher",
+        "title",
+        "published_at"
+      ],
+      "title": "NewsArticle",
+      "type": "object"
+    },
+    "NewsEvent": {
+      "additionalProperties": false,
+      "description": "An event is one or more articles about the same thing (duplicates merged).",
+      "properties": {
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/EventType",
+          "default": "other"
+        },
+        "published_at": {
+          "description": "Time of the first publication",
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "articles": {
+          "items": {
+            "$ref": "#/$defs/NewsArticle"
+          },
+          "minItems": 1,
+          "title": "Articles",
+          "type": "array"
+        },
+        "key_facts": {
+          "items": {
+            "$ref": "#/$defs/KeyFact"
+          },
+          "title": "Key Facts",
+          "type": "array"
+        },
+        "industry_codes": {
+          "description": "Two-digit NACE/OKVED divisions the event names directly",
+          "items": {
+            "type": "string"
+          },
+          "title": "Industry Codes",
+          "type": "array"
+        },
+        "industry_sections": {
+          "description": "Affected sections A–U",
+          "items": {
+            "type": "string"
+          },
+          "title": "Industry Sections",
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "countries": {
+          "description": "ISO codes or names of countries involved",
+          "items": {
+            "type": "string"
+          },
+          "title": "Countries",
+          "type": "array"
+        },
+        "commodities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Commodities",
+          "type": "array"
+        },
+        "macro_factors": {
+          "description": "Up to three factors from the vocabulary, the main one first",
+          "items": {
+            "type": "string"
+          },
+          "title": "Macro Factors",
+          "type": "array"
+        },
+        "entities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Entities",
+          "type": "array"
+        },
+        "importance": {
+          "default": 0.5,
+          "description": "Strength of the event regardless of the subject",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Importance",
+          "type": "number"
+        },
+        "language": {
+          "default": "ru",
+          "description": "Language of the articles",
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "title",
+        "summary",
+        "published_at",
+        "articles"
+      ],
+      "title": "NewsEvent",
+      "type": "object"
+    },
+    "Origin": {
+      "description": "Where a statement comes from. The reader always sees it next to the statement.",
+      "enum": [
+        "fact",
+        "house_view",
+        "ai",
+        "hypothesis"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "Plan": {
+      "additionalProperties": false,
+      "properties": {
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "minItems": 1,
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rationale",
+        "steps"
+      ],
+      "title": "Plan",
+      "type": "object"
+    },
+    "PlanStep": {
+      "additionalProperties": false,
+      "properties": {
+        "step_id": {
+          "title": "Step Id",
+          "type": "string"
+        },
+        "tool": {
+          "$ref": "#/$defs/ToolName"
+        },
+        "args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "purpose": {
+          "description": "Why this step is needed — goes to the trace",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "done": {
+          "default": false,
+          "title": "Done",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "step_id",
+        "tool",
+        "purpose"
+      ],
+      "title": "PlanStep",
+      "type": "object"
+    },
+    "Products": {
+      "additionalProperties": false,
+      "description": "Financial products the subject holds with the institution. Unknown elsewhere.",
+      "properties": {
+        "current_account": {
+          "default": false,
+          "title": "Current Account",
+          "type": "boolean"
+        },
+        "loans": {
+          "default": false,
+          "title": "Loans",
+          "type": "boolean"
+        },
+        "mortgage": {
+          "default": false,
+          "title": "Mortgage",
+          "type": "boolean"
+        },
+        "leasing": {
+          "default": false,
+          "title": "Leasing",
+          "type": "boolean"
+        },
+        "deposits": {
+          "default": false,
+          "title": "Deposits",
+          "type": "boolean"
+        },
+        "payroll": {
+          "default": false,
+          "title": "Payroll",
+          "type": "boolean"
+        },
+        "factoring": {
+          "default": false,
+          "title": "Factoring",
+          "type": "boolean"
+        },
+        "guarantees": {
+          "default": false,
+          "title": "Guarantees",
+          "type": "boolean"
+        },
+        "acquiring": {
+          "default": false,
+          "title": "Acquiring",
+          "type": "boolean"
+        },
+        "fx_account": {
+          "default": false,
+          "title": "Fx Account",
+          "type": "boolean"
+        },
+        "investments": {
+          "default": false,
+          "title": "Investments",
+          "type": "boolean"
+        }
+      },
+      "title": "Products",
+      "type": "object"
+    },
+    "Profile": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind",
+          "default": "company"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Display name",
+          "title": "Name"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 3166-1 alpha-2 country of residence",
+          "title": "Country"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "industry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Industry"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Main activity; may be empty for individuals"
+        },
+        "tax_regime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tax regime, e.g. simplified 6%, patent, VAT payer",
+          "title": "Tax Regime"
+        },
+        "scale": {
+          "$ref": "#/$defs/Scale"
+        },
+        "industry_position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IndustryPosition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "products": {
+          "$ref": "#/$defs/Products"
+        },
+        "foreign_trade": {
+          "$ref": "#/$defs/ForeignTrade"
+        },
+        "group_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Group Id"
+        },
+        "group_members": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Group Members",
+          "type": "array"
+        },
+        "counterparties": {
+          "items": {
+            "$ref": "#/$defs/Counterparty"
+          },
+          "title": "Counterparties",
+          "type": "array"
+        },
+        "affiliations": {
+          "items": {
+            "$ref": "#/$defs/Affiliation"
+          },
+          "title": "Affiliations",
+          "type": "array"
+        },
+        "exposures": {
+          "items": {
+            "$ref": "#/$defs/Exposure"
+          },
+          "title": "Exposures",
+          "type": "array"
+        },
+        "user_provided": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "What the reader said about themselves; treated as untrusted text",
+          "title": "User Provided",
+          "type": "object"
+        },
+        "data_quality": {
+          "$ref": "#/$defs/DataQuality"
+        },
+        "summary": {
+          "description": "Short description for prompts, 2–6 sentences",
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile_id",
+        "summary"
+      ],
+      "title": "Profile",
+      "type": "object"
+    },
+    "QuantEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "unit": {
+          "description": "%, p.p., RUB, USD m…",
+          "title": "Unit",
+          "type": "string"
+        },
+        "basis": {
+          "description": "How the estimate was obtained — shown to the reader",
+          "title": "Basis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit",
+        "basis"
+      ],
+      "title": "QuantEstimate",
+      "type": "object"
+    },
+    "ReaderRole": {
+      "description": "Who reads the insight. The role sets depth, tone and which blocks are expanded.",
+      "enum": [
+        "owner",
+        "ceo",
+        "cfo",
+        "chief_accountant",
+        "treasurer",
+        "entrepreneur",
+        "individual",
+        "other"
+      ],
+      "title": "ReaderRole",
+      "type": "string"
+    },
+    "Scale": {
+      "additionalProperties": false,
+      "properties": {
+        "revenue": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Annual revenue in `currency`",
+          "title": "Revenue"
+        },
+        "group_revenue": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Revenue of the group of companies",
+          "title": "Group Revenue"
+        },
+        "currency": {
+          "default": "RUB",
+          "description": "ISO 4217 currency of the amounts",
+          "title": "Currency",
+          "type": "string"
+        },
+        "segment": {
+          "default": "unknown",
+          "enum": [
+            "large",
+            "medium",
+            "small",
+            "micro",
+            "household",
+            "unknown"
+          ],
+          "title": "Segment",
+          "type": "string"
+        },
+        "employees": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Headcount bucket, e.g. 51-250",
+          "title": "Employees"
+        },
+        "age_years": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Age bucket of the business",
+          "title": "Age Years"
+        }
+      },
+      "title": "Scale",
+      "type": "object"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "description": "A way events may unfold, without a precise probability.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "plausibility": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Plausibility",
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Triggers",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "plausibility"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "A source that statements cite: a news article, a research page, the subject's data.",
+      "properties": {
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/SourceType"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "publisher": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Publisher"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page of a research document",
+          "title": "Page"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Quote that supports a statement",
+          "title": "Excerpt"
+        }
+      },
+      "required": [
+        "source_id",
+        "type",
+        "title"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "SourceType": {
+      "enum": [
+        "news",
+        "research",
+        "profile",
+        "payments",
+        "public_stats",
+        "user_input"
+      ],
+      "title": "SourceType",
+      "type": "string"
+    },
+    "StepKind": {
+      "enum": [
+        "plan",
+        "tool_call",
+        "llm_call",
+        "draft",
+        "verify",
+        "revise",
+        "finalize",
+        "error"
+      ],
+      "title": "StepKind",
+      "type": "string"
+    },
+    "SubjectKind": {
+      "enum": [
+        "company",
+        "sole_proprietor",
+        "self_employed",
+        "individual"
+      ],
+      "title": "SubjectKind",
+      "type": "string"
+    },
+    "Thesis": {
+      "additionalProperties": false,
+      "description": "A position of the institution on a topic, with numbers and the exact quote it rests on.",
+      "properties": {
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "thesis_id": {
+          "title": "Thesis Id",
+          "type": "string"
+        },
+        "topic": {
+          "description": "Topic from the vocabulary: policy_rate, inflation, fx, taxes…",
+          "title": "Topic",
+          "type": "string"
+        },
+        "statement": {
+          "description": "The position in one or two sentences",
+          "title": "Statement",
+          "type": "string"
+        },
+        "figures": {
+          "items": {
+            "$ref": "#/$defs/Figure"
+          },
+          "title": "Figures",
+          "type": "array"
+        },
+        "horizon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "E.g. “by the end of 2027”",
+          "title": "Horizon"
+        },
+        "factors": {
+          "description": "Vocabulary factors the thesis touches",
+          "items": {
+            "type": "string"
+          },
+          "title": "Factors",
+          "type": "array"
+        },
+        "doc_id": {
+          "title": "Doc Id",
+          "type": "string"
+        },
+        "doc_title": {
+          "title": "Doc Title",
+          "type": "string"
+        },
+        "doc_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doc Date"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "quote": {
+          "description": "Exact quote from the document",
+          "title": "Quote",
+          "type": "string"
+        },
+        "language": {
+          "default": "ru",
+          "title": "Language",
+          "type": "string"
+        },
+        "is_stale": {
+          "default": false,
+          "description": "The document is too old for current conclusions",
+          "title": "Is Stale",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "thesis_id",
+        "topic",
+        "statement",
+        "doc_id",
+        "doc_title",
+        "quote"
+      ],
+      "title": "Thesis",
+      "type": "object"
+    },
+    "ToolName": {
+      "description": "Allow-list of agent tools. All of them are read-only and bound to one subject.",
+      "enum": [
+        "get_profile",
+        "get_counterparties",
+        "get_group",
+        "get_house_view",
+        "search_research",
+        "search_news"
+      ],
+      "title": "ToolName",
+      "type": "string"
+    },
+    "Trace": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "trace_id": {
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "profile_id": {
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReaderRole"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "language": {
+          "default": "ru",
+          "title": "Language",
+          "type": "string"
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insight Id"
+        },
+        "config": {
+          "additionalProperties": true,
+          "description": "Agent configuration of the run (for ablations)",
+          "title": "Config",
+          "type": "object"
+        },
+        "currency": {
+          "default": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "status": {
+          "default": "running",
+          "enum": [
+            "running",
+            "done",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/TraceStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "totals": {
+          "$ref": "#/$defs/TraceTotals"
+        }
+      },
+      "required": [
+        "trace_id",
+        "profile_id",
+        "event_id",
+        "started_at"
+      ],
+      "title": "Trace",
+      "type": "object"
+    },
+    "TraceStep": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/StepKind"
+        },
+        "name": {
+          "description": "Tool or step name, e.g. search_research",
+          "title": "Name",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "latency_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool"
+        },
+        "input_summary": {
+          "default": "",
+          "title": "Input Summary",
+          "type": "string"
+        },
+        "output_summary": {
+          "default": "",
+          "title": "Output Summary",
+          "type": "string"
+        },
+        "tokens_in": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tokens In",
+          "type": "integer"
+        },
+        "tokens_out": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Tokens Out",
+          "type": "integer"
+        },
+        "cost": {
+          "default": 0.0,
+          "description": "Cost in the trace currency",
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "cached": {
+          "default": false,
+          "title": "Cached",
+          "type": "boolean"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "enum": [
+                "ok",
+                "issues",
+                "failed",
+                "skipped"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verdict"
+        },
+        "issues": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Issues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "kind",
+        "name",
+        "started_at"
+      ],
+      "title": "TraceStep",
+      "type": "object"
+    },
+    "TraceTotals": {
+      "additionalProperties": false,
+      "properties": {
+        "llm_calls": {
+          "default": 0,
+          "title": "Llm Calls",
+          "type": "integer"
+        },
+        "tool_calls": {
+          "default": 0,
+          "title": "Tool Calls",
+          "type": "integer"
+        },
+        "tokens_in": {
+          "default": 0,
+          "title": "Tokens In",
+          "type": "integer"
+        },
+        "tokens_out": {
+          "default": 0,
+          "title": "Tokens Out",
+          "type": "integer"
+        },
+        "cost": {
+          "default": 0.0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "latency_ms": {
+          "default": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "iterations": {
+          "default": 0,
+          "title": "Iterations",
+          "type": "integer"
+        }
+      },
+      "title": "TraceTotals",
+      "type": "object"
+    },
+    "VerificationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/IssueCode"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "claim_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Id"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "fix_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fix Hint"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "message"
+      ],
+      "title": "VerificationIssue",
+      "type": "object"
+    },
+    "VerificationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/VerificationIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        },
+        "need_more_data": {
+          "description": "What else to search for",
+          "items": {
+            "type": "string"
+          },
+          "title": "Need More Data",
+          "type": "array"
+        }
+      },
+      "required": [
+        "passed"
+      ],
+      "title": "VerificationReport",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "event_id": {
+      "title": "Event Id",
+      "type": "string"
+    },
+    "role": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReaderRole"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "language": {
+      "default": "ru",
+      "title": "Language",
+      "type": "string"
+    },
+    "plan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Plan"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "context": {
+      "$ref": "#/$defs/AgentContext"
+    },
+    "draft": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InsightContent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "verification": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VerificationReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "iteration": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Iteration",
+      "type": "integer"
+    },
+    "max_iterations": {
+      "default": 1,
+      "minimum": 0,
+      "title": "Max Iterations",
+      "type": "integer"
+    },
+    "trace": {
+      "$ref": "#/$defs/Trace"
+    }
+  },
+  "required": [
+    "run_id",
+    "profile_id",
+    "event_id",
+    "trace"
+  ],
+  "title": "AgentState",
+  "type": "object"
+}

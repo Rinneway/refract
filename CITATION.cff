@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Refract: a traceable LLM agent for grounded, personalised news insights"
+version: 0.1.0
+date-released: 2026-10-31
+license: MIT
+repository-code: "https://github.com/Rinneway/refract"
+authors:
+  - given-names: Daniel
+    family-names: Tyustin
+    alias:
+        - Rinneway
+        - riNN
+keywords:
+  - LLM agents
+  - news analytics
+  - grounding
+  - provenance
+  - self-verification
+  - personalization

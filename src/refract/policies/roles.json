@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "about": "Reader roles. The role sets the main question, depth, tone, which insight blocks are expanded and how many statements a block may hold. Add a role by adding an entry; keys must match refract.schemas.ReaderRole.",
+  "default_role": "cfo",
+  "roles": {
+    "owner": {
+      "name": {"ru": "Собственник", "en": "Owner"},
+      "main_question": {"ru": "Как событие влияет на стоимость и устойчивость бизнеса?", "en": "How does the event affect the value and resilience of the business?"},
+      "depth": {"ru": "Коротко: суть в заголовке, 2–3 вывода, одна цифра влияния, решение стратегического уровня.", "en": "Brief: the gist in the headline, 2–3 conclusions, one impact figure, a strategic decision."},
+      "tone": {"ru": "Стратегический, без бухгалтерских деталей.", "en": "Strategic, without accounting detail."},
+      "focus": ["headline", "why_it_matters", "risks", "opportunities", "actions"],
+      "max_claims_per_block": 3
+    },
+    "ceo": {
+      "name": {"ru": "Генеральный директор", "en": "Chief executive"},
+      "main_question": {"ru": "Что это значит для бизнеса в целом и нужно ли менять планы?", "en": "What does this mean for the business as a whole, and do plans need to change?"},
+      "depth": {"ru": "Коротко: суть в заголовке, 2–3 вывода, одна цифра влияния, решение стратегического уровня.", "en": "Brief: the gist in the headline, 2–3 conclusions, one impact figure, a strategic decision."},
+      "tone": {"ru": "Стратегический, без бухгалтерских деталей.", "en": "Strategic, without accounting detail."},
+      "focus": ["headline", "why_it_matters", "risks", "opportunities", "actions"],
+      "max_claims_per_block": 3
+    },
+    "cfo": {
+      "name": {"ru": "Финансовый директор", "en": "Chief financial officer"},
+      "main_question": {"ru": "Как изменятся выручка, затраты, стоимость денег и прогноз?", "en": "How will revenue, costs, the cost of money and the forecast change?"},
+      "depth": {"ru": "Подробно: механизм влияния, оценка в деньгах или процентах, сценарии, позиция института с цифрами.", "en": "Detailed: the mechanism, an estimate in money or percent, scenarios, the house view with figures."},
+      "tone": {"ru": "Аналитический, с числами.", "en": "Analytical, with numbers."},
+      "focus": ["why_it_matters", "risks", "opportunities", "scenarios", "house_view", "actions"],
+      "max_claims_per_block": 5
+    },
+    "treasurer": {
+      "name": {"ru": "Казначей", "en": "Treasurer"},
+      "main_question": {"ru": "Что будет с ликвидностью, платежами, курсом и размещением средств в ближайшие недели?", "en": "What happens to liquidity, payments, exchange rates and cash placement in the coming weeks?"},
+      "depth": {"ru": "Операционно: что произойдёт с платежами и остатками, конкретное действие и срок.", "en": "Operational: what happens to payments and balances, a concrete action and a deadline."},
+      "tone": {"ru": "Конкретный, с горизонтом в днях и неделях.", "en": "Concrete, with a horizon of days and weeks."},
+      "focus": ["what_happened", "risks", "house_view", "actions"],
+      "max_claims_per_block": 4
+    },
+    "chief_accountant": {
+      "name": {"ru": "Главный бухгалтер", "en": "Chief accountant"},
+      "main_question": {"ru": "Что меняется в учёте, налогах и отчётности, с какой даты и что сделать?", "en": "What changes in accounting, taxes and reporting, from which date, and what has to be done?"},
+      "depth": {"ru": "Точно: с какой даты, кого касается, какие документы и действия; без макроэкономики.", "en": "Precise: from which date, whom it concerns, which documents and steps; no macroeconomics."},
+      "tone": {"ru": "Регламентный, со ссылкой на норму и первоисточник.", "en": "Regulatory, citing the rule and the primary source."},
+      "focus": ["what_happened", "why_it_matters", "actions"],
+      "max_claims_per_block": 4
+    },
+    "entrepreneur": {
+      "name": {"ru": "Предприниматель (ИП или самозанятый)", "en": "Entrepreneur (sole proprietor or self-employed)"},
+      "main_question": {"ru": "Что изменится для моего дела — доход, налоги, клиенты, кредиты — и что сделать в первую очередь?", "en": "What changes for my business — income, taxes, clients, loans — and what should I do first?"},
+      "depth": {"ru": "Просто и практично: 2–3 вывода о деньгах и обязанностях, срок, один-два шага.", "en": "Simple and practical: 2–3 conclusions about money and obligations, the deadline, one or two steps."},
+      "tone": {"ru": "Понятный, без жаргона; термины — с пояснением.", "en": "Plain, without jargon; terms explained."},
+      "focus": ["why_it_matters", "risks", "actions"],
+      "max_claims_per_block": 3
+    },
+    "individual": {
+      "name": {"ru": "Частное лицо", "en": "Private individual"},
+      "main_question": {"ru": "Как это скажется на моих сбережениях, кредитах, расходах и планах открыть дело?", "en": "How does this affect my savings, loans, expenses and plans to start a business?"},
+      "depth": {"ru": "Коротко: что произошло, что это значит лично для меня, на что обратить внимание.", "en": "Brief: what happened, what it means for me personally, what to watch."},
+      "tone": {"ru": "Спокойный и понятный, без советов покупать или продавать активы.", "en": "Calm and clear, without advice to buy or sell assets."},
+      "focus": ["what_happened", "why_it_matters", "risks", "actions"],
+      "max_claims_per_block": 3
+    },
+    "other": {
+      "name": {"ru": "Читатель", "en": "Reader"},
+      "main_question": {"ru": "Как событие касается моей зоны ответственности?", "en": "How does the event concern my area of responsibility?"},
+      "depth": {"ru": "Коротко: суть в заголовке, 2–3 вывода, одно решение.", "en": "Brief: the gist in the headline, 2–3 conclusions, one decision."},
+      "tone": {"ru": "Деловой.", "en": "Businesslike."},
+      "focus": ["headline", "why_it_matters", "risks", "actions"],
+      "max_claims_per_block": 3
+    }
+  }
+}

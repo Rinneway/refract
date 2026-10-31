@@ -1,0 +1,418 @@
+{
+  "$defs": {
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A product — only when an action-policy rule fired",
+          "title": "Product"
+        },
+        "claim_ids": {
+          "description": "Statements the action relies on",
+          "items": {
+            "type": "string"
+          },
+          "title": "Claim Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_id",
+        "text",
+        "kind",
+        "rationale"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "ActionKind": {
+      "enum": [
+        "analysis",
+        "operational",
+        "financial",
+        "contact_manager",
+        "request_callback",
+        "apply_product"
+      ],
+      "title": "ActionKind",
+      "type": "string"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "description": "One statement with its origin, sources and the subject's features it relies on.",
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "features": {
+          "description": "Feature keys of the subject the statement relies on, e.g. products.loans",
+          "items": {
+            "type": "string"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caveat: an assumption, missing data or disagreement with the house view",
+          "title": "Caveat"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "origin",
+        "confidence"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Direction": {
+      "enum": [
+        "negative",
+        "positive",
+        "mixed",
+        "unclear"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "Effect": {
+      "additionalProperties": false,
+      "description": "A risk or an opportunity for the subject.",
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "features": {
+          "description": "Feature keys of the subject the statement relies on, e.g. products.loans",
+          "items": {
+            "type": "string"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caveat: an assumption, missing data or disagreement with the house view",
+          "title": "Caveat"
+        },
+        "kind": {
+          "enum": [
+            "risk",
+            "opportunity"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "impact": {
+          "$ref": "#/$defs/ImpactLevel"
+        },
+        "horizon": {
+          "$ref": "#/$defs/Horizon"
+        },
+        "estimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QuantEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "origin",
+        "confidence",
+        "kind",
+        "impact",
+        "horizon"
+      ],
+      "title": "Effect",
+      "type": "object"
+    },
+    "Horizon": {
+      "enum": [
+        "immediate",
+        "short",
+        "medium",
+        "long"
+      ],
+      "title": "Horizon",
+      "type": "string"
+    },
+    "ImpactLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ImpactLevel",
+      "type": "string"
+    },
+    "Origin": {
+      "description": "Where a statement comes from. The reader always sees it next to the statement.",
+      "enum": [
+        "fact",
+        "house_view",
+        "ai",
+        "hypothesis"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "QuantEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "unit": {
+          "description": "%, p.p., RUB, USD m…",
+          "title": "Unit",
+          "type": "string"
+        },
+        "basis": {
+          "description": "How the estimate was obtained — shown to the reader",
+          "title": "Basis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit",
+        "basis"
+      ],
+      "title": "QuantEstimate",
+      "type": "object"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "description": "A way events may unfold, without a precise probability.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "plausibility": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Plausibility",
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Triggers",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "plausibility"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The part of the insight the model generates (structured output).",
+  "properties": {
+    "headline": {
+      "description": "What the event means for this subject, one sentence",
+      "maxLength": 160,
+      "title": "Headline",
+      "type": "string"
+    },
+    "what_happened": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "minItems": 1,
+      "title": "What Happened",
+      "type": "array"
+    },
+    "why_it_matters": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "minItems": 1,
+      "title": "Why It Matters",
+      "type": "array"
+    },
+    "risks": {
+      "items": {
+        "$ref": "#/$defs/Effect"
+      },
+      "title": "Risks",
+      "type": "array"
+    },
+    "opportunities": {
+      "items": {
+        "$ref": "#/$defs/Effect"
+      },
+      "title": "Opportunities",
+      "type": "array"
+    },
+    "scenarios": {
+      "items": {
+        "$ref": "#/$defs/Scenario"
+      },
+      "title": "Scenarios",
+      "type": "array"
+    },
+    "house_view": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "title": "House View",
+      "type": "array"
+    },
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "title": "Actions",
+      "type": "array"
+    },
+    "overall_impact": {
+      "$ref": "#/$defs/ImpactLevel"
+    },
+    "overall_direction": {
+      "$ref": "#/$defs/Direction"
+    }
+  },
+  "required": [
+    "headline",
+    "what_happened",
+    "why_it_matters",
+    "overall_impact",
+    "overall_direction"
+  ],
+  "title": "InsightContent",
+  "type": "object"
+}

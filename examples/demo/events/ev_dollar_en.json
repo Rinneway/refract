@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "ev_dollar_en",
+  "title": "Dollar strengthens after a hotter-than-expected US inflation print",
+  "summary": "The dollar rose 1.2% against a basket of currencies after US consumer prices increased 3.4% year on year, above forecasts.",
+  "event_type": "fx",
+  "published_at": "2026-10-15T13:45:00Z",
+  "articles": [
+    {
+      "article_id": "art_dollar_en",
+      "url": "https://example.org/demo-news/ev_dollar_en",
+      "publisher": "Demo Wire (synthetic source)",
+      "title": "Dollar strengthens after a hotter-than-expected US inflation print",
+      "published_at": "2026-10-15T13:45:00Z",
+      "text": "The US dollar gained 1.2% against a basket of major currencies on Thursday after data showed consumer prices rose 3.4% year on year in September, above the 3.1% expected by economists.\n\nTraders scaled back bets on a Federal Reserve rate cut in December. Sterling fell 0.9% against the dollar and the euro lost 0.8%.\n\nExporters that bill clients in dollars benefit from a stronger dollar, while importers paying in dollars face higher costs.",
+      "language": "en"
+    }
+  ],
+  "key_facts": [
+    {
+      "fact_id": "art_dollar_en_f1",
+      "text": "The dollar gained 1.2% against a basket of currencies",
+      "quote": null,
+      "article_id": "art_dollar_en"
+    },
+    {
+      "fact_id": "art_dollar_en_f2",
+      "text": "US consumer prices rose 3.4% year on year in September",
+      "quote": null,
+      "article_id": "art_dollar_en"
+    },
+    {
+      "fact_id": "art_dollar_en_f3",
+      "text": "Sterling fell 0.9% against the dollar",
+      "quote": null,
+      "article_id": "art_dollar_en"
+    }
+  ],
+  "industry_codes": [],
+  "industry_sections": [],
+  "regions": [],
+  "countries": [
+    "US"
+  ],
+  "commodities": [],
+  "macro_factors": [
+    "fx:USD",
+    "inflation"
+  ],
+  "entities": [],
+  "importance": 0.6,
+  "language": "en"
+}

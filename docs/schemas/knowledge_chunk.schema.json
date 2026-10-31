@@ -1,0 +1,68 @@
+{
+  "additionalProperties": false,
+  "description": "A fragment of a research document for retrieval.",
+  "properties": {
+    "chunk_id": {
+      "title": "Chunk Id",
+      "type": "string"
+    },
+    "doc_id": {
+      "title": "Doc Id",
+      "type": "string"
+    },
+    "doc_title": {
+      "title": "Doc Title",
+      "type": "string"
+    },
+    "doc_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doc Date"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "language": {
+      "default": "ru",
+      "title": "Language",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "chunk_id",
+    "doc_id",
+    "doc_title",
+    "text"
+  ],
+  "title": "KnowledgeChunk",
+  "type": "object"
+}

@@ -1,0 +1,5 @@
+[
+  {"name": "Bank of England — news", "url": "https://www.bankofengland.co.uk/rss/news", "language": "en"},
+  {"name": "European Central Bank — press", "url": "https://www.ecb.europa.eu/rss/press.html", "language": "en"},
+  {"name": "Federal Reserve — press releases", "url": "https://www.federalreserve.gov/feeds/press_all.xml", "language": "en"}
+]
