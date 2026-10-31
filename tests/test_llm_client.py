@@ -132,3 +132,95 @@ def test_no_key() -> None:
 def test_parse_json() -> None:
     assert parse_json(Answer, 'Here: {"value": 5} done')[0] == Answer(value=5)
     assert parse_json(Answer, "nothing")[0] is None
+
+
+def raw_choice(text: str, prompt_tokens: int = 1000, finish_reason: str = "stop"):
+    usage = SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=50, completion_tokens_details=None)
+    choice = SimpleNamespace(message=SimpleNamespace(content=text), finish_reason=finish_reason)
+    resp = SimpleNamespace(choices=[choice], usage=usage, model_dump=lambda: {"usage": {}})
+    return SimpleNamespace(headers={}, parse=lambda: resp)
+
+
+def test_truncated_context_is_reported(tmp_path) -> None:
+    from refract.llm.client import context_warning
+
+    long = [{"role": "user", "content": "слово " * 8000}]  # ~48k characters ≈ 10k+ tokens
+    assert context_warning(long, 4096) and context_warning(long, 12000) is None
+    assert context_warning([{"role": "user", "content": "short"}], 10) is None
+    c, _ = client(tmp_path, lambda url: lambda p: raw_choice('{"value": 1}', prompt_tokens=4096))
+    res = c.chat_json("main", long, Answer, use_cache=False)
+    assert res.value.value == 1 and any("OLLAMA_CONTEXT_LENGTH" in w for w in res.warnings)
+
+
+def test_cut_answer_is_retried_with_more_tokens(tmp_path) -> None:
+    seen = []
+
+    def behaviour(url):
+        def create(payload):
+            seen.append(payload["max_tokens"])
+            if len(seen) == 1:
+                return raw_choice('{"val', finish_reason="length")
+            return raw_choice('{"value": 9}')
+
+        return create
+
+    c, _ = client(tmp_path, behaviour)
+    res = c.chat_json("main", [{"role": "user", "content": "u"}], Answer, max_tokens=500, use_cache=False)
+    assert res.value.value == 9 and seen == [500, 1000]
+    assert any("max_tokens=500" in w for w in res.warnings)
+
+
+def test_timeout_scale() -> None:
+    s = Settings(timeout_scale=3)
+    assert s.route("plan").timeout_s == 90 and s.route("verify:fallback").timeout_s == 180
+
+
+def test_check_reports_lost_context(tmp_path) -> None:
+    import re
+
+    from refract.doctor import run_check
+
+    def behaviour(url):
+        def create(payload):
+            text = payload["messages"][-1]["content"]
+            if "code word" in text:
+                if len(text) > 20000:  # a server with a small context window "forgets" the start
+                    return raw_choice('{"code": "unknown"}', prompt_tokens=4096)
+                code = re.search(r"cobalt-\d+", text).group(0)
+                return raw_choice(json.dumps({"code": code}))
+            return raw_choice('{"answer": "ok", "number": 42}')
+
+        return create
+
+    c, _ = client(tmp_path, behaviour)
+    c.list_models = lambda: {"http://a/v1": ["m-1"]}
+    ok, report = run_check(c, ["main"])
+    assert not ok and "lost the code word" in report and "OLLAMA_CONTEXT_LENGTH" in report
+    assert "structured output works" in report
+
+
+def test_check_explains_a_placeholder_key_on_a_remote_endpoint(tmp_path, monkeypatch) -> None:
+    from refract.config import load_settings
+    from refract.doctor import run_check
+
+    toml = tmp_path / "refract.toml"
+    toml.write_text('[llm]\nbase_urls = ["http://localhost:11434/v1"]\n', encoding="utf-8")
+    monkeypatch.setenv("LLM_BASE_URL", "https://ollama.com/v1")
+    monkeypatch.setenv("LLM_API_KEY", "ollama")
+    s = load_settings(toml, env_file=tmp_path / ".env")
+    assert any("overrides [llm].base_urls" in n for n in s.notes)
+
+    def unauthorized(payload):
+        req = httpx.Request("POST", "https://ollama.com/v1/chat/completions")
+        raise openai.AuthenticationError("Unauthorized", response=httpx.Response(401, request=req), body=None)
+
+    c = LLMClient(s)
+    for url in c._clients:
+        fake = FakeCompletions(unauthorized)
+        c._clients[url] = SimpleNamespace(
+            chat=SimpleNamespace(completions=fake),
+            with_options=lambda f=fake, **_: SimpleNamespace(chat=SimpleNamespace(completions=f)),
+        )
+    c.list_models = lambda: {"https://ollama.com/v1": ["glm-5.3-flash"]}
+    ok, report = run_check(c, ["main"])
+    assert not ok and "placeholder" in report and "overrides" in report

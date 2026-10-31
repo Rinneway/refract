@@ -42,6 +42,8 @@ class ChatResult:
     cost: float = 0.0
     latency_ms: int = 0
     cached: bool = False
+    finish_reason: str | None = None
+    warnings: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict, repr=False)
 
 
@@ -72,6 +74,10 @@ class JsonResult(Generic[T]):
     @property
     def latency_ms(self) -> int:
         return sum(c.latency_ms for c in self.calls)
+
+    @property
+    def warnings(self) -> list[str]:
+        return list(dict.fromkeys(w for c in self.calls for w in c.warnings))
 
 
 class LLMError(RuntimeError):
@@ -168,16 +174,22 @@ class LLMClient:
             usage = resp.usage
             dump = resp.model_dump()
             details = getattr(usage, "completion_tokens_details", None)
+            choice = resp.choices[0] if resp.choices else None
             result = ChatResult(
-                text=(resp.choices[0].message.content or "").strip() if resp.choices else "",
+                text=(choice.message.content or "").strip() if choice else "",
                 model=spec.id,
                 base_url=url,
                 prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
                 completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
                 reasoning_tokens=getattr(details, "reasoning_tokens", 0) or 0,
                 latency_ms=latency,
+                finish_reason=getattr(choice, "finish_reason", None),
                 raw=dump,
             )
+            if warning := context_warning(messages, result.prompt_tokens):
+                result.warnings.append(warning)
+            if result.finish_reason == "length":
+                result.warnings.append(f"the answer was cut at max_tokens={max_tokens}")
             result.cost = self._cost(raw.headers.get("x-litellm-response-cost"), dump, result, spec)
             if use_cache and result.text:
                 self._cache_put(key, result)
@@ -211,7 +223,19 @@ class LLMClient:
         first, mode = self._structured_call(model, model_id, messages, schema, step, kwargs)
         calls = [first]
         value, error = parse_json(schema, first.text)
-        if value is None and repair:
+        if value is None and repair and first.finish_reason == "length":
+            # cut off (often by hidden reasoning): ask again from scratch with twice the token budget
+            longer = {**kwargs, "max_tokens": min(max_tokens * 2, 16000)}
+            second = self.chat(
+                model,
+                _with_schema(messages, schema, mode),
+                step=f"{step or 'json'}:longer",
+                response_format=_format(schema, mode),
+                **longer,
+            )
+            calls.append(second)
+            value, error = parse_json(schema, second.text)
+        elif value is None and repair:
             fix = [
                 *_with_schema(messages, schema, mode),
                 {"role": "assistant", "content": first.text[:8000]},
@@ -322,6 +346,24 @@ class LLMClient:
 
 
 # ---------------------------------------------------------------------- helpers
+
+
+_CONTEXT_LIMITS = {2048, 4096, 8192, 16384, 32768}
+
+
+def context_warning(messages: list[dict[str, str]], prompt_tokens: int) -> str | None:
+    """A provider that silently truncates the prompt (Ollama with a small num_ctx) reports far fewer prompt tokens
+    than the text can hold. 4.5 characters per token is a generous upper bound for Russian and English."""
+    chars = sum(len(m.get("content") or "") for m in messages)
+    expected = chars / 4.5
+    if not prompt_tokens or expected < 2000:
+        return None
+    if prompt_tokens < 0.75 * expected or (prompt_tokens in _CONTEXT_LIMITS and expected > prompt_tokens):
+        return (
+            f"prompt_tokens={prompt_tokens}, but the prompt is about {expected:.0f}+ tokens: the server may have "
+            "truncated the context (Ollama: set OLLAMA_CONTEXT_LENGTH, e.g. 16384, and restart it)"
+        )
+    return None
 
 
 def _cache_key(payload: dict[str, Any]) -> str:

@@ -104,7 +104,7 @@ uv run refract analyze --profile demo_family_saver --role individual \
 uv run refract chat --run runs/<insight_id>.json --q "What does it mean for my plans to open a bakery?"
 ```
 
-Free and local: run [Ollama](https://ollama.com), set `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama`, `REFRACT_MODEL=qwen2.5:14b` (or any model you pulled). Providers without native structured output fall back to JSON mode and then to the schema in the prompt.
+Free: [Ollama](https://ollama.com) locally or Ollama Cloud's free tier — copy [`examples/config/ollama-local.toml`](examples/config/ollama-local.toml) or [`ollama-cloud.toml`](examples/config/ollama-cloud.toml) to `refract.toml` and run `uv run refract check`: it verifies structured output, the context window and hidden reasoning before you spend time on runs. Providers without native structured output fall back to JSON mode and then to the schema in the prompt.
 
 With pip: `pip install "refract-agent[api,mcp,pdf] @ git+https://github.com/Rinneway/refract"`.
 
@@ -188,7 +188,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          73 tests on a scripted model — no network needed
+tests/          78 tests on a scripted model — no network needed
 ```
 
 ## Data and confidentiality

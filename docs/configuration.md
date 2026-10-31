@@ -12,12 +12,20 @@ Any endpoint that speaks the OpenAI Chat Completions API works.
 | OpenRouter | `https://openrouter.ai/api/v1` | your key | model ids like `deepseek/deepseek-chat`; cost is read from `usage.cost` when present |
 | LiteLLM proxy | your proxy URL | proxy key | cost is read from the `x-litellm-response-cost` header |
 | vLLM | `http://localhost:8000/v1` | any string | |
-| Ollama | `http://localhost:11434/v1` | any string, e.g. `ollama` | small models may need the schema-in-prompt fallback (automatic) |
+| Ollama (local) | `http://localhost:11434/v1` | any string, e.g. `ollama` | set `OLLAMA_CONTEXT_LENGTH=16384`; ready config: [`examples/config/ollama-local.toml`](../examples/config/ollama-local.toml) |
+| Ollama Cloud | `https://ollama.com/v1` | a key from ollama.com → Settings → Keys | free tier, one model at a time; config: [`examples/config/ollama-cloud.toml`](../examples/config/ollama-cloud.toml) |
 | LM Studio | `http://localhost:1234/v1` | any string | |
 
 Several URLs separated by commas form a failover chain: on a network error or HTTP 5xx the next URL is tried. HTTP 400/422 on a structured-output request makes the client retry in JSON mode and then with the JSON Schema written into the system prompt; the working mode is remembered per model.
 
-`refract models` prints the configured aliases and the models each endpoint offers.
+`refract models` prints the configured aliases and the models each endpoint offers. `refract check` sends three short requests per model and reports whether structured output works (and in which mode), whether the context window holds an agent-sized prompt (~9 000 tokens), and whether the model burns hidden reasoning tokens.
+
+### Local models
+
+- **Context window.** Ollama truncates prompts longer than its `num_ctx` without an error; the agent then works on the end of the prompt only. Set `OLLAMA_CONTEXT_LENGTH` (16384 is enough) and restart Ollama. The client also warns in the trace when the provider reports far fewer prompt tokens than the prompt can hold.
+- **Reasoning.** Thinking models spend minutes per step on hidden reasoning; `extra_body = { reasoning_effort = "none" }` switches it off on Ollama. An answer cut at `max_tokens` is retried once with twice the budget.
+- **Timeouts.** `[llm].timeout_scale` (or `REFRACT_TIMEOUT_SCALE`) multiplies every step timeout; 3–5 suits a consumer GPU.
+- **Concurrency.** One local server serves one request well; run experiments with `--workers 1`.
 
 ## Models and routing
 

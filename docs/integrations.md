@@ -53,6 +53,7 @@ refract news fetch --feeds FILE --data DIR     RSS / Atom → events
 refract eval pairs|run|judge|report …          experiments, see evaluation.md
 refract serve [--host H] [--port P]            REST API
 refract mcp                                    MCP server over stdio
+refract check [--models main,verifier]         endpoint ready? structured output, context window, reasoning
 refract models                                 configured models and what the endpoints offer
 refract schemas --out DIR                      JSON Schemas of the contracts
 ```

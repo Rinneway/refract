@@ -413,7 +413,9 @@ class Agent:
         self._need_more = res.value.need_more_data if res.value else []
         trace.steps[-1].verdict = "ok" if not checks.errors(merged) else "issues"
         trace.steps[-1].issues = (
-            confirmed + [f"{i.severity} {i.claim_id or ''}: {i.code.value} — {i.message}" for i in llm_issues]
+            confirmed
+            + [f"{i.severity} {i.claim_id or ''}: {i.code.value} — {i.message}" for i in llm_issues]
+            + trace.steps[-1].issues  # errors and warnings of the call itself (timeout, truncated context)
         )[:20]
         self._emit("done", "verify", trace.steps[-1])
         return merged
@@ -635,7 +637,7 @@ class Agent:
                 cost=round(res.cost, 6),
                 cached=bool(res.calls) and all(c.cached for c in res.calls),
                 verdict="ok" if res.ok else "failed",
-                issues=[res.error] if res.error else [],
+                issues=([res.error] if res.error else []) + list(getattr(res, "warnings", [])),
             ),
             report=report,
         )

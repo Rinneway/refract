@@ -104,7 +104,7 @@ uv run refract analyze --profile demo_family_saver --role individual \
 uv run refract chat --run runs/<insight_id>.json --q "Что это значит для планов открыть пекарню?"
 ```
 
-Бесплатно и локально: запустите [Ollama](https://ollama.com) и задайте `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama`, `REFRACT_MODEL=qwen2.5:14b` (или любую скачанную модель). Если провайдер не поддерживает structured output, клиент переходит на JSON-режим, а затем передаёт схему в промпте.
+Бесплатно: [Ollama](https://ollama.com) локально или бесплатный тариф Ollama Cloud. Скопируйте [`examples/config/ollama-local.toml`](examples/config/ollama-local.toml) или [`ollama-cloud.toml`](examples/config/ollama-cloud.toml) в `refract.toml` и выполните `uv run refract check`: команда проверит structured output, окно контекста и скрытые «размышления» модели до того, как вы потратите время на прогоны. Если провайдер не поддерживает structured output, клиент переходит на JSON-режим, а затем передаёт схему в промпте.
 
 Через pip: `pip install "refract-agent[api,mcp,pdf] @ git+https://github.com/Rinneway/refract"`.
 
@@ -195,7 +195,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  синтетические субъекты, новости, аналитика и пары для оценки (ru + en)
 docs/           архитектура, агент, модель данных, настройка, интеграции, оценка, план статьи, JSON Schema
-tests/          73 теста на модели по сценарию — сеть не нужна
+tests/          78 тестов на модели по сценарию — сеть не нужна
 ```
 
 ## Данные и конфиденциальность

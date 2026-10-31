@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Local models
+
+- `refract check`: structured output, context window and hidden reasoning of every configured model, with hints for the usual mistakes (a placeholder key on a remote endpoint, a missing `ollama pull`, an environment variable overriding the config).
+- Ready configs for Ollama, local and cloud (`examples/config/`).
+- LLM client: a warning when the provider truncates the prompt; a retry with a larger budget when an answer is cut at `max_tokens`; `timeout_scale` for slow local models.
+
 ## 0.1.0 — 2026-10-31
 
 First public release: the agent as a standalone project, re-implemented on synthetic data.

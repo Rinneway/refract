@@ -85,6 +85,7 @@ class Settings:
     api_key: str | None = None
     base_urls: tuple[str, ...] = (DEFAULT_BASE_URL,)
     timeout_s: float = 120
+    timeout_scale: float = 1.0  # multiplies every step timeout; 3–5 for slow local models
     cache_dir: Path = Path(".cache/llm")
     log_path: Path = Path("logs/llm_calls.jsonl")
     currency: str = "USD"
@@ -95,6 +96,7 @@ class Settings:
     offer_products: bool = True
     data_dir: Path = Path("examples/demo")
     roles_file: Path | None = None  # your own roles.json instead of the packaged one
+    notes: tuple[str, ...] = ()  # where settings came from and what overrode what — shown by `refract check`
     actions_file: Path | None = None  # your own actions.json (action policy)
 
     def model_id(self, alias: str) -> str:
@@ -112,7 +114,8 @@ class Settings:
 
     def route(self, step: str) -> Route:
         base = step.split(":", 1)[0]
-        return self.routes.get(base, Route())
+        r = self.routes.get(base, Route())
+        return replace(r, timeout_s=r.timeout_s * self.timeout_scale) if self.timeout_scale != 1.0 else r
 
     def with_language(self, lang: str | None) -> Settings:
         return replace(self, language=norm_lang(lang or self.language))
@@ -169,11 +172,22 @@ def load_settings(config_path: str | Path | None = None, *, env_file: str | Path
         if urls
         else tuple(llm.get("base_urls") or [DEFAULT_BASE_URL])
     )
+    notes = [f"config: {path}" if raw else f"config: {path} not found — defaults and environment only"]
+    toml_urls = tuple(llm.get("base_urls") or ())
+    if urls:
+        notes.append("endpoints from LLM_BASE_URL (environment or .env)")
+        if toml_urls and toml_urls != base_urls:
+            notes.append(f"LLM_BASE_URL overrides [llm].base_urls = {list(toml_urls)} from {path}")
+    for var, alias in (("REFRACT_MODEL", "main"), ("REFRACT_VERIFIER_MODEL", "verifier")):
+        if os.getenv(var) and alias in raw.get("models", {}):
+            notes.append(f"{var} overrides [models.{alias}] from {path}")
     return Settings(
+        notes=tuple(notes),
         language=norm_lang(os.getenv("REFRACT_LANGUAGE") or raw.get("language") or "ru"),
         api_key=os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or llm.get("api_key"),
         base_urls=base_urls,
         timeout_s=float(os.getenv("LLM_TIMEOUT_S") or llm.get("timeout_s", 120)),
+        timeout_scale=float(os.getenv("REFRACT_TIMEOUT_SCALE") or llm.get("timeout_scale", 1.0)),
         cache_dir=Path(os.getenv("LLM_CACHE_DIR") or llm.get("cache_dir", ".cache/llm")),
         log_path=Path(os.getenv("LLM_LOG_PATH") or llm.get("log_path", "logs/llm_calls.jsonl")),
         currency=str(llm.get("currency", "USD")),

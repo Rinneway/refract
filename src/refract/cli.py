@@ -226,6 +226,16 @@ def cmd_models(args) -> int:
     return 0
 
 
+def cmd_check(args) -> int:
+    from .config import load_settings
+    from .doctor import run_check
+    from .llm import LLMClient
+
+    ok, report = run_check(LLMClient(load_settings(args.config)), args.models.split(","))
+    _out(report)
+    return 0 if ok else 1
+
+
 def cmd_schemas(args) -> int:
     from . import schemas as S
     from .agent.progress import InsightProgress
@@ -346,6 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("models", help="show configured models and what the endpoints offer")
     sp.set_defaults(fn=cmd_models)
+
+    sp = sub.add_parser(
+        "check", help="check the endpoint: models, structured output, context window, reasoning"
+    )
+    sp.add_argument("--models", default="main,verifier", help="model aliases or ids, comma-separated")
+    sp.set_defaults(fn=cmd_check)
 
     sp = sub.add_parser("schemas", help="export JSON Schemas of the contracts")
     sp.add_argument("--out", default="docs/schemas")

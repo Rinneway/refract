@@ -1,0 +1,34 @@
+# Ollama Cloud (free tier, no card): the models of the original experiments without a GPU.
+#
+#   1. sign up at ollama.com → Settings → Keys → create a key
+#   2. .env:  LLM_API_KEY=<the key>
+#   3. copy this file to refract.toml and run `refract check`
+#
+# The free tier runs one model at a time and has session limits: use `--workers 1` for experiments.
+
+language = "ru"
+data_dir = "examples/demo"
+
+[llm]
+base_urls = ["https://ollama.com/v1"]
+currency = "USD"
+timeout_s = 300
+timeout_scale = 2
+
+# Model names as listed by https://ollama.com/api/tags (checked 2026-10-31).
+[models.main]
+id = "glm-5.3-flash"
+extra_body = { reasoning_effort = "none" }
+
+[models.verifier]
+id = "deepseek-v4.1-flash"
+extra_body = { reasoning_effort = "none" }
+
+[models.judge2]
+id = "gemma4:31b"
+extra_body = { reasoning_effort = "none" }
+
+[institution]
+name = "Demo Bank"
+name_ru = "Демо-банк"
+name_gen = "Демо-банка"

@@ -1,0 +1,48 @@
+# Local models with Ollama (https://ollama.com). Copy to refract.toml and adjust the model tags to your hardware.
+#
+#   winget install --id Ollama.Ollama          # Windows; macOS / Linux: see ollama.com/download
+#   setx OLLAMA_CONTEXT_LENGTH 16384           # agent prompts are 6–12k tokens; restart Ollama afterwards
+#   ollama pull qwen3.5:9b
+#   ollama pull gemma4:e4b
+#   refract check                              # structured output, context window, reasoning
+#
+# .env: LLM_API_KEY=ollama   (any non-empty value)
+
+language = "ru"
+data_dir = "examples/demo"
+
+[llm]
+base_urls = ["http://localhost:11434/v1"]
+currency = "USD"
+timeout_s = 600
+timeout_scale = 5        # local models are slower than hosted ones: every step timeout × 5
+
+# Two different families: one writes, the other reviews. `reasoning_effort = "none"` switches thinking off
+# (Ollama's OpenAI-compatible endpoint), otherwise every step spends minutes on hidden reasoning.
+#
+#   no GPU or ≤ 6 GB VRAM : main qwen3.5:4b      verifier gemma4:e4b
+#   8 GB VRAM             : main qwen3.5:9b      verifier gemma4:e4b
+#   12–16 GB VRAM         : main qwen3.5:9b      verifier gemma4:12b
+#   24 GB VRAM / 32 GB RAM: main qwen3.6:35b-a3b verifier gemma4:26b-a4b
+[models.main]
+id = "qwen3.5:9b"
+extra_body = { reasoning_effort = "none" }
+price_in = 0
+price_out = 0
+
+[models.verifier]
+id = "gemma4:e4b"
+extra_body = { reasoning_effort = "none" }
+price_in = 0
+price_out = 0
+
+[models.judge2]
+id = "qwen3.5:4b"
+extra_body = { reasoning_effort = "none" }
+
+[institution]
+name = "Demo Bank"
+name_ru = "Демо-банк"
+name_gen = "Демо-банка"
+
+# One local server handles one request at a time well: run experiments with `--workers 1`.
