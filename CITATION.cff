@@ -6,11 +6,8 @@ date-released: 2026-10-31
 license: MIT
 repository-code: "https://github.com/Rinneway/refract"
 authors:
-  - given-names: Daniel
-    family-names: Tyustin
-    alias:
-        - Rinneway
-        - riNN
+  - given-names: riNN
+    alias: Rinneway
 keywords:
   - LLM agents
   - news analytics
