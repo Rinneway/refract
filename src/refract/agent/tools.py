@@ -147,7 +147,12 @@ def summarize(result: ToolResult, lang: str = "ru") -> str:
         label = (
             getattr(first, "statement", None)
             or getattr(first, "title", None)
-            or getattr(first, "doc_title", "")
+            or getattr(first, "doc_title", None)
+            or (
+                f"{first.counterparty_id} ({first.role}, {first.share_of_flow:.0%})"
+                if hasattr(first, "counterparty_id")
+                else ""
+            )
         )
         return f"{'found' if en else 'найдено'}: {len(d)}; {'first' if en else 'первое'}: {str(label)[:90]}"
     if isinstance(d, dict):

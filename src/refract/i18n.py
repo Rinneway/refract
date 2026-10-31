@@ -54,6 +54,10 @@ STRINGS: dict[str, dict[Language, str]] = {
     "step.search_news": {"ru": "Связанные новости", "en": "Related news"},
     "step.draft_insight": {"ru": "Пишу интерпретацию", "en": "Drafting the insight"},
     "step.redraft": {"ru": "Пишу интерпретацию заново", "en": "Redrafting the insight"},
+    "step.attribution": {
+        "ru": "Привязываю утверждения к признакам и источникам",
+        "en": "Linking statements to features and sources",
+    },
     "step.rule_check": {"ru": "Проверяю источники и числа", "en": "Checking sources and numbers"},
     "step.verify": {"ru": "Вторая модель проверяет выводы", "en": "A second model checks the claims"},
     "step.revise": {"ru": "Исправляю замечания проверки", "en": "Fixing review findings"},

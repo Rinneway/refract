@@ -104,12 +104,13 @@ def invented_numbers(texts: list[str], context: str) -> set[float]:
 _STOP_RU = {
     "этот", "этого", "этом", "года", "году", "также", "может", "могут", "будет", "более", "менее", "после",
     "только", "через", "который", "которая", "которые", "компании", "компания", "компанию", "банка", "банк",
-    "ставки", "ставка", "уровне",
+    "ставки", "ставка", "уровне", "вашей", "ваша", "ваше", "ваши", "вашего", "вашим", "около", "чтобы", "нужно",
+    "если", "когда",
 }  # fmt: skip
 _STOP_EN = {
     "this", "that", "these", "those", "with", "from", "into", "will", "would", "could", "should", "also", "more",
     "less", "after", "only", "through", "which", "there", "their", "company", "bank", "rate", "level", "year",
-    "have", "been", "being", "than", "they", "were",
+    "have", "been", "being", "than", "they", "were", "your", "about", "when", "what",
 }  # fmt: skip
 _STOP = {w[:5] for w in _STOP_RU | _STOP_EN}
 

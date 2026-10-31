@@ -20,7 +20,7 @@ from ..schemas import (
     VerificationIssue,
     violations,
 )
-from ..textutil import invented_numbers, lexical_support, script_share
+from ..textutil import invented_numbers, lexical_support, normalize, numbers, script_share, stems
 from .context import InsightContext, known_feature
 from .impact import above
 
@@ -87,6 +87,14 @@ _MSG = {
         "en": "{cid}: finding “{code}” lifted — the statement matches its source",
     },
     "lifted": {"ru": " [снято кодом: совпадает с источником]", "en": " [lifted by code: matches the source]"},
+    "structural": {
+        "ru": "{cid}: замечание «{code}» снято — ссылки и признаки проверены кодом, ошибки нет",
+        "en": "{cid}: finding “{code}” lifted — citations and features were checked by code and are fine",
+    },
+    "overruled": {
+        "ru": " [снято кодом: структура в порядке]",
+        "en": " [lifted by code: the structure is fine]",
+    },
 }
 
 
@@ -264,12 +272,18 @@ REQUIRED_BLOCKS = ("what_happened", "why_it_matters")
 
 
 def keep_required(
-    pruned: InsightContent, draft: InsightContent, hard: set[str], lang: str = "ru"
+    pruned: InsightContent,
+    draft: InsightContent,
+    hard: set[str],
+    lang: str = "ru",
+    dropped: set[str] | frozenset[str] = frozenset(),
 ) -> tuple[InsightContent, list[str]]:
     """Required blocks must not become empty because of the second model's doubts.
 
     If the review removed all of “what happened” or “why it matters”, statements with only model findings come back
     with lower confidence and a caveat. `hard` are rule-check errors (unknown source, invented number): never restored.
+    Actions removed only because they relied on a restored statement come back too; `dropped` are the ids flagged by
+    the review — an action flagged itself stays removed.
     """
     notes = []
     for block in REQUIRED_BLOCKS:
@@ -285,6 +299,17 @@ def keep_required(
         if back:
             pruned = pruned.model_copy(update={block: back})
             notes.append(t("note.restored_block", lang, block=block))
+    if notes:
+        present = {c.claim_id for c in pruned.all_claims()}
+        kept = {a.action_id for a in pruned.actions}
+        actions = [
+            a
+            for a in draft.actions
+            if a.action_id in kept
+            or (a.action_id not in dropped and a.claim_ids and set(a.claim_ids) <= present)
+        ]
+        if len(actions) > len(pruned.actions):
+            pruned = pruned.model_copy(update={"actions": actions})
     return pruned, notes
 
 
@@ -354,6 +379,33 @@ def confirm_by_sources(
     return out, notes
 
 
+# What code checks exactly: a second-model error of this kind stands only if the rule check found it too.
+_STRUCTURAL = {
+    IssueCode.UNKNOWN_SOURCE,
+    IssueCode.MISSING_SOURCE,
+    IssueCode.DUPLICATE_ID,
+    IssueCode.SCHEMA_ERROR,
+    IssueCode.WRONG_LANGUAGE,
+}
+
+
+def overrule_structural(
+    issues: list[VerificationIssue], rule: list[VerificationIssue], lang: str = "ru"
+) -> tuple[list[VerificationIssue], list[str]]:
+    """Small reviewers often claim a statement has no sources when it has. Such findings become warnings."""
+    found = {(i.code, i.claim_id) for i in rule}
+    out, notes = [], []
+    for i in issues:
+        if i.severity == "error" and i.code in _STRUCTURAL and (i.code, i.claim_id) not in found:
+            out.append(
+                i.model_copy(update={"severity": "warning", "message": i.message + _m("overruled", lang)})
+            )
+            notes.append(_m("structural", lang, cid=i.claim_id or "—", code=i.code.value))
+            continue
+        out.append(i)
+    return out, notes
+
+
 def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightContent, list[str]]:
     """Impact never above the ceiling computed from the event–subject links."""
     changed: list[str] = []
@@ -372,3 +424,188 @@ def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightCont
         changed.insert(0, "overall_impact")
         update["overall_impact"] = cap
     return (content.model_copy(update=update) if changed else content), changed
+
+
+# ---------------------------------------------------------------------------------------- attribution repair
+
+_PREFIX = re.compile(r"^\s*(риск|возможность|risk|opportunity)\s*[:—-]\s*", re.IGNORECASE)
+_ATTR = {
+    "features": {
+        "ru": "{cid}: признаки определены кодом по тексту — {keys}",
+        "en": "{cid}: features inferred by code from the text — {keys}",
+    },
+    "sources": {
+        "ru": "{cid}: источник определён кодом по тексту — {ids}",
+        "en": "{cid}: source inferred by code from the text — {ids}",
+    },
+    "fallback_why": {
+        "ru": "блок why_it_matters пуст — добавлена связь события с субъектом, рассчитанная кодом",
+        "en": "why_it_matters was empty — added the event–subject link computed by code",
+    },
+    "fallback_what": {
+        "ru": "блок what_happened пуст — добавлен факт из новости",
+        "en": "what_happened was empty — added a fact from the news",
+    },
+    "fallback_caveat": {
+        "ru": "Сформулировано кодом по признакам субъекта: модель не дала подтверждённого вывода.",
+        "en": "Worded by code from the subject's features: the model gave no verified conclusion.",
+    },
+}
+FEATURE_MIN_SCORE = 2  # shared word stems, a shared number or a concept word counts double
+SOURCE_MIN_SUPPORT = 0.5
+_TAX = ("налог", "ндс", "усн", "упрощ", "патент", "ндфл", "нпд", "vat", "tax", "simplified")
+# Words that name a feature without sharing a stem with its description (“НДС” for a tax regime). Prefixes of
+# lowercase words; a feature key matches a concept key exactly or as its prefix (counterparties.supplier.*).
+CONCEPTS: dict[str, tuple[str, ...]] = {
+    "tax_regime": _TAX,
+    "taxes": _TAX,
+    "scale.revenue": ("выручк", "оборот", "revenue", "turnover", "sales"),
+    "scale.employees": ("сотрудн", "персонал", "штат", "employee", "staff", "headcount"),
+    "products.loans": ("кредит", "заем", "займ", "loan", "borrow"),
+    "products.acquiring": ("эквайр", "acquir"),
+    "products.deposits": ("депозит", "вклад", "deposit"),
+    "products.leasing": ("лизинг", "leasing", "lease"),
+    "products.fx_account": ("валютн", "currency account"),
+    "products.payroll": ("зарплатн", "payroll"),
+    "foreign_trade": ("экспорт", "импорт", "export", "import"),
+    "counterparties.supplier": ("поставщ", "закуп", "supplier", "purchas"),
+    "counterparties.customer": ("покупател", "клиент", "customer", "buyer"),
+    "policy_rate": ("ставк", "кредит", "borrow"),
+    "credit_market": ("кредит", "ипотек", "loan", "mortgag"),
+    "inflation": ("инфляц", "подорож", "inflation"),
+    "consumer_demand": ("спрос", "потребител", "трат", "demand", "spending"),
+    "labor_market": ("зарплат", "персонал", "wage", "salar", "hiring"),
+    "sme_support": ("поддержк", "субсид", "льгот", "support", "subsid", "grant"),
+}
+
+
+def _concepts(key: str) -> tuple[str, ...]:
+    for k, words in CONCEPTS.items():
+        if key == k or key.startswith(k + "."):
+            return words
+    return ()
+
+
+def _feature_score(text: str, description: str, key: str = "") -> int:
+    nums = {n for n in numbers(text) if not (n.is_integer() and n <= 12)}
+    score = len(stems(text) & stems(description)) + 2 * len(nums & numbers(description))
+    words = re.findall(r"[а-яa-z]+", normalize(text))
+    if any(w.startswith(c) for c in _concepts(key) for w in words):
+        score += 2
+    return score
+
+
+def infer_features(text: str, features: list[tuple[str, str]], limit: int = 3) -> list[str]:
+    """Feature keys whose description the statement visibly refers to (shared words, numbers, concept words).
+
+    Keys within one point of the best score are kept, at most `limit`.
+    """
+    scored = [(_feature_score(text, desc, key), key) for key, desc in features if key != "products.absent"]
+    best = sorted((x for x in scored if x[0] >= FEATURE_MIN_SCORE), key=lambda x: -x[0])
+    if not best:
+        return []
+    top = best[0][0]
+    return [key for score, key in best[:limit] if score >= top - 1]
+
+
+def _source_texts(ctx: InsightContext) -> dict[str, str]:
+    texts = {}
+    for a in ctx.event.articles:
+        texts[f"src_{a.article_id}"] = f"{a.title}. {a.text or ''} {ctx.event.summary}"
+    for th in ctx.theses:
+        texts[f"src_{th.thesis_id}"] = f"{th.statement} {th.quote}"
+    for c in ctx.research:
+        texts[f"src_{c.chunk_id}"] = c.text
+    return texts
+
+
+def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightContent, list[str]]:
+    """Repair what small models often leave out, before the checks run.
+
+    - a statement without `features` (or with only unknown keys) gets the keys whose descriptions it visibly
+      refers to — shared word stems or numbers; nothing is attached if nothing matches;
+    - a statement without sources gets the source it is nearly a retelling of (lexical support ≥ 0.5), or the
+      subject data if it now cites features;
+    - “Risk:” / “Возможность:” prefixes are removed from the text.
+
+    Every change is reported for the trace; nothing is invented — only links to text that is already in context.
+    """
+    feats, lang = ctx.features(), ctx.lang
+    texts = _source_texts(ctx)
+    profile_id = "src_profile"
+    notes: list[str] = []
+
+    def fix(c, need_features: bool):
+        update: dict = {}
+        text = _PREFIX.sub("", c.text)
+        if text != c.text and text:
+            update["text"] = text[:1].upper() + text[1:]
+        missing = need_features and not any(known_feature(k, feats) for k in c.features)
+        if missing and (keys := infer_features(c.text, feats)):
+            update["features"] = keys
+            notes.append(_ATTR["features"][lang].format(cid=c.claim_id, keys=keys))
+        if not c.source_ids:
+            scored = sorted(((lexical_support(c.text, t), sid) for sid, t in texts.items()), reverse=True)
+            if (
+                scored
+                and scored[0][0] >= SOURCE_MIN_SUPPORT
+                and not invented_numbers([c.text], texts[scored[0][1]])
+            ):
+                update["source_ids"] = [scored[0][1]]
+            elif update.get("features") or c.features:
+                update["source_ids"] = [profile_id]
+            if update.get("source_ids"):
+                notes.append(_ATTR["sources"][lang].format(cid=c.claim_id, ids=update["source_ids"]))
+        return c.model_copy(update=update) if update else c
+
+    new = content.model_copy(
+        update={
+            "what_happened": [fix(c, False) for c in content.what_happened],
+            "why_it_matters": [fix(c, True) for c in content.why_it_matters],
+            "risks": [fix(c, True) for c in content.risks],
+            "opportunities": [fix(c, True) for c in content.opportunities],
+        }
+    )
+    return new, notes
+
+
+def fallback_blocks(content: InsightContent, ctx: InsightContext) -> tuple[InsightContent, list[str]]:
+    """Required blocks that are still empty after pruning get a deterministic statement instead of failing the run:
+    “what happened” — the first key fact (or the title) of the news; “why it matters” — the strongest link between
+    the event and the subject computed by `impact.event_links`, with a caveat."""
+    from ..schemas import SubjectClaim
+    from .impact import event_links
+
+    lang, notes, update = ctx.lang, [], {}
+    article = ctx.event.articles[0]
+    if not content.what_happened:
+        text = ctx.event.key_facts[0].text if ctx.event.key_facts else ctx.event.title
+        update["what_happened"] = [
+            Claim(
+                claim_id="c_fact",
+                text=text,
+                origin=Origin.FACT,
+                source_ids=[f"src_{article.article_id}"],
+                confidence=0.9,
+            )
+        ]
+        notes.append(_ATTR["fallback_what"][lang])
+    if not content.why_it_matters:
+        links = sorted(event_links(ctx.profile, ctx.event, lang, ctx.impact_policy), key=lambda x: -x.level)
+        feats = ctx.features()
+        link = next((x for x in links if x.feature and known_feature(x.feature, feats)), None)
+        if link:
+            text = link.text[:1].upper() + link.text[1:] + "."
+            update["why_it_matters"] = [
+                SubjectClaim(
+                    claim_id="c_link",
+                    text=text,
+                    origin=Origin.AI,
+                    source_ids=["src_profile", f"src_{article.article_id}"],
+                    features=[link.feature],
+                    confidence=0.5,
+                    caveat=_ATTR["fallback_caveat"][lang],
+                )
+            ]
+            notes.append(_ATTR["fallback_why"][lang])
+    return (content.model_copy(update=update) if update else content), notes

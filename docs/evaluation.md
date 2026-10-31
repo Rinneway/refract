@@ -6,7 +6,7 @@ The harness answers two kinds of questions: does the agent beat simpler systems,
 
 ```bash
 refract eval pairs  --data DATA --out runs/exp1/pairs.jsonl --languages ru,en
-refract eval run    --data DATA --out runs/exp1 --systems full,no_plan,no_verifier,no_rules,no_revise,no_self_check,no_cap,no_policy,single_call,retelling
+refract eval run    --data DATA --out runs/exp1 --systems full,no_plan,no_verifier,no_rules,no_revise,no_self_check,no_cap,no_policy,no_attribution,single_call,retelling
 refract eval judge  --data DATA --out runs/exp1 --judges verifier,judge2
 refract eval report --out runs/exp1 --reference full
 ```
@@ -30,6 +30,7 @@ An event without factors is tagged once and the tags are shared by all systems (
 | `no_self_check` | no checks, no revision, no pruning | the value of self-verification as a whole |
 | `no_cap` | no impact ceiling | is impact calibrated without it? |
 | `no_policy` | no action rules | do actions stay relevant and safe? |
+| `no_attribution` | no code repair of features and sources | how much do small models rely on it? |
 | `single_call` | the same insight prompt with the house view matched by factors, one call | is the agentic loop worth its cost? |
 | `retelling` | one call, plain prompt, no house view | the naive baseline |
 

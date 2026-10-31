@@ -10,6 +10,7 @@ never sees an unsupported conclusion.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
@@ -83,6 +84,7 @@ class AgentConfig:
     action_policy: bool = True  # False — no policy rules: actions are whatever the model writes
     prune: bool = True  # False — statements with unresolved errors stay in the result
     max_plan_steps: int = 6
+    auto_attribution: bool = True  # False — no code repair of missing features and sources
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -94,9 +96,16 @@ ABLATIONS: dict[str, dict[str, Any]] = {
     "no_verifier": {"llm_verifier": False},
     "no_rules": {"rule_checks": False},
     "no_revise": {"max_iterations": 0},
-    "no_self_check": {"llm_verifier": False, "rule_checks": False, "max_iterations": 0, "prune": False},
+    "no_self_check": {
+        "llm_verifier": False,
+        "rule_checks": False,
+        "max_iterations": 0,
+        "prune": False,
+        "auto_attribution": False,
+    },
     "no_cap": {"impact_cap": False},
     "no_policy": {"action_policy": False},
+    "no_attribution": {"auto_attribution": False},
 }
 
 
@@ -240,7 +249,14 @@ class Agent:
         # 3. Plan and gather data.
         plan = self._plan(trace, ctx)
         state.plan = plan
+        seen: set[str] = set()
         for step in plan.steps[: cfg.max_plan_steps]:
+            key = (
+                f"{step.tool.value}:{json.dumps(step.args, sort_keys=True, ensure_ascii=False, default=str)}"
+            )
+            if key in seen:  # the same call twice gives nothing new
+                continue
+            seen.add(key)
             self._apply(
                 ctx,
                 self._tool(
@@ -253,7 +269,7 @@ class Agent:
         draft_res = self._llm(
             trace, StepKind.DRAFT, "draft_insight", insight_prompt.build_messages(ctx), InsightContent
         )
-        draft = draft_res.value
+        draft = self._attribute(trace, ctx, draft_res.value)
         issues: list[VerificationIssue] = [] if draft else [self._schema_issue(draft_res)]
         while True:
             if draft is not None:
@@ -298,7 +314,7 @@ class Agent:
                     revise_prompt.build_messages(ctx, draft, checks.errors(issues)),
                     InsightContent,
                 )
-            draft = res.value or draft
+            draft = self._attribute(trace, ctx, res.value) or draft
 
         # 5. Finalize.
         insight = self._finalize(trace, ctx, state, draft, issues)
@@ -376,6 +392,29 @@ class Agent:
         rationale = res.value.rationale if res.value else t("note.default_plan", self.lang)
         return Plan(rationale=rationale, steps=steps)
 
+    def _attribute(
+        self, trace: Trace, ctx: InsightContext, draft: InsightContent | None
+    ) -> InsightContent | None:
+        """Code repair of missing features and sources (see `checks.attribute`), recorded in the trace."""
+        if draft is None or not self.config.auto_attribution:
+            return draft
+        started = time.perf_counter()
+        draft, notes = checks.attribute(draft, ctx)
+        if notes:
+            self._record(
+                trace,
+                TraceStep(
+                    index=len(trace.steps),
+                    kind=StepKind.VERIFY,
+                    name="attribution",
+                    started_at=self.now(),
+                    latency_ms=int((time.perf_counter() - started) * 1000),
+                    verdict="issues",
+                    issues=notes[:20],
+                ),
+            )
+        return draft
+
     def _verify(self, trace: Trace, ctx: InsightContext, draft: InsightContent) -> list[VerificationIssue]:
         rule: list[VerificationIssue] = []
         if self.config.rule_checks:
@@ -409,6 +448,8 @@ class Agent:
         confirmed: list[str] = []
         if self.config.rule_checks:
             llm_issues, confirmed = checks.confirm_by_sources(llm_issues, draft, ctx)
+            llm_issues, overruled = checks.overrule_structural(llm_issues, rule, self.lang)
+            confirmed += overruled
         merged = checks.merge(rule, llm_issues)
         self._need_more = res.value.need_more_data if res.value else []
         trace.steps[-1].verdict = "ok" if not checks.errors(merged) else "issues"
@@ -443,9 +484,13 @@ class Agent:
                     if cfg.rule_checks
                     else set()
                 )
-                pruned, restored = checks.keep_required(checks.drop_claims(draft, bad), draft, hard, lang)
+                pruned, restored = checks.keep_required(
+                    checks.drop_claims(draft, bad), draft, hard, lang, dropped=bad
+                )
                 draft = pruned
                 verdict, notes = "issues", [t("note.pruned", lang, ids=sorted(bad)), *restored]
+            draft, fallback_notes = checks.fallback_blocks(draft, ctx)
+            notes += fallback_notes
             fallback = (
                 checks.house_view_from_theses(ctx, removed_house)
                 if cfg.prune and not draft.house_view and removed_house

@@ -34,6 +34,7 @@ from .insight import (
     IssueCode,
     QuantEstimate,
     Scenario,
+    SubjectClaim,
     VerificationIssue,
     violations,
 )
@@ -101,6 +102,7 @@ __all__ = [
     "SourceRef",
     "SourceType",
     "StepKind",
+    "SubjectClaim",
     "SubjectKind",
     "Thesis",
     "ToolCall",

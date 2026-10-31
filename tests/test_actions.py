@@ -1,6 +1,15 @@
 from refract.agent.actions import candidate_actions, enforce_actions
 from refract.agent.policy import DEFAULT_POLICY
-from refract.schemas import Action, ActionKind, Claim, Direction, ImpactLevel, InsightContent, Origin
+from refract.schemas import (
+    Action,
+    ActionKind,
+    Claim,
+    Direction,
+    ImpactLevel,
+    InsightContent,
+    Origin,
+    SubjectClaim,
+)
 
 
 def ids(cands) -> set[str]:
@@ -9,7 +18,7 @@ def ids(cands) -> set[str]:
 
 def content(actions, impact=ImpactLevel.MEDIUM, direction=Direction.NEGATIVE) -> InsightContent:
     c = Claim(claim_id="c1", text="x", origin=Origin.FACT, source_ids=["s"], confidence=1)
-    w = Claim(claim_id="c2", text="y", origin=Origin.AI, features=["kind"], confidence=0.8)
+    w = SubjectClaim(claim_id="c2", text="y", origin=Origin.AI, features=["kind"], confidence=0.8)
     return InsightContent(
         headline="h",
         what_happened=[c],

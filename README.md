@@ -56,11 +56,12 @@ flowchart TB
     C --> PL[Plan: 3–6 tool calls]
     PL --> TL[Tools: house view, research search,<br/>counterparties, group, related news]
     TL --> D[Draft insight by JSON schema]
-    D --> V[Self-check: rule checks + second model]
+    D --> A[Attribution: features and sources<br/>the model left out]
+    A --> V[Self-check: rule checks + second model]
     V -- errors, data missing --> M[Extra research search]
     M --> R[Revise]
     V -- errors --> R
-    R --> V
+    R --> A
     V -- clean or rounds exhausted --> F[Finalize: cut unsupported statements,<br/>cap impact, enforce action policy,<br/>rewrite a rejected headline]
     F --> OUT([Insight + trace])
 ```
@@ -70,7 +71,7 @@ flowchart TB
 | Orchestrator | `agent/orchestrator.py` | the loop above; `AgentConfig` switches components off for ablations |
 | Context | `agent/context.py` | subject features with keys, the event, links, the house view, the source registry |
 | Impact ceiling | `agent/impact.py` | strength of each subject–event link → the highest impact level allowed |
-| Rule checks | `agent/checks.py`, `schemas/insight.py` | sources, origins, feature keys, numbers, the ceiling; pruning and restoring |
+| Rule checks | `agent/checks.py`, `schemas/insight.py` | sources, origins, feature keys, numbers, the ceiling; attribution repair, pruning and restoring |
 | Action policy | `agent/actions.py`, `policies/actions.json` | which rules fire; product names, one product per insight, manager first on high negative impact |
 | Chat | `agent/chat.py` | follow-up questions on the same context, with the same checks |
 | Prompts | `prompts/` | every step in Russian and English, versioned |
@@ -165,7 +166,7 @@ refract eval judge  --out runs/exp1 --judges verifier,judge2
 refract eval report --out runs/exp1 --reference full
 ```
 
-- **Systems:** the full agent, seven ablations (`no_plan`, `no_verifier`, `no_rules`, `no_revise`, `no_self_check`, `no_cap`, `no_policy`) and two baselines (`single_call` — the same prompt and house view in one call; `retelling` — one call with a plain prompt).
+- **Systems:** the full agent, eight ablations (`no_plan`, `no_verifier`, `no_rules`, `no_revise`, `no_self_check`, `no_cap`, `no_policy`, `no_attribution`) and two baselines (`single_call` — the same prompt and house view in one call; `retelling` — one call with a plain prompt).
 - **Judge metrics:** six questions scored 0–2 (what happened, why it matters, consequences, actions, house view, grounding), overall 1–5, unsupported statements, retelling and impact calibration.
 - **Code metrics** that need no judge: rule errors reaching the reader, invented numbers, impact above the computed ceiling, answers not in the requested language, cost, latency; results are also split by output language.
 - **Statistics:** 95% bootstrap CIs, paired differences, sign tests, quadratic-weighted κ and Spearman between judges, accuracy and κ against human labels.
@@ -188,7 +189,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          78 tests on a scripted model — no network needed
+tests/          85 tests on a scripted model — no network needed
 ```
 
 ## Data and confidentiality

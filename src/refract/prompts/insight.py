@@ -6,7 +6,7 @@ from ..i18n import norm_lang
 from ..schemas import IMPACT_LEVEL_DEFINITIONS, ImpactLevel
 from . import output_language, rule
 
-VERSION = "insight-v7"
+VERSION = "insight-v8"
 
 SYSTEM = {
     "ru": """Ты — аналитик {institution_gen}. Ты готовишь персональный инсайт для читателя — руководителя компании, \

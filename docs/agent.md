@@ -11,11 +11,12 @@ Input: a subject profile, a news event, a reader role and a language. Output: an
 | Plan | 3–6 tool calls with arguments and a purpose; the house view is always added; if the model fails, a default plan | `plan` | `prompts/plan.py` |
 | Tools | house view theses, research search, counterparties, group, related news | — | `agent/tools.py`, `knowledge/store.py` |
 | Draft | the insight by the JSON schema: what happened, why it matters, risks, opportunities, scenarios, house view, actions, impact and direction | `draft_insight` | `prompts/insight.py` |
+| Attribution | small models often leave `features` and `source_ids` empty: code fills them from what the statement visibly refers to — shared word stems, numbers and concept words (“НДС”, “VAT” → `taxes`, `tax_regime`) with the feature descriptions; a source whose text the statement nearly retells (≥ 50% of stems, no invented numbers), else the subject data. “Risk:” prefixes are removed. Every repair is a note in the trace | — | `checks.attribute` |
 | Rule checks | grounding rules, feature keys, numbers absent from the context (including the headline), impact above the ceiling, an empty house view while theses exist, text not in the run language (a warning) | — | `agent/checks.py` |
 | Review | a second model sees the author's full context and flags contradictions, invented numbers, misattributed house views, retelling, the headline; it may ask for more searches | `verify` | `prompts/verify.py` |
-| Lifting false alarms | a reviewer's error on a fact or house-view statement becomes a warning if the statement is nearly verbatim from the cited source, all its numbers are there and it has no inference connective | — | `checks.confirm_by_sources` |
+| Lifting false alarms | a reviewer's error on a fact or house-view statement becomes a warning if the statement is nearly verbatim from the cited source, all its numbers are there and it has no inference connective; a structural error (unknown or missing source, duplicate id, wrong language) stands only if the rule check found it too | — | `checks.confirm_by_sources`, `checks.overrule_structural` |
 | Revise | with errors: first extra research searches if the reviewer asked, then a revision of the draft by the findings; `max_iterations` rounds (default 1) | `revise` | `prompts/revise.py` |
-| Finalize | cut statements with unresolved errors and actions that rely on them; restore a required block with a caveat if it became empty; restore the house view from cited theses in the run language if the review removed all of it; rewrite a rejected headline; clamp the impact to the ceiling; enforce the action policy; keep only cited sources | `headline` (if needed) | `agent/orchestrator.py` |
+| Finalize | cut statements with unresolved errors and actions that rely on them; restore a required block with a caveat if it became empty, with the actions that relied on it; if nothing can be restored, word the block by code — the first key fact of the news, or the strongest event–subject link with its feature (confidence ≤ 0.5, with a caveat); restore the house view from cited theses in the run language if the review removed all of it; rewrite a rejected headline; clamp the impact to the ceiling; enforce the action policy; keep only cited sources | `headline` (if needed) | `agent/orchestrator.py` |
 
 ## Provenance
 
@@ -26,7 +27,7 @@ Input: a subject profile, a news event, a reader role and a language. Output: an
 | `ai` | the model's inference | sources it rests on |
 | `hypothesis` | an assumption the data cannot confirm | sources or features, and a caveat |
 
-Every `why_it_matters` statement must list feature keys of the subject in `features`. A feature key is valid if it equals a key from the rendered feature list or refines one (`products.loans.rate`).
+Every `why_it_matters` statement must list feature keys of the subject in `features` (the field is required in the JSON schema; if a model omits it, the attribution step fills it). A feature key is valid if it equals a key from the rendered feature list or refines one (`products.loans.rate`).
 
 An empty `house_view` means the institution has no research on the topic; interfaces show this explicitly.
 
@@ -83,9 +84,10 @@ A chat turn is a small agent on the insight's context: the model classifies the 
 | `no_verifier` | no second-model review (rule checks stay) |
 | `no_rules` | no rule checks; the result is not validated (`Insight.validated = false`) |
 | `no_revise` | no revision rounds; unresolved errors are cut |
-| `no_self_check` | no review, no rule checks, no revision, no pruning |
+| `no_self_check` | no review, no rule checks, no revision, no pruning, no attribution repair |
 | `no_cap` | no impact ceiling in the context and no clamping |
 | `no_policy` | no action rules in the context and no enforcement |
+| `no_attribution` | no code repair of missing features and sources |
 
 ## Progress events
 

@@ -337,6 +337,67 @@
       ],
       "title": "Scenario",
       "type": "object"
+    },
+    "SubjectClaim": {
+      "additionalProperties": false,
+      "description": "A “why it matters” statement: it must name the subject's features it relies on.",
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "source_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "features": {
+          "description": "Required: one or more keys from the subject's Features list, e.g. products.loans, tax_regime",
+          "items": {
+            "type": "string"
+          },
+          "title": "Features",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Confidence from 0 to 1",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "caveat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Caveat: an assumption, missing data or disagreement with the house view",
+          "title": "Caveat"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "origin",
+        "features",
+        "confidence"
+      ],
+      "title": "SubjectClaim",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -358,7 +419,7 @@
     },
     "why_it_matters": {
       "items": {
-        "$ref": "#/$defs/Claim"
+        "$ref": "#/$defs/SubjectClaim"
       },
       "minItems": 1,
       "title": "Why It Matters",

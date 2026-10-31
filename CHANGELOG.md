@@ -8,6 +8,18 @@
 - Ready configs for Ollama, local and cloud (`examples/config/`).
 - LLM client: a warning when the provider truncates the prompt; a retry with a larger budget when an answer is cut at `max_tokens`; `timeout_scale` for slow local models.
 
+### Robustness to small models
+
+Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama and replaying the traces.
+
+- Attribution step: missing `features` and `source_ids` are filled by code from shared word stems, numbers and a small bilingual concept lexicon (“НДС”, “VAT” → taxes); “Risk:” prefixes removed; each repair is noted in the trace. New ablation `no_attribution`.
+- `why_it_matters` statements use `SubjectClaim`: `features` is required in the JSON schema, while a missing field is still parsed.
+- A required block that review emptied comes back with the actions that relied on it; if nothing can come back, code words it from the first key fact or the strongest event–subject link.
+- Structural findings of the reviewer (unknown or missing source, duplicate id, wrong language) stand only if the rule check confirms them.
+- Reviewer prompt `verify-v6`: overstated certainty (a bill presented as law) is a warning with a fix hint, not a contradiction. Insight prompt `insight-v8`.
+- Duplicate plan steps run once.
+- Regression test replaying the real run (`tests/fixtures/qwen_usn_run.json`).
+
 ## 0.1.0 — 2026-10-31
 
 First public release: the agent as a standalone project, re-implemented on synthetic data.

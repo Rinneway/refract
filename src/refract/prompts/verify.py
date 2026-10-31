@@ -6,14 +6,15 @@ from ..i18n import norm_lang
 from ..schemas import InsightContent
 from . import rule
 
-VERSION = "verify-v5"
+VERSION = "verify-v6"
 
 SYSTEM = {
     "ru": """Ты — строгий проверяющий аналитических материалов. Тебе дан тот же контекст, что видел автор \
 черновика: данные о субъекте, полный текст новости, тезисы и фрагменты аналитики {institution_gen}. Проверь черновик:
 1. Факты (origin=fact) совпадают с контекстом. contradiction — только если утверждение говорит обратное контексту \
 или приводит другое число, дату, участника, направление. Пересказ своими словами, перевод с другого языка, обобщение \
-и вывод из контекста — не противоречие. Прежде чем пометить ошибку, найди в контексте фразу, на которую опирается \
+и вывод из контекста — не противоречие. Излишняя уверенность в любом утверждении — например, законопроект или \
+прогноз подан как решённое дело, — это warning с fix_hint («смягчи: если закон примут…»), а не contradiction. Прежде чем пометить ошибку, найди в контексте фразу, на которую опирается \
 утверждение, и процитируй её в message; не нашёл — так и напиши.
 2. number_not_in_sources — только для конкретного числа (процент, сумма, дата), которого нет в контексте.
 3. house_view и origin=house_view: прогнозы, оценки и выводы из тезисов и фрагментов аналитики — это и есть \
@@ -36,7 +37,9 @@ severity error — только если читатель получит нев�
 the subject data, the full news text, theses and research excerpts of {institution}. Review the draft:
 1. Facts (origin=fact) match the context. contradiction — only if a statement says the opposite of the context or \
 gives a different number, date, participant or direction. Paraphrase, translation from another language, \
-generalisation and inference from the context are not contradictions. Before flagging an error, find the phrase in \
+generalisation and inference from the context are not contradictions. Overstated certainty in any statement — \
+e.g. a bill or a forecast presented as settled — is a warning with a fix_hint ("soften: if the law is passed…"), \
+not a contradiction. Before flagging an error, find the phrase in \
 the context the statement relies on and quote it in message; if you did not find it, say so.
 2. number_not_in_sources — only for a specific number (percentage, amount, date) absent from the context.
 3. house_view and origin=house_view: forecasts, assessments and conclusions from the theses and research excerpts \

@@ -110,6 +110,7 @@ class Link:
     kind: str  # exposure | own_division | own_section | counterparty | country | region
     text: str
     level: int
+    feature: str = ""  # the subject's feature key the link rests on
 
     def render(self, lang: str = "ru") -> str:
         noun = "связь" if norm_lang(lang) == "ru" else "link"
@@ -186,15 +187,20 @@ def event_links(
             strength=_num(x.strength, lang),
             reason=x.reason,
         )
-        links.append(Link("exposure", text, level))
+        links.append(Link("exposure", text, level, x.factor))
 
     if p.industry:
         own_div, own_sec = division(p.industry.code), p.industry.section or section_of(p.industry.code)
         if own_div and own_div in divisions:
-            links.append(Link("own_division", _t("own_division", lang, code=own_div), STRONG))
+            links.append(Link("own_division", _t("own_division", lang, code=own_div), STRONG, "industry"))
         elif own_sec and own_sec in sections:
             links.append(
-                Link("own_section", _t("own_section", lang, section=own_sec, code=p.industry.code), WEAK)
+                Link(
+                    "own_section",
+                    _t("own_section", lang, section=own_sec, code=p.industry.code),
+                    WEAK,
+                    "industry",
+                )
             )
 
     for cp in p.counterparties:
@@ -207,19 +213,35 @@ def event_links(
         strong = cp.share_of_flow > policy.share_high
         if cp_div and cp_div in divisions:
             text = _t("cp_division", lang, who=who, cid=cp.counterparty_id, code=cp_div, share=share)
-            links.append(Link("counterparty", text, STRONG if strong else MODERATE))
+            links.append(
+                Link(
+                    "counterparty",
+                    text,
+                    STRONG if strong else MODERATE,
+                    f"counterparties.{cp.role}.{cp.counterparty_id}",
+                )
+            )
         elif cp_sec and cp_sec in sections:
             text = _t("cp_section", lang, section=cp_sec, who=who, cid=cp.counterparty_id, share=share)
-            links.append(Link("counterparty", text, MODERATE if strong else WEAK))
+            links.append(
+                Link(
+                    "counterparty",
+                    text,
+                    MODERATE if strong else WEAK,
+                    f"counterparties.{cp.role}.{cp.counterparty_id}",
+                )
+            )
 
     countries = event_countries(e)
     trade = [c for c in p.foreign_trade.countries if country_code(c) in countries]
     if trade:
-        links.append(Link("country", _t("country", lang, countries=", ".join(trade)), STRONG))
+        links.append(
+            Link("country", _t("country", lang, countries=", ".join(trade)), STRONG, "foreign_trade")
+        )
 
     regions = [r.lower() for r in e.regions] + [f[7:].lower() for f in factors if f.startswith("region:")]
     if p.region and any(p.region.lower() in r or r in p.region.lower() for r in regions if r):
-        links.append(Link("region", _t("region", lang, region=p.region), MODERATE))
+        links.append(Link("region", _t("region", lang, region=p.region), MODERATE, "region"))
     return links
 
 

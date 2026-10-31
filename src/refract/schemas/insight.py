@@ -44,6 +44,22 @@ class Claim(Contract):
     )
 
 
+class SubjectClaim(Claim):
+    """A “why it matters” statement: it must name the subject's features it relies on."""
+
+    features: list[str] = Field(
+        description="Required: one or more keys from the subject's Features list, e.g. products.loans, tax_regime"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _tolerate_missing_features(cls, data: object) -> object:
+        # The field stays required in the JSON schema; a small model that omits it is repaired later.
+        if isinstance(data, dict) and data.get("features") is None:
+            return {**data, "features": []}
+        return data
+
+
 class QuantEstimate(Contract):
     low: float | None = None
     high: float | None = None
@@ -93,7 +109,7 @@ class InsightContent(Contract):
 
     headline: str = Field(max_length=160, description="What the event means for this subject, one sentence")
     what_happened: list[Claim] = Field(min_length=1)
-    why_it_matters: list[Claim] = Field(min_length=1)
+    why_it_matters: list[SubjectClaim] = Field(min_length=1)
     risks: list[Effect] = Field(default_factory=list)
     opportunities: list[Effect] = Field(default_factory=list)
     scenarios: list[Scenario] = Field(default_factory=list)
