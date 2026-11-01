@@ -11,6 +11,10 @@ between the event and the subject gets a strength, and the strongest link bounds
 - weak (low): only the section letter matches (section G covers both a fuel wholesaler and a clothing shop),
   weak sensitivity, a counterparty matched only by section.
 
+A product the subject holds with the institution whose price moves with the event's main factor (a loan and the
+policy rate, a deposit and the policy rate) is a moderate link: the effect is direct, but its size depends on
+an amount the profile does not hold. On a secondary factor of the event it is weak.
+
 `high` additionally requires a strong event (`NewsEvent.importance` ≥ 0.6). All thresholds live in
 `ImpactPolicy`, so they can be varied in sensitivity experiments.
 """
@@ -62,6 +66,10 @@ _TEXT = {
         "ru": "событие касается региона субъекта ({region})",
         "en": "the event concerns the subject's region ({region})",
     },
+    "product": {
+        "ru": "у субъекта есть {product} в банке — их стоимость зависит от фактора {factor}{note}",
+        "en": "the subject holds {product} with the institution, priced off {factor}{note}",
+    },
     "customer": {"ru": "покупателя", "en": "customer"},
     "supplier": {"ru": "поставщика", "en": "supplier"},
     "in": {"ru": "{share:.0%} входящих платежей", "en": "{share:.0%} of incoming payments"},
@@ -75,6 +83,31 @@ _TEXT = {
     "weak_event": {
         "ru": "{reason}, но само событие слабое (сила {importance})",
         "en": "{reason}, but the event itself is weak (strength {importance})",
+    },
+}
+
+
+# Products whose price or yield moves with a factor. Only factors that price the product whatever its details:
+# an FX account or an investment portfolio is linked to a currency or a market only through its composition,
+# which the profile does not hold — that link comes from the subject's sensitivities (`Exposure`), not from here.
+PRODUCT_FACTORS: dict[str, tuple[str, ...]] = {
+    "policy_rate": ("loans", "mortgage", "leasing", "factoring", "deposits"),
+    "credit_market": ("loans", "mortgage", "leasing"),
+}
+_PRODUCT = {
+    "ru": {
+        "loans": "кредиты",
+        "mortgage": "ипотека",
+        "leasing": "лизинг",
+        "factoring": "факторинг",
+        "deposits": "депозиты",
+    },
+    "en": {
+        "loans": "loans",
+        "mortgage": "a mortgage",
+        "leasing": "leasing",
+        "factoring": "factoring",
+        "deposits": "deposits",
     },
 }
 
@@ -107,7 +140,7 @@ DEFAULT_IMPACT = ImpactPolicy()
 class Link:
     """One link between the event and the subject: what matched and how strong the link is."""
 
-    kind: str  # exposure | own_division | own_section | counterparty | country | region
+    kind: str  # exposure | product | own_division | own_section | counterparty | country | region
     text: str
     level: int
     feature: str = ""  # the subject's feature key the link rests on
@@ -188,6 +221,22 @@ def event_links(
             reason=x.reason,
         )
         links.append(Link("exposure", text, level, x.factor))
+
+    # Products priced off a factor of the event; a factor already covered by a sensitivity is not counted twice.
+    covered = {canonical_factor(x.factor) for x in p.exposures}
+    held = {k for k, v in p.products.model_dump().items() if v}
+    for factor in [primary, *sorted(factors - {primary})] if primary else []:
+        if factor in covered:
+            continue
+        for product in PRODUCT_FACTORS.get(factor, ()):
+            if product not in held:
+                continue
+            held.discard(product)  # one link per product, on the strongest factor
+            main = factor == primary
+            note = "" if main else _t("secondary", lang)
+            name = _PRODUCT[norm_lang(lang)][product]
+            text = _t("product", lang, product=name, factor=factor, note=note)
+            links.append(Link("product", text, MODERATE if main else WEAK, f"products.{product}"))
 
     if p.industry:
         own_div, own_sec = division(p.industry.code), p.industry.section or section_of(p.industry.code)

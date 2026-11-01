@@ -90,6 +90,14 @@ def percents(text: str) -> set[float]:
     return out
 
 
+def first_percent(text: str) -> tuple[str, set[float]] | None:
+    """The first percentage in `text`: the token as written and its readings (“14%” → ("14", {14.0}))."""
+    for m in NUM.finditer(text or ""):
+        if _PERCENT.match(text[m.end() : m.end() + 12]):
+            return m.group(0), _variants(m.group(0))
+    return None
+
+
 def invented_numbers(texts: list[str], context: str) -> set[float]:
     """Numbers from `texts` that do not occur in `context`.
 

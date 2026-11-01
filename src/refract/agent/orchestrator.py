@@ -1,7 +1,7 @@
 """The orchestrator: tag → plan → tools → draft → self-check → revise → finalize.
 
 Plain code without an agent framework, so every step is visible in the trace: model, tokens, cost, sources,
-verdict. Self-check = rule checks in code (`checks.py`) + a semantic review by a second model. If data is missing
+verdict. Self-check = rule checks in code (`checks/`) + a semantic review by a second model. If data is missing
 the agent searches again and revises the draft; errors that survive `max_iterations` are cut out so the reader
 never sees an unsupported conclusion.
 
@@ -350,6 +350,7 @@ class Agent:
                 "ok": insight is not None,
                 "insight_id": trace.insight_id,
                 "totals": trace.totals.model_dump(),
+                "error": None if insight else trace.failure_reason(),
             },
         )
         return AgentRun(insight=insight, trace=trace, state=state, issues=issues)
@@ -583,7 +584,13 @@ class Agent:
                 insight = Insight(**fields)
             except ValidationError as e:
                 if cfg.rule_checks:
-                    verdict, notes = "failed", [t("note.invalid", lang, msg=e.errors()[0]["msg"])]
+                    err = e.errors()[0]
+                    where = ".".join(str(x) for x in err.get("loc", ()))
+                    if err.get("type") == "too_short" and where in ("what_happened", "why_it_matters"):
+                        note = t("note.block_empty", lang, block=where)  # everything in it was pruned
+                    else:
+                        note = t("note.invalid", lang, msg=f"{where}: {err['msg']}" if where else err["msg"])
+                    verdict, notes = "failed", [*notes, note]
                 else:  # ablation without rule checks: keep the raw result for evaluation
                     insight = Insight.model_construct(**{**fields, "validated": False})
                     notes.append(t("note.unvalidated", lang))

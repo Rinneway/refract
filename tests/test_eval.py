@@ -1,4 +1,5 @@
 import math
+import re
 
 import pytest
 
@@ -80,7 +81,8 @@ def test_experiment_end_to_end(store, settings, tmp_path) -> None:
     assert retell["rule_error_rate"] is None and retell["over_cap_rate"] == 0.0
     assert full["judges"]["verifier"]["total_mean"] == 12 and retell["judges"]["verifier"]["total_mean"] == 6
     assert S["pairwise"]["retelling"]["reference_wins"] == 2
-    assert S["agreement"]["n"] == 8 and "gold_impact_accuracy" in full
+    assert [a["judges"] for a in S["agreement"]] == [["verifier", "main"]] and S["agreement"][0]["n"] == 8
+    assert "gold_impact_accuracy" in full
     langs = full["by_language"]
     assert (
         langs["ru"]["language_ok_rate"] == 1.0 and langs["en"]["language_ok_rate"] == 0.0
@@ -173,3 +175,102 @@ def test_manifest_of_an_older_folder_comes_from_its_traces(store, settings, tmp_
     exp.run(["full"])
     (tmp_path / "manifest.json").unlink()  # a folder from before manifests existed
     assert exp.check_manifest() == [] and (tmp_path / "manifest.json").exists()
+
+
+def test_human_labels_round_trip(store, settings, tmp_path, capsys) -> None:
+    """export a blinded sheet → an annotator fills it in → import as judge `human` → the report compares judges."""
+    import csv
+    import json
+
+    from refract.cli import main
+    from refract.eval import save_pairs
+
+    llm = ScriptedLLM(
+        {
+            "plan": [RATE_PLAN],
+            "draft_insight": [_rate_draft(False)],
+            "verify": [OK],
+            "eval_retelling": [BASELINE],
+            "*": [lambda m, s: score(2 if "Демо-банк ожидает" in m[-1]["content"] else 1)],
+        },
+        settings,
+    )
+    pairs = [
+        Pair("demo_building_materials", "ev_rate_hold_ru", "cfo", "ru"),
+        Pair("demo_building_materials", "ev_rate_hold_ru", "owner", "ru"),
+    ]
+    save_pairs(pairs, tmp_path / "pairs.jsonl")
+    exp = Experiment(
+        Refract(store, llm=llm, settings=settings), tmp_path, pairs, workers=1, log=lambda _: None
+    )
+    exp.run(["full", "retelling"])
+    exp.judge(["verifier"])
+
+    assert main(["eval", "label", "export", "--out", str(tmp_path), "--seed", "3"]) == 0
+    folder = tmp_path / "labels" / "human"
+    key = json.loads((folder / "key.json").read_text(encoding="utf-8"))["items"]
+    page = (folder / "items" / "i1.md").read_text(encoding="utf-8")
+    assert len(key) == 4 and "# КОНТЕКСТ" in page and "JSON" not in page.split("---")[0]
+    head = page.split("\n---\n")[0]  # the context and the answer; the rubric follows
+    assert not re.search(r"\b(full|retelling|single_call|no_\w+)\b", head)  # blinded: no system names
+    assert main(["eval", "label", "export", "--out", str(tmp_path)]) == 2  # never overwrites labels silently
+
+    with (folder / "sheet.csv").open(encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.DictReader(f, delimiter=";"))  # a Russian sheet, for Excel in a Russian locale
+    for row in rows:  # the annotator agrees with the judge on everything but one answer, leaves one row empty
+        agent = key[row["item"]]["system"] == "full"
+        row.update({c: "2" if agent else "1" for c in ("what_happened", "why_it_matters", "consequences")})
+        row.update({c: "2" if agent else "0" for c in ("actions", "house_view", "grounding")})
+        row.update(retelling="0" if agent else "1", impact_calibrated="1", overall="4" if agent else "2")
+    rows[-1].update({c: "" for c in rows[-1] if c != "item"})
+    rows[0]["overall"] = "7"
+    with (folder / "sheet.csv").open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(
+            f, fieldnames=list(rows[0])
+        )  # saved by another tool with commas: import detects it
+        w.writeheader()
+        w.writerows(rows)
+
+    capsys.readouterr()
+    assert main(["eval", "label", "import", "--out", str(tmp_path)]) == 1  # one row has a problem
+    out = capsys.readouterr().out
+    assert (
+        "overall: 7 is outside 1–5" in out and "2 labels saved as judge `human`; 1 rows empty, 1 with" in out
+    )
+    assert main(["eval", "report", "--out", str(tmp_path)]) == 0
+    S = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert S["judges"] == ["verifier", "human"] and S["humans"] == ["human"]  # the LLM judge stays primary
+    assert [a["judges"] for a in S["agreement"]] == [["human", "verifier"]] and S["agreement"][0]["n"] == 2
+    assert "human labels" in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+    # a second annotator: the same seed gives the same items; the report adds both annotators' agreement
+    assert main(["eval", "label", "export", "--out", str(tmp_path), "--seed", "3", "--name", "ann2"]) == 0
+    key2 = json.loads((tmp_path / "labels" / "ann2" / "key.json").read_text(encoding="utf-8"))["items"]
+    assert key2 == key
+    (tmp_path / "labels" / "ann2" / "sheet.csv").write_text(
+        (folder / "sheet.csv").read_text(encoding="utf-8-sig"), encoding="utf-8-sig"
+    )
+    assert main(["eval", "label", "import", "--out", str(tmp_path), "--name", "ann2"]) == 1
+    assert main(["eval", "report", "--out", str(tmp_path)]) == 0
+    S = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert [a["judges"] for a in S["agreement"]] == [
+        ["ann2", "human"],
+        ["ann2", "verifier"],
+        ["human", "verifier"],
+    ]
+    assert S["agreement"][0]["criteria"]["actions"]["exact"] == 1.0
+
+
+def test_pairs_sample_is_reproducible(tmp_path, capsys) -> None:
+    from refract.cli import main
+    from refract.eval import load_pairs
+    from tests.conftest import DEMO
+
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    for path in (a, b):
+        assert (
+            main(["eval", "pairs", "--data", str(DEMO), "--out", str(path), "--sample", "5", "--seed", "7"])
+            == 0
+        )
+    assert load_pairs(a) == load_pairs(b) and len(load_pairs(a)) == 5
+    assert "5 pairs of " in capsys.readouterr().out

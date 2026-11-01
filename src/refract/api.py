@@ -173,6 +173,8 @@ def create_app(rf: Refract | None = None) -> FastAPI:
                     req.profile_id, ev, role=req.role, language=req.language, config=cfg, on_progress=job
                 )
                 job.insight_id = run.insight.insight_id if run.insight else None
+                if not run.insight:
+                    job.error = job.tracker.snapshot().error or "the agent produced no insight"
             except Exception as e:  # noqa: BLE001 — reported through the job
                 job.error = f"{type(e).__name__}: {e}"[:300]
             finally:

@@ -71,7 +71,7 @@ flowchart TB
 | Orchestrator | `agent/orchestrator.py` | the loop above; `AgentConfig` switches components off for ablations |
 | Context | `agent/context.py` | subject features with keys, the event, links, the house view, the source registry |
 | Impact ceiling | `agent/impact.py` | strength of each subject–event link → the highest impact level allowed |
-| Rule checks | `agent/checks.py`, `schemas/insight.py` | sources, origins, feature keys, numbers, the ceiling; attribution repair, pruning and restoring |
+| Rule checks | `agent/checks/`, `schemas/insight.py` | sources, origins, feature keys, numbers, the ceiling; attribution repair, pruning and restoring |
 | Action policy | `agent/actions.py`, `policies/actions.json` | which rules fire; product names, one product per insight, manager first on high negative impact |
 | Chat | `agent/chat.py` | follow-up questions on the same context, with the same checks |
 | Prompts | `prompts/` | every step in Russian and English, versioned |
@@ -163,13 +163,16 @@ In `refract.toml` you can also route each step to its own model, set prices for 
 refract eval pairs  --data examples/demo --out runs/exp1/pairs.jsonl --languages ru,en
 refract eval run    --out runs/exp1 --systems full,no_plan,no_verifier,no_rules,no_cap,no_policy,single_call,retelling
 refract eval judge  --out runs/exp1 --judges verifier,judge2
+refract eval label export --out runs/exp1 --sample 40   # optional: a blinded sheet for human labels
+refract eval label import --out runs/exp1
 refract eval report --out runs/exp1 --reference full
 ```
 
 - **Systems:** the full agent, nine ablations (`no_plan`, `no_verifier`, `no_rules`, `no_revise`, `no_self_check`, `no_cap`, `no_policy`, `no_attribution`, `no_reconcile`) and two baselines (`single_call` — the same prompt and house view in one call; `retelling` — one call with a plain prompt).
 - **Judge metrics:** six questions scored 0–2 (what happened, why it matters, consequences, actions, house view, grounding), overall 1–5, unsupported statements, retelling and impact calibration.
 - **Code metrics** that need no judge: rule errors reaching the reader, invented numbers, impact above the computed ceiling, answers not in the requested language, cost, latency; results are also split by output language.
-- **Statistics:** 95% bootstrap CIs, paired differences, sign tests, quadratic-weighted κ and Spearman between judges, accuracy and κ against human labels.
+- **Human labels:** a blinded, shuffled sheet with the judge's rubric; imported as one more judge, so the report shows how far each LLM judge agrees with people.
+- **Statistics:** 95% bootstrap CIs, paired differences, sign tests, quadratic-weighted κ and Spearman for every pair of judges, accuracy and κ against human labels.
 - **Reproducibility:** prompt versions and the agent configuration are written into every trace; model answers are cached by request hash.
 
 Method, metrics and threats to validity: [docs/evaluation.md](docs/evaluation.md). A plan for a paper: [docs/paper/outline.md](docs/paper/outline.md).
@@ -189,7 +192,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          112 tests on a scripted model — no network needed
+tests/          128 tests on a scripted model and a fake OpenAI-compatible server — no network needed
 ```
 
 ## Data and confidentiality

@@ -347,8 +347,10 @@ def test_house_view_gets_its_thesis_back_across_languages(store) -> None:
     house = {c.claim_id: c.source_ids for c in run.insight.house_view}
     # English statements, Russian theses: matched by 11.5–12.5 and 6.5 / 4.5; the news' 11.35 does not block it.
     assert house == {"b1": ["src_demo_macro_2026q4_t5"], "b2": ["src_demo_macro_2026q4_t4"]}
-    kinds = {a.action_id: a.kind for a in run.insight.actions}
-    assert kinds["a2"] is ActionKind.ANALYSIS  # “request a detailed analysis…” was labelled contact_manager
+    # w2 “your largest supplier (14%)” — the 22% one is cement: a wrong fact about the subject, cut with the action
+    # that rested on it alone (the relabelling of such actions is tested in test_actions.py)
+    assert "w2" not in {c.claim_id for c in run.insight.why_it_matters}
+    assert [a.action_id for a in run.insight.actions] == ["a1"]
 
 
 def test_product_named_in_the_text_is_made_explicit(store) -> None:
@@ -395,3 +397,47 @@ def test_trace_counts_what_code_did_with_the_review(store, settings) -> None:
     run = replay(store, settings, "run_2")
     t = run.trace.totals
     assert t.reviewer_errors == 4 and t.reviewer_errors_lifted == 4 and t.pruned == 0 and t.cached_calls == 0
+
+
+def test_largest_counterparty_must_have_the_largest_share(store) -> None:
+    """gemma4:12b on the yuan news: “the largest supplier (14%)” — the importer, while cement has 22%."""
+    from refract.agent.context import InsightContext
+
+    def check(text: str, lang: str = "en") -> list[str]:
+        ctx = InsightContext(
+            profile=store.profiles["demo_building_materials"], event=store.events["ev_yuan_ru"], lang=lang
+        )
+        return [i.message for i in checks.counterparty_superlatives(text, "w2", ctx)]
+
+    real = (
+        "Your largest supplier accounts for 14% of your outgoing payments; if they bill in yuan, costs fall."
+    )
+    assert check(real) == [
+        "w2: “largest supplier … 14%” does not match the profile: 14% is the share of supplier "
+        "cp_import_309, the largest supplier is cp_cement_205 (22%)"
+    ]
+    assert check("Ваш крупнейший поставщик-импортёр (14% исходящих платежей) закупает в юанях.", "ru")
+    assert "доля покупателя cp_dev_101" in check("Крупнейший поставщик (31% платежей) — застройщик.", "ru")[0]
+    # Not flagged: the right share, a plural, “one of”, a percentage that is no counterparty's share, no share
+    for ok in (
+        "Your largest customer (developer) accounts for 31% of incoming payments.",
+        "Ваш крупнейший поставщик (22% исходящих платежей) — производитель цемента.",
+        "Your main suppliers (14% and 22% of payments) may raise prices.",
+        "One of the largest suppliers, with 14% of payments, imports from China.",
+        "Sales of your largest customer fell 20% year on year.",
+        "Your largest supplier may raise prices.",
+    ):
+        assert check(ok, "ru" if "Ваш" in ok else "en") == [], ok
+
+
+def test_wrong_superlative_is_a_hard_error_of_the_rule_check(store) -> None:
+    from refract.agent.context import InsightContext
+
+    ctx = InsightContext(
+        profile=store.profiles["demo_building_materials"], event=store.events["ev_yuan_ru"], lang="en"
+    )
+    content = _content().model_copy(
+        update={"headline": "Cheaper yuan lowers costs at your largest supplier (14% of payments)"}
+    )
+    found = [i for i in checks.rule_check(content, ctx) if "does not match the profile" in i.message]
+    assert [(i.claim_id, i.severity) for i in found] == [(checks.HEADLINE, "error")]

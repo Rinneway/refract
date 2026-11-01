@@ -186,6 +186,21 @@ def test_unknown_profile_reports_failure(store, settings) -> None:
     assert events[-1]["status"] == "finished" and events[-1]["ok"] is False
 
 
+def test_failed_run_says_why(store, settings) -> None:
+    # A draft about another event: its statements cite sources this run does not have and are pruned; the news
+    # has nothing in common with the subject, so “why it matters” has no deterministic fallback either.
+    events = []
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    run = Agent(llm, store, settings=settings, on_progress=events.append).run(
+        "demo_family_saver", "ev_wheat_en"
+    )
+    assert run.insight is None and run.trace.status == "failed"
+    assert (
+        run.trace.failure_reason().startswith("finalize: ") and "why_it_matters" in run.trace.failure_reason()
+    )
+    assert events[-1]["ok"] is False and events[-1]["error"] == run.trace.failure_reason()
+
+
 def test_progress_events(store, settings) -> None:
     from refract.agent.progress import ProgressTracker
 

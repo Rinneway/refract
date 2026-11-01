@@ -19,6 +19,11 @@ from refract.schemas.vocab import country_code, division, section_of
             ImpactLevel.HIGH,
         ),  # developer customer with 31% of the flow
         ("demo_coffee_ip", "ev_injection_ru", ImpactLevel.MEDIUM),  # own activity, but the event is weak
+        (
+            "demo_coffee_ip",
+            "ev_rate_hold_ru",
+            ImpactLevel.MEDIUM,
+        ),  # a loan priced off the rate, no sensitivity
         ("demo_london_studio", "ev_rate_hold_ru", ImpactLevel.MEDIUM),  # sensitivity 0.5 — moderate
         ("demo_family_saver", "ev_wheat_en", ImpactLevel.LOW),  # nothing in common
         ("demo_designer_npd", "ev_yuan_ru", ImpactLevel.LOW),  # trades with KZ and AE, not CN
@@ -59,3 +64,11 @@ def test_country_codes() -> None:
 def test_nace_divisions() -> None:
     assert division("46.73") == "46" and division("1.11") == "01" and division("abc") is None
     assert section_of("46.73") == "G" and section_of("01.11") == "A" and section_of("62.01") == "J"
+
+
+def test_product_link_counts_once_and_not_over_a_sensitivity(store) -> None:
+    coffee, builder = store.profiles["demo_coffee_ip"], store.profiles["demo_building_materials"]
+    rate = store.events["ev_rate_hold_ru"]
+    links = [x for x in event_links(coffee, rate) if x.kind == "product"]
+    assert [x.feature for x in links] == ["products.loans"] and links[0].level == 2
+    assert not [x for x in event_links(builder, rate) if x.kind == "product"]  # policy_rate is a sensitivity

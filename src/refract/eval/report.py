@@ -4,7 +4,8 @@ Per system: answer rate; judge total over six questions (0–12) with a 95% boot
 unsupported statements per answer; retelling and impact-calibration rates by the judge; and code-computed metrics —
 rule errors reaching the reader, invented numbers, impact above the computed ceiling; cost and latency. Then
 pairwise comparison with a reference system (wins / ties / losses, sign test, paired bootstrap difference),
-agreement between judges (quadratic-weighted κ per criterion, Spearman on totals) and, if pairs carry human labels,
+agreement for every pair of judges — each LLM judge against human labels first — (quadratic-weighted κ
+per criterion, Spearman on totals) and, if pairs carry human labels,
 accuracy and κ of the impact level against them.
 """
 
@@ -16,6 +17,7 @@ from typing import Any
 
 from .harness import Pair, _read, _safe
 from .judge import CRITERIA
+from .labels import is_human
 from .stats import bootstrap_ci, mean, paired_bootstrap_diff, percentile, sign_test, spearman, weighted_kappa
 
 LEVELS = ["low", "medium", "high"]
@@ -155,32 +157,44 @@ def summarize(
                 "diff_ci95": [lo, hi],
             }
 
-    if len(judges) >= 2:
-        j1, j2 = judges[:2]
-        agree: dict[str, Any] = {"judges": [j1, j2], "criteria": {}}
-        x1, x2 = [], []
-        crit = {c: ([], []) for c in CRITERIA}
-        overall = ([], [])
-        for system in systems:
-            s1, s2 = _judge_scores(out, j1, system, pairs), _judge_scores(out, j2, system, pairs)
-            for k in set(s1) & set(s2):
-                x1.append(_total(s1[k]))
-                x2.append(_total(s2[k]))
-                overall[0].append(s1[k]["overall"])
-                overall[1].append(s2[k]["overall"])
-                for c in CRITERIA:
-                    crit[c][0].append(s1[k][c]["score"])
-                    crit[c][1].append(s2[k][c]["score"])
-        agree["n"] = len(x1)
-        agree["total_spearman"] = spearman(x1, x2)
-        agree["overall_kappa"] = weighted_kappa(overall[0], overall[1], [1, 2, 3, 4, 5])
-        for c, (a, b) in crit.items():
-            agree["criteria"][c] = {
-                "kappa": weighted_kappa(a, b, [0, 1, 2]),
-                "exact": mean([float(p == q) for p, q in zip(a, b, strict=True)]),
-            }
-        S["agreement"] = agree
+    # Agreement for every pair of judges: annotators with each other, each LLM judge against each annotator, then
+    # LLM judges with each other.
+    humans = [j for j in judges if is_human(out, j)]
+    machines = [j for j in judges if j not in humans]
+    combos = [(a, b) for i, a in enumerate(humans) for b in humans[i + 1 :]]
+    combos += [(h, j) for h in humans for j in machines]
+    combos += [(a, b) for i, a in enumerate(machines) for b in machines[i + 1 :]]
+    S["humans"] = humans
+    S["agreement"] = [a for a in (_agreement(out, systems, pairs, j1, j2) for j1, j2 in combos) if a["n"]]
     return S
+
+
+def _agreement(out: Path, systems: list[str], pairs: list[Pair], j1: str, j2: str) -> dict[str, Any]:
+    agree: dict[str, Any] = {"judges": [j1, j2], "criteria": {}}
+    x1, x2 = [], []
+    crit = {c: ([], []) for c in CRITERIA}
+    overall = ([], [])
+    for system in systems:
+        s1, s2 = _judge_scores(out, j1, system, pairs), _judge_scores(out, j2, system, pairs)
+        for k in sorted(set(s1) & set(s2)):
+            x1.append(_total(s1[k]))
+            x2.append(_total(s2[k]))
+            overall[0].append(s1[k]["overall"])
+            overall[1].append(s2[k]["overall"])
+            for c in CRITERIA:
+                crit[c][0].append(s1[k][c]["score"])
+                crit[c][1].append(s2[k][c]["score"])
+    agree["n"] = len(x1)
+    if not x1:
+        return agree
+    agree["total_spearman"] = spearman(x1, x2)
+    agree["overall_kappa"] = weighted_kappa(overall[0], overall[1], [1, 2, 3, 4, 5])
+    for c, (a, b) in crit.items():
+        agree["criteria"][c] = {
+            "kappa": weighted_kappa(a, b, [0, 1, 2]),
+            "exact": mean([float(p == q) for p, q in zip(a, b, strict=True)]),
+        }
+    return agree
 
 
 _MODEL_STEPS = ("plan", "draft_insight", "verify", "revise")
@@ -340,18 +354,31 @@ def render(S: dict[str, Any]) -> str:
                 f"{_f(p['mean_diff'])} [{_f(p['diff_ci95'][0])}–{_f(p['diff_ci95'][1])}] |"
             )
     if S.get("agreement"):
-        a = S["agreement"]
+        names = [f"`{a['judges'][0]}` – `{a['judges'][1]}`" for a in S["agreement"]]
         lines += [
             "",
-            f"## Agreement between `{a['judges'][0]}` and `{a['judges'][1]}` (n = {a['n']})",
+            "## Agreement between judges",
             "",
-            f"Spearman on totals: {_f(a['total_spearman'])}; weighted κ on overall: {_f(a['overall_kappa'])}.",
+            "Spearman on totals, quadratic-weighted κ on the overall score and per criterion (exact agreement in "
+            "brackets)."
+            + (
+                f" `{'`, `'.join(S['humans'])}` — human labels: their agreement with an LLM judge says how far "
+                "that judge can be trusted."
+                if S.get("humans")
+                else ""
+            ),
             "",
-            "| Criterion | weighted κ | exact agreement |",
-            "|---|---|---|",
+            "| | " + " | ".join(names) + " |",
+            "|---" * (len(names) + 1) + "|",
+            "| n | " + " | ".join(str(a["n"]) for a in S["agreement"]) + " |",
+            "| Spearman, total | " + " | ".join(_f(a["total_spearman"]) for a in S["agreement"]) + " |",
+            "| κ, overall | " + " | ".join(_f(a["overall_kappa"]) for a in S["agreement"]) + " |",
         ]
-        for c, v in a["criteria"].items():
-            lines.append(f"| {c} | {_f(v['kappa'])} | {_pct(v['exact'])} |")
+        for c in CRITERIA:
+            cells = [
+                f"{_f(a['criteria'][c]['kappa'])} ({_pct(a['criteria'][c]['exact'])})" for a in S["agreement"]
+            ]
+            lines.append(f"| κ, {c} | " + " | ".join(cells) + " |")
     gold = {k: m for k, m in S["systems"].items() if "gold_impact_accuracy" in m}
     if gold:
         lines += [

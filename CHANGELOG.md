@@ -37,6 +37,18 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - Duplicate plan steps run once.
 - Regression tests replaying fourteen real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`), including an 8-pair smoke evaluation.
 
+### Checks, evaluation and interfaces
+
+- New rule check: a counterparty called the largest or main (“крупнейший поставщик”, “main customer”) with the share of another counterparty is an error — gemma4:12b wrote “the largest supplier (14%)” about the importer while cement has 22%, and the reviewer caught it only sometimes.
+- Impact ceiling: a product held with the institution and priced off the event's main factor (loans, mortgage, leasing, factoring, deposits and the policy rate) is a moderate link when no sensitivity covers that factor. A coffee shop with a loan used to get “no link” to a rate decision.
+- A run without an insight says why: `Trace.failure_reason()`, the `error` of the progress event and of an API job, a line on stderr in the CLI; an emptied required block gets a plain note instead of a validation message.
+- CLI: an unknown profile, event or ablation, a missing file and a saved run without an insight end with a message and exit code 2 instead of a traceback.
+- `insight-v11`: compare a new tax with what the subject pays now; “largest” only for the counterparty with the largest share; every risk names its mechanism; every action says what, with whom and by when; no business advice to a private person. The examples in the prompts no longer use numbers from the demo data (14%, 31%), so the prompt carries no answers for evaluation pairs.
+- Human labels: `refract eval label export` writes a blinded, shuffled sheet with one page per answer (context, answer, the judge's rubric); `refract eval label import` saves it as a judge named `human`. Agreement is reported for every pair of judges, annotators first.
+- `refract eval pairs --sample N --seed S` keeps a reproducible random sample.
+- `agent/checks.py` is split into a package by responsibility — `rules`, `review`, `attribution`, `repair`, `messages`; `checks.<name>` keeps working.
+- End-to-end tests drive every interface — CLI, Python API, REST API, MCP — through the real HTTP client against a fake OpenAI-compatible server; `docs/schemas` is checked against the code.
+
 ## 0.1.0 — 2026-10-31
 
 First public release: the agent as a standalone project, re-implemented on synthetic data.

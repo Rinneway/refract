@@ -194,6 +194,12 @@ STRINGS: dict[str, dict[Language, str]] = {
         "en": "insight assembled without rule validation (ablation)",
     },
     "note.invalid": {"ru": "инсайт не прошёл проверку: {msg}", "en": "insight failed validation: {msg}"},
+    "note.block_empty": {
+        "ru": "блок {block} пуст: проверку не прошло ни одно утверждение, а кодом связь события с субъектом не "
+        "найдена — новость, видимо, субъекта не касается",
+        "en": "{block} is empty: no statement passed the checks and code found no link between the event and the "
+        "subject — the news probably does not concern it",
+    },
     "note.no_draft": {
         "ru": "модель не вернула инсайт по схеме",
         "en": "the model returned no schema-valid insight",

@@ -8,15 +8,18 @@ The harness answers two kinds of questions: does the agent beat simpler systems,
 refract eval pairs  --data DATA --out runs/exp1/pairs.jsonl --languages ru,en
 refract eval run    --data DATA --out runs/exp1 --systems full,no_plan,no_verifier,no_rules,no_revise,no_self_check,no_cap,no_policy,no_attribution,no_reconcile,single_call,retelling
 refract eval judge  --data DATA --out runs/exp1 --judges verifier,judge2
+refract eval label export --out runs/exp1 --sample 40 --seed 1     # optional: human labels
+refract eval label import --out runs/exp1
 refract eval report --out runs/exp1 --reference full
 ```
 
-- `pairs` — every profile × every event × every language, with the default reader role for each subject kind. Edit the file to choose pairs, set roles or add human labels (`gold_impact`, `gold_relevant`).
+- `pairs` — every profile × every event × every language, with the default reader role for each subject kind; `--sample N --seed S` keeps a random sample, the same for the same seed. Edit the file to choose pairs, set roles or add human labels (`gold_impact`, `gold_relevant`).
 - `run` — writes `runs/<system>/<pair>.json`: the answer, the exact context the system saw, cost, latency, number of LLM calls, the trace (for agent variants) and code-computed metrics. Answered pairs are skipped (`--force` recomputes); failed ones are retried. The first run writes `manifest.json` — the model ids behind `main` and `verifier` and the prompt versions; later runs print the models and warn if they differ, because answers made with different models in one folder are not comparable. The report's Models table shows which model made each step, and flags a mix.
-- `judge` — writes `judge/<judge>/<system>/<pair>.json`. The judge sees the system's own context and its answer in one neutral form, without the system's name. The first judge is primary; the second is used for agreement. Only systems that were run are judged; a call that fails is not saved and is retried next time; a rejected key (HTTP 401/403) stops the step with a hint.
+- `judge` — writes `judge/<judge>/<system>/<pair>.json`. The judge sees the system's own context and its answer in one neutral form, without the system's name. The first judge is primary (pairwise comparisons use it); agreement is computed for every pair of judges. Only systems that were run are judged; a call that fails is not saved and is retried next time; a rejected key (HTTP 401/403) stops the step with a hint.
 
 Judges should come from neither the author's nor the reviewer's family. `examples/config/ollama-local.toml` defines two local judges for a qwen author and a gemma reviewer — `judge` (ministral-3:14b) and `judge2` (phi4:14b): `refract eval judge --out runs/exp1 --judges judge,judge2 --workers 1`. The judge step can also run on Ollama Cloud with its own config (credits needed beyond the starter models), the answers staying local: `refract --config examples/config/ollama-cloud.toml eval judge --out runs/exp1 --judges judge2,verifier` (the key goes to `OLLAMA_API_KEY`; clear `REFRACT_MODEL` / `REFRACT_VERIFIER_MODEL` first, `eval` prints a note when they override the config).
-- `report` — `report.md` and `summary.json`.
+- `label` — human labels, see below.
+- `report` — `report.md` and `summary.json`. Without `--judges`, every judge found is used, LLM judges first in name order, human labels after them.
 
 An event without factors is tagged once and the tags are shared by all systems (`_events/`), so systems differ only in what is being compared.
 
@@ -59,13 +62,21 @@ An event without factors is tagged once and the tags are shared by all systems (
 
 - 95% percentile-bootstrap confidence intervals of means (2 000 resamples, fixed seed).
 - Pairwise comparison with the reference system on the same pairs: wins / ties / losses by judge total, exact two-sided sign test, mean paired difference with a bootstrap CI.
-- Agreement between the first two judges: Spearman correlation of totals, quadratic-weighted κ per criterion and for the overall score, exact agreement.
+- Agreement for every pair of judges — each LLM judge against human labels first: Spearman correlation of totals, quadratic-weighted κ per criterion and for the overall score, exact agreement.
 
 With 30 pairs a difference of about one point of the total is detectable; plan at least 50–100 pairs per comparison for a paper, and correct for multiple comparisons if you test many ablations against `full`.
 
 ## Human labels
 
-Fill `gold_impact` (and optionally `gold_relevant`) in `pairs.jsonl` for a sample of pairs, ideally by two annotators with an adjudication pass; report their agreement (κ) before comparing systems to them. A simple guideline: *high* — a decision is needed within weeks; *medium* — specific decisions may need adjusting within a quarter; *low* — background information.
+LLM judges disagree with each other and favour their own family's style, so a sample of answers should be scored by people with the same rubric. `refract eval label export --out EXP [--systems …] [--sample N --seed S] [--name human]` writes `labels/<name>/`:
+
+- `items/<item>.md` — the context the system had, its answer in the same neutral form the LLM judge sees, and the judge's rubric;
+- `sheet.csv` — one row per answer: the six criteria (0–2), `retelling` and `impact_calibrated` (0/1), `overall` (1–5), `unsupported` (statements separated by “;”) and `comment`. UTF-8 with BOM, “;”-separated for Excel in a Russian locale (`--lang en`: commas);
+- `README.md` — instructions for the annotator; `key.json` — which system and pair each item is, kept away from the annotator.
+
+Answers of all systems are shuffled together and the pages carry no system names, so the annotator is blind to the system. An existing sheet is never overwritten without `--force`. `refract eval label import --out EXP [--file sheet.csv]` saves the filled rows as a judge named `human` (`judge/human/…`, `judge_version` `human-v1`); empty rows are skipped, a row with an out-of-range or missing score is reported and not saved. The report then shows the agreement of each LLM judge with the human labels: report it before trusting an LLM judge's comparison of systems. With two annotators, export twice with `--name ann1` and `--name ann2` and the same seed — the report gives their agreement too.
+
+For the impact level alone, fill `gold_impact` (and optionally `gold_relevant`) in `pairs.jsonl` for a sample of pairs, ideally by two annotators with an adjudication pass; report their agreement (κ) before comparing systems to them. A simple guideline: *high* — a decision is needed within weeks; *medium* — specific decisions may need adjusting within a quarter; *low* — background information.
 
 ## Checking the English prompts
 

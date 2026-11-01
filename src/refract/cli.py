@@ -62,19 +62,31 @@ def cmd_demo(args) -> int:
     return 0
 
 
+def _fail(msg: str) -> int:
+    sys.stderr.write(f"refract: {msg}\n")
+    return 2
+
+
 def cmd_analyze(args) -> int:
-    from .agent import ablation
+    from .agent import ABLATIONS, ablation
     from .render import insight_markdown, trace_markdown
 
     rf = _rf(args)
+    if args.profile not in rf.store.profiles:
+        return _fail(f"unknown profile {args.profile!r}; `refract profiles` lists them")
+    if args.ablation not in ABLATIONS:
+        return _fail(f"unknown ablation {args.ablation!r}; choose one of {', '.join(ABLATIONS)}")
+    if args.event and args.event not in rf.store.events:
+        return _fail(f"unknown event {args.event!r}; `refract events` lists them")
     if args.event:
         event = args.event
     elif args.title and (args.text or args.text_file):
+        if args.text_file and not Path(args.text_file).is_file():
+            return _fail(f"no such file: {args.text_file}")
         text = Path(args.text_file).read_text(encoding="utf-8") if args.text_file else args.text
         event = rf.news_from_text(args.title, text, publisher=args.publisher, url=args.url)
     else:
-        _out("Give --event ID, or --title with --text / --text-file.")
-        return 2
+        return _fail("give --event ID, or --title with --text / --text-file")
     cfg = (
         replace(ablation(args.ablation, rf.config), max_iterations=args.iterations)
         if args.iterations is not None
@@ -91,6 +103,8 @@ def cmd_analyze(args) -> int:
     if args.out:
         path = rf.save_run(run, args.out)
         sys.stderr.write(f"saved: {path}\n")
+    if not run.insight:
+        sys.stderr.write(f"no insight — {run.trace.failure_reason()}\n")
     if args.json:
         _out(run.insight.model_dump_json(indent=1) if run.insight else "null")
     else:
@@ -102,11 +116,15 @@ def cmd_analyze(args) -> int:
 
 def cmd_chat(args) -> int:
     from .render import chat_markdown
+    from .schemas import ChatTurn
 
+    if not Path(args.run).is_file():
+        return _fail(f"no such run file: {args.run}")
     rf = _rf(args)
     run = rf.load_run(args.run)
+    if run.insight is None:
+        return _fail(f"{args.run} holds a failed run without an insight — {run.trace.failure_reason()}")
     history = []
-    from .schemas import ChatTurn
 
     for q in args.q:
         res = rf.chat(run.insight.insight_id, q, history).response
@@ -162,25 +180,66 @@ def cmd_news(args) -> int:
 
 
 def cmd_eval(args) -> int:
+    import random
+
     from .eval import Experiment, load_pairs, make_pairs, save_pairs, write_report
+    from .eval.labels import export_labels, import_labels, is_human
 
     if args.step == "pairs":
         rf = _rf(args)
         pairs = make_pairs(rf, languages=args.languages.split(","))
+        total = len(pairs)
+        if args.sample is not None and args.sample < total:
+            pairs = sorted(random.Random(args.seed).sample(pairs, args.sample), key=lambda p: p.id)
         save_pairs(pairs, args.out)
-        _out(f"{len(pairs)} pairs → {args.out}")
+        _out(
+            f"{len(pairs)} pairs"
+            + (f" of {total} (seed {args.seed})" if len(pairs) < total else "")
+            + f" → {args.out}"
+        )
         return 0
     out = Path(args.out)
     pairs_path = Path(args.pairs) if args.pairs else out / "pairs.jsonl"
+    if not pairs_path.is_file():
+        return _fail(f"no pairs file {pairs_path}: run `refract eval pairs --out {pairs_path}` first")
     pairs = load_pairs(pairs_path)
+    if args.step == "label":
+        name = args.name or "human"
+        if args.action == "export":
+            try:
+                folder = export_labels(
+                    out,
+                    pairs,
+                    args.systems.split(",") if args.systems else None,
+                    sample=args.sample,
+                    seed=args.seed,
+                    name=name,
+                    institution=_rf(args).settings.institution,
+                    lang=args.lang or "ru",
+                    force=args.force,
+                )
+            except (FileExistsError, ValueError) as e:
+                return _fail(str(e))
+            n = len(list((folder / "items").glob("*.md")))
+            _out(
+                f"{n} answers to label → {folder}/sheet.csv (pages in {folder}/items, read {folder}/README.md)"
+            )
+            return 0
+        if args.action == "import":
+            try:
+                saved, empty, problems = import_labels(out, name, args.file)
+            except FileNotFoundError as e:
+                return _fail(str(e))
+            for p in problems:
+                _out(f"skipped {p}")
+            _out(f"{saved} labels saved as judge `{name}`; {empty} rows empty, {len(problems)} with problems")
+            return 0 if not problems else 1
+        return _fail("`eval label` needs `export` or `import`")
     if args.step == "report":
-        judges = (
-            args.judges.split(",")
-            if args.judges
-            else sorted(p.name for p in (out / "judge").iterdir())
-            if (out / "judge").exists()
-            else []
-        )
+        found = sorted(p.name for p in (out / "judge").iterdir()) if (out / "judge").exists() else []
+        # LLM judges first (the first one is primary), human labels after them
+        found = [j for j in found if not is_human(out, j)] + [j for j in found if is_human(out, j)]
+        judges = args.judges.split(",") if args.judges else found
         S = write_report(out, pairs, judges, args.reference)
         _out((out / "report.md").read_text(encoding="utf-8"))
         return 0 if S["systems"] else 1
@@ -334,8 +393,9 @@ def build_parser() -> argparse.ArgumentParser:
     nf.add_argument("--limit", type=int, default=30)
     nf.set_defaults(fn=cmd_news)
 
-    sp = sub.add_parser("eval", help="experiments: pairs → run → judge → report")
-    sp.add_argument("step", choices=["pairs", "run", "judge", "report"])
+    sp = sub.add_parser("eval", help="experiments: pairs → run → judge → (label) → report")
+    sp.add_argument("step", choices=["pairs", "run", "judge", "label", "report"])
+    sp.add_argument("action", nargs="?", choices=["export", "import"], help="for `label`")
     data_arg(sp)
     sp.add_argument("--out", required=True, help="experiment folder (for `pairs`: the pairs file)")
     sp.add_argument("--pairs", help="pairs file (default <out>/pairs.jsonl)")
@@ -348,7 +408,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--reference", default="full")
     sp.add_argument("--workers", type=int, default=4)
     sp.add_argument("--force", action="store_true")
-    sp.add_argument("--lang", choices=["ru", "en"])
+    sp.add_argument(
+        "--lang", choices=["ru", "en"], help="default language; for `label export` also of the instructions"
+    )
+    sp.add_argument("--sample", type=int, help="for `pairs` and `label export`: a random sample of this size")
+    sp.add_argument("--seed", type=int, default=0, help="seed of the sample")
+    sp.add_argument("--name", help="for `label`: the judge name of the labels (default human)")
+    sp.add_argument("--file", help="for `label import`: the filled sheet (default labels/<name>/sheet.csv)")
     sp.set_defaults(fn=cmd_eval)
 
     sp = sub.add_parser("serve", help="REST API (pip install 'refract-agent[api]')")

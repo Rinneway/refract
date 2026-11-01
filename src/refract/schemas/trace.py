@@ -79,6 +79,13 @@ class Trace(Contract):
     steps: list[TraceStep] = Field(default_factory=list)
     totals: TraceTotals = Field(default_factory=TraceTotals)
 
+    def failure_reason(self) -> str:
+        """Why a run gave no insight: the last failed step and its decisive (last) note."""
+        step = next((s for s in reversed(self.steps) if s.verdict == "failed"), None)
+        if step is None:
+            return "no insight"
+        return (f"{step.name}: {step.issues[-1]}" if step.issues else step.name)[:300]
+
     def recompute_totals(self, iterations: int | None = None) -> TraceTotals:
         """Sums over the steps; counters kept by the orchestrator (review, restoring, pruning) carry over."""
         old = self.totals

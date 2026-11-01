@@ -6,6 +6,18 @@ from refract.schemas import Profile
 from tests.conftest import DEMO, ROOT
 
 
+def test_cli_reports_bad_input_without_traceback(capsys, tmp_path) -> None:
+    base = ["analyze", "--data", str(DEMO), "--profile", "demo_coffee_ip"]
+    assert main([*base[:4], "nobody", "--event", "ev_rate_hold_ru"]) == 2
+    assert main([*base, "--event", "nope"]) == 2
+    assert main([*base, "--event", "ev_rate_hold_ru", "--ablation", "bogus"]) == 2
+    assert main([*base, "--title", "t", "--text-file", str(tmp_path / "missing.txt")]) == 2
+    assert main(["chat", "--run", str(tmp_path / "missing.json"), "--q", "?"]) == 2
+    err = capsys.readouterr().err
+    assert "unknown profile" in err and "unknown event" in err and "unknown ablation" in err
+    assert "Traceback" not in err
+
+
 def test_cli_demo_and_lists(capsys) -> None:
     assert main(["demo", "rate"]) == 0
     out = capsys.readouterr().out
@@ -18,6 +30,13 @@ def test_schema_export(tmp_path) -> None:
     assert main(["schemas", "--out", str(tmp_path)]) == 0
     schema = json.loads((tmp_path / "insight.schema.json").read_text(encoding="utf-8"))
     assert "house_view" in schema["properties"]
+    # docs/schemas is what integrators read: it must match the code (regenerate with `refract schemas`)
+    stale = [
+        p.name
+        for p in sorted(tmp_path.glob("*.json"))
+        if p.read_text(encoding="utf-8") != (ROOT / "docs" / "schemas" / p.name).read_text(encoding="utf-8")
+    ]
+    assert not stale, f"run `refract schemas`: {stale}"
 
 
 def test_demo_profiles_validate() -> None:

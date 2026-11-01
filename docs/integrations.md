@@ -17,7 +17,7 @@ Until the package is published, install from the repository: `pip install "refra
 from refract import Refract, AgentConfig, ablation
 from refract.render import insight_markdown, trace_markdown
 
-rf = Refract.from_dir("examples/demo")              # settings from .env / refract.toml
+rf = Refract.from_dir("examples/demo")  # settings from .env / refract.toml
 
 # an event from the store, or any text
 run = rf.analyze("demo_grain_farm", "ev_wheat_en", role="cfo", language="en")
