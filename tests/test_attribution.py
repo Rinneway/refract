@@ -14,6 +14,7 @@ from pathlib import Path
 
 from refract.agent import Agent, ablation, checks
 from refract.agent.context import profile_features
+from refract.config import Settings
 from refract.llm import ScriptedLLM
 from refract.schemas import (
     Action,
@@ -27,7 +28,7 @@ from refract.schemas import (
     SubjectClaim,
     VerificationIssue,
 )
-from refract.textutil import trim_sentence
+from refract.textutil import invented_numbers, trim_sentence
 from tests.conftest import NOW
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "qwen_usn_run.json").read_text(encoding="utf-8"))
@@ -239,3 +240,62 @@ def test_action_keeps_its_remaining_support() -> None:
     draft = draft.model_copy(update={"actions": [*draft.actions, two]})
     pruned = checks.drop_claims(draft, {"w1"})
     assert [(a.action_id, a.claim_ids) for a in pruned.actions] == [("a3", ["c1"])]
+
+
+EN_FIXTURE = json.loads(
+    (Path(__file__).parent / "fixtures" / "qwen_dollar_en_run.json").read_text(encoding="utf-8")
+)
+
+
+def test_percent_must_be_a_percent_in_the_context() -> None:
+    context = "Опубликовано 2026-10-20. Ставка 5% без вычетов."
+    assert invented_numbers(["общая ставка 20%"], context) == {20.0}
+    assert invented_numbers(["ставка 5% без вычетов"], context) == set()
+    assert invented_numbers(["20 октября"], context) == set()
+
+
+def test_revision_sees_the_softened_remarks_and_the_invented_percent(store, settings) -> None:
+    llm = ScriptedLLM({k: v if isinstance(v, list) else [v] for k, v in FIXTURE["run_3"].items()}, settings)
+    run = Agent(llm, store, settings=settings, now=lambda: NOW).run(
+        "demo_coffee_ip", "ev_usn_vat_ru", role="entrepreneur"
+    )
+    rule = next(s for s in run.trace.steps if s.name == "rule_check")
+    assert any("20.0" in i for i in rule.issues)  # “общая ставка 20%”: the 20 of a date does not count
+    findings = llm.messages["revise"][-1]["content"]
+    assert "[warning] w1: contradiction" in findings and "Смягчи" in findings
+    hyp = {c.claim_id for c in run.insight.all_claims() if c.origin is Origin.HYPOTHESIS}
+    assert hyp == {"w2", "o1"}  # “в профиле нет данных…” — an assumption, labelled as such
+
+
+def test_english_run_maps_keys_cites_numbers_and_drops_a_non_effect(store) -> None:
+    settings = Settings(api_key="scripted", language="en")
+    r = EN_FIXTURE["run_1"]
+    llm = ScriptedLLM(
+        {k: v if isinstance(v, list) else [v] for k, v in r.items() if not k.startswith("_")}, settings
+    )
+    run = Agent(llm, store, settings=settings, now=lambda: NOW).run(
+        "demo_building_materials", "ev_dollar_en", role="cfo", language="en"
+    )
+    attribution = next(s for s in run.trace.steps if s.name == "attribution")
+    assert any("'sector'] → [" in i and "'industry'" in i for i in attribution.issues)
+    assert any(i.startswith("w2:") and "src_demo_macro_2026q4_t1" in i for i in attribution.issues)  # its 14%
+    ins = run.insight
+    assert "o1" not in {o.claim_id for o in ins.opportunities}  # “…this is not a direct risk”
+    assert len(ins.headline) <= 160 and not ins.headline.endswith("…")
+
+
+def test_resolve_feature_aliases(store) -> None:
+    feats = profile_features(store.profiles["demo_building_materials"], "en")
+    assert checks.resolve_feature("sector", feats) == "industry"
+    assert checks.resolve_feature("loans", feats) == "products.loans"
+    assert checks.resolve_feature("cp_dev_101", feats) == "counterparties.customer.cp_dev_101"
+    assert checks.resolve_feature("weather", feats) is None
+
+
+def test_trim_sentence_cuts_at_a_bare_while() -> None:
+    text = (
+        "Demo Bank expects the dollar to stay strong, raising your import costs while warning of " + "x " * 50
+    )
+    assert (
+        trim_sentence(text, 160) == "Demo Bank expects the dollar to stay strong, raising your import costs"
+    )

@@ -81,20 +81,30 @@ def numbers(text: str) -> set[float]:
 _PERCENT = re.compile(r"\s?(%|п\.\s?п\.|pp\b|p\.p\.|percent|процент)", re.IGNORECASE)
 
 
+def percents(text: str) -> set[float]:
+    """Numbers written as percentages or percentage points (“20%”, “1,5 п.п.”, “5 percent”)."""
+    out: set[float] = set()
+    for m in NUM.finditer(text or ""):
+        if _PERCENT.match(text[m.end() : m.end() + 12]):
+            out |= _variants(m.group(0))
+    return out
+
+
 def invented_numbers(texts: list[str], context: str) -> set[float]:
     """Numbers from `texts` that do not occur in `context`.
 
-    Small integers (quarters, months, “two steps”) are ignored unless they are percentages: “2%” must come from a
-    source, “2 quarters” need not.
+    A percentage must occur in the context as a percentage: “20%” is not confirmed by the 20 in a date. Small
+    integers (quarters, months, “two steps”) are ignored unless they are percentages: “2%” must come from a source,
+    “2 quarters” need not.
     """
-    known = numbers(context)
+    known, known_pct = numbers(context), percents(context)
     out: set[float] = set()
     for t in texts:
         for m in NUM.finditer(t or ""):
             readings = _variants(m.group(0))
-            if readings & known:
-                continue
             percent = bool(_PERCENT.match(t[m.end() : m.end() + 12]))
+            if readings & (known_pct if percent else known):
+                continue
             if not percent and all(r.is_integer() and r <= 12 for r in readings):
                 continue
             out.add(min(readings))
@@ -142,7 +152,8 @@ def script_share(text: str, lang: str) -> float:
 
 # Where a sentence can end without losing its meaning: before “, но” / “, but”, a semicolon, a dash or a colon.
 _CLAUSE = re.compile(
-    r",\s+(?:но|а|однако|хотя|при этом|причём|but|while|although|whereas|yet)\b|;|\s[—–-]\s|:\s",
+    r",\s+(?:но|а|однако|хотя|при этом|причём|but|while|although|whereas|yet)\b|\s(?:while|whereas|but)\s"
+    r"|;|\s[—–-]\s|:\s",
     re.IGNORECASE,
 )
 

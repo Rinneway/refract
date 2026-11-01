@@ -130,7 +130,21 @@ _MSG = {
         "en": "the statement is not attributed to the institution",
     },
     "why_cited": {"ru": "ссылка на аналитику есть", "en": "a research source is cited"},
+    "no_effect": {
+        "ru": "{cid}: это не риск и не возможность — утверждение говорит, что эффекта нет",
+        "en": "{cid}: neither a risk nor an opportunity — the statement says there is no effect",
+    },
+    "no_effect_hint": {
+        "ru": "удали утверждение или перенеси мысль в why_it_matters",
+        "en": "delete it or move the thought to why_it_matters",
+    },
 }
+# A risk or an opportunity that says there is none (“…but this is not a direct risk”).
+_NO_EFFECT = re.compile(
+    r"не является (?:прямым |существенным |реальным )?риском|прямого риска нет|риска нет|не несет риска"
+    r"|is not a (?:direct |real |significant )?risk|not a direct risk|poses no (?:direct )?risk|no direct risk",
+    re.IGNORECASE,
+)
 
 
 def _m(key: str, lang: str, **kw: object) -> str:
@@ -177,6 +191,18 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
                     claim_id=c.claim_id,
                     message=_m("why_house", lang, cid=c.claim_id),
                     fix_hint=_m("why_house_hint", lang),
+                )
+            )
+
+    for e in [*content.risks, *content.opportunities]:
+        if _NO_EFFECT.search(normalize(e.text)):
+            issues.append(
+                VerificationIssue(
+                    code=IssueCode.SHALLOW,
+                    severity="error",
+                    claim_id=e.claim_id,
+                    message=_m("no_effect", lang, cid=e.claim_id),
+                    fix_hint=_m("no_effect_hint", lang),
                 )
             )
 
@@ -465,15 +491,19 @@ _QUOTED = re.compile(r'"[^"]*"|«[^»]*»|“[^”]*”')
 _WORDING = re.compile(
     r"не противоречит|не является противоречием|это не противоречие|слишком (?:категорич|сильн|уверен|общ)"
     r"|излишне (?:категорич|уверен)|чрезмерно (?:категорич|уверен)|смягч|более осторожн|осторожнее"
-    r"|интерпретаци|обобщени|перефразир|не прямой цитат|(?:необходимо|следует|нужно) уточнить"
+    r"|(?:является|это|лишь)\s+(?:\w+\s+){0,2}(?:интерпретаци|обобщени)|перефразир|не прямой цитат"
+    r"|(?:необходимо|следует|нужно) уточнить"
     r"|does not contradict|doesn't contradict|is not a contradiction|not a contradiction"
     r"|too (?:strong|categorical|certain|confident|broad)|overly (?:strong|categorical|certain|confident)"
-    r"|overstat|soften|more cautious|interpretation|paraphras|generali[sz]|should be clarified|clarif",
+    r"|overstat|soften|more cautious|(?:is|an?|only)\s+(?:\w+\s+){0,2}(?:interpretation|generali[sz]ation)"
+    r"|paraphras|should be clarified|needs? clarification",
     re.IGNORECASE,
 )
 _ASSUMPTION = re.compile(
-    r"предположени|допущени|не может быть выведено как факт|нет данных, подтверждающих|не подтвержд\w* данными"
-    r"|an assumption|is assumed|speculat|not supported by (?:the )?data|no data (?:to )?(?:support|confirm)",
+    r"предположени|допущени|не может быть выведено как факт|нет данных, подтверждающих"
+    r"|не подтвержда\w* (?:данными|профилем)|в профиле (?:\w+\s+){0,3}нет (?:данных|информации)"
+    r"|an assumption|is assumed|speculat|not supported by (?:the )?(?:data|profile)|no data (?:to )?(?:support|confirm)"
+    r"|the profile (?:does not|has no)",
     re.IGNORECASE,
 )
 _NO_SOURCE = re.compile(
@@ -507,12 +537,21 @@ def reconcile(
     lang = ctx.lang
     claims = {c.claim_id: c for c in content.all_claims()}
     research = {s.source_id for s in ctx.sources() if s.type is SourceType.RESEARCH}
+    context = ctx.render()
+    with_numbers = {cid for cid, c in claims.items() if invented_numbers([c.text], context)} | (
+        {HEADLINE} if invented_numbers([content.headline], context) else set()
+    )
     out, notes, kinds = [], [], {}
     for i in issues:
         cid = i.claim_id or ""
         c = claims.get(cid)
         why, kind = None, None
-        if i.severity == "error" and i.code in _RECONCILED and (c is not None or cid == HEADLINE):
+        if (
+            i.severity == "error"
+            and i.code in _RECONCILED
+            and (c is not None or cid == HEADLINE)
+            and cid not in with_numbers
+        ):
             text = _QUOTED.sub(" ", f"{i.message} {i.fix_hint or ''}")
             if _ASSUMPTION.search(text):
                 why, kind = "why_assumption", ("wording" if cid == HEADLINE else "assumption")
@@ -531,6 +570,14 @@ def reconcile(
         if kind and kinds.get(cid) != "assumption":
             kinds[cid] = kind
     return out, notes, kinds
+
+
+def for_revision(issues: list[VerificationIssue], kinds: dict[str, str]) -> list[VerificationIssue]:
+    """What the revision sees: every error, plus the reconciled remarks — when a round runs anyway, the model
+    softens the wording itself instead of code adding a caveat."""
+    return [
+        i for i in issues if i.severity == "error" or (i.code in _RECONCILED and (i.claim_id or "") in kinds)
+    ]
 
 
 def soften(
@@ -612,6 +659,14 @@ def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightCont
 
 _PREFIX = re.compile(r"^\s*(риск|возможность|risk|opportunity)\s*[:—-]\s*", re.IGNORECASE)
 _ATTR = {
+    "number_source": {
+        "ru": "{cid}: добавлен источник числа — {ids}",
+        "en": "{cid}: added the source of its number — {ids}",
+    },
+    "mapped": {
+        "ru": "{cid}: ключи признаков приведены к списку — {old} → {new}",
+        "en": "{cid}: feature keys mapped to the list — {old} → {new}",
+    },
     "features": {
         "ru": "{cid}: признаки определены кодом по тексту — {keys}",
         "en": "{cid}: features inferred by code from the text — {keys}",
@@ -698,7 +753,36 @@ def _source_texts(ctx: InsightContext) -> dict[str, str]:
         texts[f"src_{th.thesis_id}"] = f"{th.statement} {th.quote}"
     for c in ctx.research:
         texts[f"src_{c.chunk_id}"] = c.text
+    for r in ctx.related:
+        for a in r.articles:
+            texts[f"src_{a.article_id}"] = f"{a.title}. {r.summary}"
     return texts
+
+
+# Feature keys small models use instead of the listed ones.
+FEATURE_ALIASES = {
+    "sector": "industry", "industry_code": "industry", "okved": "industry", "nace": "industry",
+    "activity": "industry", "business": "industry", "revenue": "scale.revenue", "turnover": "scale.revenue",
+    "sales": "scale.revenue", "employees": "scale.employees", "staff": "scale.employees",
+    "headcount": "scale.employees", "segment": "scale.segment", "size": "scale.segment", "tax": "tax_regime",
+    "taxation": "tax_regime", "tax_system": "tax_regime", "location": "region", "city": "region",
+    "import": "foreign_trade", "imports": "foreign_trade", "export": "foreign_trade", "exports": "foreign_trade",
+    "trade": "foreign_trade",
+}  # fmt: skip
+SOURCE_WITH_PROFILE = 0.25  # an inference about the subject also rests on the source it partly retells
+
+
+def resolve_feature(key: str, features: list[tuple[str, str]]) -> str | None:
+    """A listed key for `key`: itself if known, an alias (sector → industry), or the one key ending in it
+    (loans → products.loans, cp_dev_101 → counterparties.customer.cp_dev_101)."""
+    if known_feature(key, features):
+        return key
+    k = key.strip().lower().replace(" ", "_")
+    alias = FEATURE_ALIASES.get(k)
+    if alias and known_feature(alias, features):
+        return alias
+    ends = [fk for fk, _ in features if fk.endswith("." + k)]
+    return ends[0] if len(ends) == 1 else None
 
 
 def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightContent, list[str]]:
@@ -706,15 +790,17 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
 
     - a statement without `features` (or with only unknown keys) gets the keys whose descriptions it visibly
       refers to — shared word stems or numbers; nothing is attached if nothing matches;
-    - a statement without sources gets the source it is nearly a retelling of (lexical support ≥ 0.5), or the
-      subject data if it now cites features;
+    - unknown feature keys are mapped to listed ones (sector → industry, loans → products.loans) or dropped;
+    - a statement without sources gets the source that contains all its numbers, else the source it is nearly a
+      retelling of (lexical support ≥ 0.5); a statement about the subject also cites the subject data, together
+      with the source it partly retells (≥ 0.25);
     - “Risk:” / “Возможность:” prefixes are removed from the text.
 
     Every change is reported for the trace; nothing is invented — only links to text that is already in context.
     """
     feats, lang = ctx.features(), ctx.lang
-    texts = _source_texts(ctx)
     profile_id = "src_profile"
+    texts = {**_source_texts(ctx), profile_id: " ".join([ctx.profile.summary, *(d for _, d in feats)])}
     notes: list[str] = []
 
     def fix(c, need_features: bool):
@@ -722,22 +808,56 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
         text = _PREFIX.sub("", c.text)
         if text != c.text and text:
             update["text"] = text[:1].upper() + text[1:]
-        missing = need_features and not any(known_feature(k, feats) for k in c.features)
+        features = c.features
+        if need_features and features and not all(known_feature(k, feats) for k in features):
+            resolved = list(dict.fromkeys(r for k in features if (r := resolve_feature(k, feats))))
+            if resolved != features:
+                notes.append(_ATTR["mapped"][lang].format(cid=c.claim_id, old=features, new=resolved))
+                update["features"] = features = resolved
+        missing = need_features and not any(known_feature(k, feats) for k in features)
         if missing and (keys := infer_features(c.text, feats)):
-            update["features"] = keys
+            update["features"] = features = keys
             notes.append(_ATTR["features"][lang].format(cid=c.claim_id, keys=keys))
+        scored = sorted(((lexical_support(c.text, t), sid) for sid, t in texts.items()), reverse=True)
+        has_numbers = bool(invented_numbers([c.text], ""))
         if not c.source_ids:
-            scored = sorted(((lexical_support(c.text, t), sid) for sid, t in texts.items()), reverse=True)
-            if (
+            by_numbers = [
+                sid for _, sid in scored if has_numbers and not invented_numbers([c.text], texts[sid])
+            ]
+            if by_numbers:
+                # A number found in several sources (a 14% forecast and a 14% payment share) cites both.
+                ids = by_numbers[:2]
+                update["source_ids"] = ids + ([profile_id] if features and profile_id not in ids else [])
+            elif (
                 scored
                 and scored[0][0] >= SOURCE_MIN_SUPPORT
                 and not invented_numbers([c.text], texts[scored[0][1]])
             ):
                 update["source_ids"] = [scored[0][1]]
-            elif update.get("features") or c.features:
-                update["source_ids"] = [profile_id]
+            elif features:
+                near = [
+                    sid
+                    for score, sid in scored[:1]
+                    if score >= SOURCE_WITH_PROFILE
+                    and sid != profile_id
+                    and not invented_numbers([c.text], texts[sid])
+                ]
+                update["source_ids"] = [*near, profile_id]
             if update.get("source_ids"):
                 notes.append(_ATTR["sources"][lang].format(cid=c.claim_id, ids=update["source_ids"]))
+        elif has_numbers:
+            # A number the cited sources do not contain is cited from where it is: “rates stay at 14%” citing only
+            # the subject data gets the forecast that says 14%.
+            cited = " ".join(texts.get(sid, "") for sid in c.source_ids)
+            if invented_numbers([c.text], cited):
+                more = [
+                    sid
+                    for _, sid in scored
+                    if sid not in c.source_ids and not invented_numbers([c.text], f"{cited} {texts[sid]}")
+                ]
+                if more:
+                    update["source_ids"] = [*c.source_ids, more[0]]
+                    notes.append(_ATTR["number_source"][lang].format(cid=c.claim_id, ids=more[:1]))
         return c.model_copy(update=update) if update else c
 
     new = content.model_copy(

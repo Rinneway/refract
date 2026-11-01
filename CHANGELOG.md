@@ -20,8 +20,12 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - Headlines: an over-long headline (in the draft or a rewrite) is cut at a clause boundary instead of being rejected; the fallback headline is the first conclusion about the subject; a softened headline is rewritten.
 - A house view repeated in “why it matters” is flagged by the rule check and removed at finalisation; an action stays while one of the statements it relies on stays.
 - Prompts: `verify-v7` — overstated certainty and self-described wording remarks are warnings; `insight-v9` — “why it matters” is the model's own conclusion, a bill or a proposal is written conditionally.
+- Numbers: a percentage in a statement must be a percentage in the context (“20%” is not confirmed by the 20 of a date); a statement's number is cited from the source that contains it.
+- Feature keys small models invent (`sector`, `revenue`, `loans`) are mapped to the listed ones.
+- A risk or opportunity that says there is no effect (“…this is not a direct risk”) is a rule error.
+- When a revision round runs anyway, the reviser also sees the reconciled wording remarks and softens the text itself.
 - Duplicate plan steps run once.
-- Regression tests replaying two real runs answer by answer (`tests/fixtures/qwen_usn_run.json`).
+- Regression tests replaying four real runs answer by answer, in Russian and English (`tests/fixtures/`).
 
 ## 0.1.0 — 2026-10-31
 

@@ -162,8 +162,8 @@ STRINGS: dict[str, dict[Language, str]] = {
         "en": "The review could not fully confirm this wording — check it against the source.",
     },
     "note.overstated": {
-        "ru": "Это вывод, а не установленный факт: проверка сочла формулировку слишком уверенной.",
-        "en": "An inference, not an established fact: the review found the wording too certain.",
+        "ru": "Формулировка может быть увереннее, чем позволяют данные.",
+        "en": "The wording may be more certain than the data allow.",
     },
     "note.assumption": {
         "ru": "Допущение: данных, чтобы его подтвердить, нет.",

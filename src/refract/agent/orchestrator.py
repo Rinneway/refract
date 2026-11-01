@@ -315,7 +315,7 @@ class Agent:
                     trace,
                     StepKind.REVISE,
                     "revise",
-                    revise_prompt.build_messages(ctx, draft, checks.errors(issues)),
+                    revise_prompt.build_messages(ctx, draft, checks.for_revision(issues, self._softened)),
                     InsightContent,
                 )
             draft = self._attribute(trace, ctx, res.value) or draft

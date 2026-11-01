@@ -6,7 +6,7 @@ from ..i18n import norm_lang
 from ..schemas import IMPACT_LEVEL_DEFINITIONS, ImpactLevel
 from . import output_language, rule
 
-VERSION = "insight-v9"
+VERSION = "insight-v10"
 
 SYSTEM = {
     "ru": """Ты — аналитик {institution_gen}. Ты готовишь персональный инсайт для читателя — руководителя компании, \
@@ -44,7 +44,8 @@ origin=hypothesis с оговоркой. В why_it_matters — только orig
 субъекта — отдельным утверждением origin=ai в why_it_matters или risks. Не склеивай прогнозы из разных документов: у \
 каждого документа своя дата, указывай её, если прогнозы расходятся.
 4. risks и opportunities: impact — {impact}; horizon — immediate (до месяца), short (1–3 месяца), medium (3–12 \
-месяцев), long (больше года).
+месяцев), long (больше года). Возможность — только реальная выгода для субъекта, риск — реальная угроза; если их нет, \
+оставь блок пустым и не пиши «это не прямой риск».
 5. actions: 1–3 конкретных шага для этого субъекта, а не общие советы. Можно: вопрос для дополнительного анализа, \
 операционное или финансовое решение, связаться с менеджером, запросить обратный звонок. Продукт (product) — только \
 из раздела «Действия по правилам», с тем же названием и только если выполнено условие правила; иначе product = \
@@ -107,7 +108,8 @@ the institution said, close to the thesis text, without your inferences ("which 
 the subject goes into a separate origin=ai statement in why_it_matters or risks. Do not merge forecasts from \
 different documents: each document has its own date; give it if the forecasts differ.
 4. risks and opportunities: impact — {impact}; horizon — immediate (up to a month), short (1–3 months), medium \
-(3–12 months), long (more than a year).
+(3–12 months), long (more than a year). An opportunity is a real upside for the subject, a risk a real threat; if \
+there is none, leave the block empty and do not write "this is not a direct risk".
 5. actions: 1–3 concrete steps for this subject, not generic advice. Allowed: a question for further analysis, an \
 operational or financial decision, contacting the manager, requesting a callback. A product only from the "Actions \
 allowed by policy" section, with the same name and only if the rule's condition holds; otherwise product = null. \
