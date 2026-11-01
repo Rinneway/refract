@@ -24,8 +24,9 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - Feature keys small models invent (`sector`, `revenue`, `loans`) are mapped to the listed ones.
 - A risk or opportunity that says there is no effect (“…this is not a direct risk”) is a rule error.
 - When a revision round runs anyway, the reviser also sees the reconciled wording remarks and softens the text itself.
+- A reviewer's “number not in sources” stands only if the number check finds it too; “not a settled fact” is read as a remark on wording.
 - Duplicate plan steps run once.
-- Regression tests replaying four real runs answer by answer, in Russian and English (`tests/fixtures/`).
+- Regression tests replaying five real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`).
 
 ## 0.1.0 — 2026-10-31
 

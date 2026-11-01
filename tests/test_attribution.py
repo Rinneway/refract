@@ -299,3 +299,27 @@ def test_trim_sentence_cuts_at_a_bare_while() -> None:
     assert (
         trim_sentence(text, 160) == "Demo Bank expects the dollar to stay strong, raising your import costs"
     )
+
+
+def test_stronger_reviewer_run_keeps_the_key_conclusion(store, settings) -> None:
+    # gemma4:12b: “не свершившийся факт” + “число не из источников” about 18 млн, which is in the subject data.
+    answers = {
+        k: v if isinstance(v, list) else [v] for k, v in FIXTURE["run_4"].items() if not k.startswith("_")
+    }
+    llm = ScriptedLLM(answers, settings)
+    run = Agent(llm, store, settings=settings, now=lambda: NOW).run(
+        "demo_coffee_ip", "ev_usn_vat_ru", role="entrepreneur"
+    )
+    why = {c.claim_id: c for c in run.insight.why_it_matters}
+    assert "w1" in why and why["w1"].caveat
+    # Its real catch stays: a1 compared VAT 5% with “УСН доходы” while the subject is on “доходы минус расходы”.
+    assert "a1" not in {a.action_id for a in run.insight.actions}
+    verify = [s for s in run.trace.steps if s.name == "verify"][-1]
+    assert any("number_not_in_sources" in i and "снято" in i for i in verify.issues)
+
+
+def test_number_findings_need_the_number_check() -> None:
+    llm = [_issue(IssueCode.NUMBER_NOT_IN_SOURCES, "w1"), _issue(IssueCode.NUMBER_NOT_IN_SOURCES, "w2")]
+    rule = [_issue(IssueCode.NUMBER_NOT_IN_SOURCES, "w2")]
+    out, _ = checks.overrule_structural(llm, rule, "ru")
+    assert [i.severity for i in out] == ["warning", "error"]

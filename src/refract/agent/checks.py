@@ -97,8 +97,8 @@ _MSG = {
     },
     "lifted": {"ru": " [снято кодом: совпадает с источником]", "en": " [lifted by code: matches the source]"},
     "structural": {
-        "ru": "{cid}: замечание «{code}» снято — ссылки и признаки проверены кодом, ошибки нет",
-        "en": "{cid}: finding “{code}” lifted — citations and features were checked by code and are fine",
+        "ru": "{cid}: замечание «{code}» снято — код проверяет это сам и ошибки не нашёл",
+        "en": "{cid}: finding “{code}” lifted — code checks this itself and found no problem",
     },
     "overruled": {
         "ru": " [снято кодом: структура в порядке]",
@@ -463,6 +463,7 @@ def confirm_by_sources(
 _STRUCTURAL = {
     IssueCode.UNKNOWN_SOURCE,
     IssueCode.MISSING_SOURCE,
+    IssueCode.NUMBER_NOT_IN_SOURCES,  # “a number absent from the context” is exactly what the number check tests
     IssueCode.DUPLICATE_ID,
     IssueCode.SCHEMA_ERROR,
     IssueCode.WRONG_LANGUAGE,
@@ -472,7 +473,8 @@ _STRUCTURAL = {
 def overrule_structural(
     issues: list[VerificationIssue], rule: list[VerificationIssue], lang: str = "ru"
 ) -> tuple[list[VerificationIssue], list[str]]:
-    """Small reviewers often claim a statement has no sources when it has. Such findings become warnings."""
+    """Small reviewers often claim a statement has no sources, or a number absent from the context, when the rule
+    check finds neither. Such findings become warnings."""
     found = {(i.code, i.claim_id) for i in rule}
     out, notes = [], []
     for i in issues:
@@ -492,7 +494,10 @@ _WORDING = re.compile(
     r"не противоречит|не является противоречием|это не противоречие|слишком (?:категорич|сильн|уверен|общ)"
     r"|излишне (?:категорич|уверен)|чрезмерно (?:категорич|уверен)|смягч|более осторожн|осторожнее"
     r"|(?:является|это|лишь)\s+(?:\w+\s+){0,2}(?:интерпретаци|обобщени)|перефразир|не прямой цитат"
-    r"|(?:необходимо|следует|нужно) уточнить"
+    r"|(?:необходимо|следует|нужно) уточнить|свершивш\w* факт|реш[её]нн\w* дел|установленн\w* факт"
+    r"|подан\w* как (?:факт|свершивш|реш[её]нн)"
+    r"|presented as (?:a )?(?:fact|settled|done)|not (?:yet )?(?:a |an )?(?:settled|established|accomplished) fact"
+    r"|done deal|not yet law"
     r"|does not contradict|doesn't contradict|is not a contradiction|not a contradiction"
     r"|too (?:strong|categorical|certain|confident|broad)|overly (?:strong|categorical|certain|confident)"
     r"|overstat|soften|more cautious|(?:is|an?|only)\s+(?:\w+\s+){0,2}(?:interpretation|generali[sz]ation)"
