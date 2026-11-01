@@ -70,6 +70,7 @@ def summarize(
             "judges": {},
             "by_language": {},
             **_process(ok.values(), objective),
+            "models": _models(ok.values()),
         }
         for lang in sorted({p.language for p in pairs}):
             subset = [p for p in pairs if p.language == lang]
@@ -182,6 +183,20 @@ def summarize(
     return S
 
 
+_MODEL_STEPS = ("plan", "draft_insight", "verify", "revise")
+
+
+def _models(runs) -> dict[str, dict[str, int]]:
+    """Step → {model id: calls} over the system's traces: a mix means answers were made with different models."""
+    out: dict[str, dict[str, int]] = {}
+    for v in runs:
+        for s in (v.get("trace") or {}).get("steps", []):
+            if s.get("model") and s.get("name") in _MODEL_STEPS:
+                step = out.setdefault(s["name"], {})
+                step[s["model"]] = step.get(s["model"], 0) + 1
+    return out
+
+
 def _process(runs, objective: list[dict]) -> dict[str, Any]:
     """How the agent got there: rounds, cache, what code did with the reviewer's findings and the statements."""
     totals = [(v.get("trace") or {}).get("totals") or {} for v in runs]
@@ -256,6 +271,21 @@ def render(S: dict[str, Any]) -> str:
         "the structure the reviewer doubted is fine, or the reviewer's own explanation calls it wording. Cached "
         "answers take 0 s, so latency is meaningful only with a fresh cache (`LLM_CACHE_DIR`).",
     ]
+    mixed = []
+    lines += ["", "## Models", "", "| System | Step | Models (calls) |", "|---|---|---|"]
+    for name, m in S["systems"].items():
+        for step, ids in m.get("models", {}).items():
+            cell = ", ".join(f"{k} ×{v}" for k, v in sorted(ids.items()))
+            if len(ids) > 1:
+                cell = f"**mixed:** {cell}"
+                mixed.append(f"`{name}` {step}")
+            lines.append(f"| `{name}` | {step} | {cell} |")
+    if mixed:
+        lines += [
+            "",
+            f"Warning: {', '.join(mixed)} were made with different models — rerun them with one configuration "
+            "before comparing.",
+        ]
     langs = sorted({lang for m in S["systems"].values() for lang in m.get("by_language", {})})
     if len(langs) > 1:
         lines += [

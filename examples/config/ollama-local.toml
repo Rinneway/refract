@@ -36,9 +36,14 @@ extra_body = { reasoning_effort = "none" }
 price_in = 0
 price_out = 0
 
+# Judges for `refract eval judge --judges judge,judge2`: families other than the author's (qwen) and the reviewer's
+# (gemma), so that no model grades its own work. ~9 GB each at Q4; with less VRAM use ministral-3:8b.
+# Both have no hidden reasoning, so no reasoning_effort here.
+[models.judge]
+id = "ministral-3:14b"
+
 [models.judge2]
-id = "qwen3.5:4b"
-extra_body = { reasoning_effort = "none" }
+id = "phi4:14b"
 
 [institution]
 name = "Demo Bank"

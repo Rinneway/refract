@@ -138,6 +138,8 @@ def _is_local(url: str) -> bool:
 def error_hint(error: str, client: LLMClient) -> str | None:
     """What to do about a failed call: a placeholder key on a remote endpoint, a missing model, no server."""
     s, url = client.settings, client.settings.base_urls[0]
+    if "HTTP 402" in error:
+        return f"{url} wants paid usage for this model (credits or a plan) — choose a model your plan covers, or a local one"
     if "HTTP 401" in error or "HTTP 403" in error:
         if not _is_local(url) and (s.api_key or "").lower() in ("ollama", "none", "x", "-"):
             return f"{url} needs a real key, but LLM_API_KEY is a placeholder for a local server"

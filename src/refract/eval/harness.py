@@ -112,6 +112,55 @@ class Experiment:
     def __post_init__(self) -> None:
         self.out = Path(self.out)
 
+    def manifest(self) -> dict[str, Any]:
+        """What the answers depend on besides the code: model ids behind the aliases and prompt versions."""
+        from ..prompts import headline, plan, revise, verify
+
+        s = self.rf.settings
+        return {
+            "models": {alias: s.model_id(alias) for alias in ("main", "verifier")},
+            "prompts": {
+                m.__name__.rsplit(".", 1)[-1]: m.VERSION
+                for m in (classify_prompt, plan, insight_prompt, verify, revise, headline)
+            },
+        }
+
+    def _manifest_from_runs(self) -> dict[str, Any] | None:
+        """For a folder made before manifests: the models its traces used most for drafting and review."""
+        seen: dict[str, dict[str, int]] = {"main": {}, "verifier": {}}
+        for f in (self.out / "runs").glob("*/*.json") if (self.out / "runs").exists() else []:
+            for step in ((_read(f) or {}).get("trace") or {}).get("steps", []):
+                alias = {"draft_insight": "main", "verify": "verifier"}.get(step.get("name"))
+                if alias and step.get("model"):
+                    seen[alias][step["model"]] = seen[alias].get(step["model"], 0) + 1
+        if not any(seen.values()):
+            return None
+        return {"models": {a: max(c, key=c.get) for a, c in seen.items() if c}, "prompts": {}}
+
+    def check_manifest(self) -> list[str]:
+        """Compare with the manifest of the experiment's first run; write it if this is the first run.
+
+        Answers made with different models or prompts in one folder are not comparable: a mismatch is reported
+        (not refused — a deliberate change is fine, a forgotten environment variable is not).
+        """
+        path = self.out / "manifest.json"
+        now = self.manifest()
+        old = _read(path) or self._manifest_from_runs()
+        if not (self.out / "manifest.json").exists():
+            _write(path, old or now)
+        if old is None:
+            return []
+        out = []
+        for kind in ("models", "prompts"):
+            for key, value in now[kind].items():
+                was = old.get(kind, {}).get(key)
+                if was is not None and was != value:
+                    out.append(
+                        f"WARNING: {kind[:-1]} {key} was {was} when {self.out} was started, now {value} — answers "
+                        "made before and after are not comparable (restore the config, or use a new --out)"
+                    )
+        return out
+
     # ------------------------------------------------------------------ helpers
 
     def _parallel(self, fn, items: list) -> None:
@@ -189,6 +238,10 @@ class Experiment:
         if unknown:
             raise ValueError(f"unknown systems {unknown}; choose from {list(SYSTEMS)}")
         tasks = [(s, p) for s in systems for p in self.pairs]
+        models = self.manifest()["models"]
+        self.log("models: " + ", ".join(f"{k}={v}" for k, v in models.items()))
+        for warning in self.check_manifest():
+            self.log(warning)
 
         def one(task) -> str:
             system, pair = task
@@ -319,12 +372,12 @@ class Experiment:
                     timeout_s=r.timeout_s,
                 )
             except LLMError as e:
-                if "HTTP 401" in str(e) or "HTTP 403" in str(e):
+                if _fatal(str(e)):
                     stop.append(error_hint(str(e), self.rf.llm) or str(e))
                     return f"stopped: {judge} — {stop[0]}"
                 raise
             if res.value is None:
-                if res.error and ("HTTP 401" in res.error or "HTTP 403" in res.error):
+                if res.error and _fatal(res.error):
                     stop.append(error_hint(res.error, self.rf.llm) or res.error)
                     return f"stopped: {judge} — {stop[0]}"
                 return f"{judge}/{system} {pair.id}: no score ({res.error}) — will be retried"
@@ -343,6 +396,11 @@ class Experiment:
         self._parallel(one, tasks)
         if stop:
             self.log(f"judging stopped, nothing was saved for the remaining answers: {stop[0]}")
+
+
+def _fatal(error: str) -> bool:
+    """Errors that every further call would repeat: a rejected key, no credits, no access."""
+    return any(f"HTTP {code}" in error for code in (401, 402, 403))
 
 
 def _text_of(content: dict) -> str:

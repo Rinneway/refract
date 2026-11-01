@@ -121,3 +121,55 @@ def test_judge_stops_on_a_rejected_key_and_saves_nothing(store, settings, tmp_pa
     exp.judge(["judge2", "verifier"])  # systems: only what was run (no single_call / retelling noise)
     assert len(calls) == 1 and not (tmp_path / "judge").exists()
     assert sum("stopped" in m for m in log) == 2 and not any("single_call" in m for m in log)
+
+
+def test_judge_stops_without_credits(store, settings, tmp_path) -> None:
+    from refract.llm import LLMError
+
+    def no_credits(messages, schema):
+        raise LLMError("gemma4:31b: HTTP 402: Add usage credits to use cloud models")
+
+    llm = ScriptedLLM(
+        {"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK], "*": [no_credits]},
+        settings,
+    )
+    log: list[str] = []
+    exp = Experiment(
+        Refract(store, llm=llm, settings=settings),
+        tmp_path,
+        [Pair("demo_building_materials", "ev_rate_hold_ru", "cfo", "ru")],
+        workers=1,
+        log=log.append,
+    )
+    exp.run(["full"])
+    exp.judge(["judge"])
+    assert any("credits or a plan" in m for m in log) and not (tmp_path / "judge").exists()
+
+
+def test_experiment_warns_when_models_change(store, settings, tmp_path) -> None:
+    import json as _json
+
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    pairs = [Pair("demo_building_materials", "ev_rate_hold_ru", "cfo", "ru")]
+    log: list[str] = []
+    exp = Experiment(Refract(store, llm=llm, settings=settings), tmp_path, pairs, workers=1, log=log.append)
+    exp.run(["full"])
+    assert any(m.startswith("models: main=") for m in log) and (tmp_path / "manifest.json").exists()
+    manifest = _json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    manifest["models"]["verifier"] = "gemma4:12b"  # the experiment was started with another reviewer
+    (tmp_path / "manifest.json").write_text(_json.dumps(manifest), encoding="utf-8")
+    assert any("verifier was gemma4:12b" in w for w in exp.check_manifest())
+    S = write_report(tmp_path, pairs, [], "full")
+    assert "verify" in S["systems"]["full"]["models"]
+    assert "## Models" in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+
+def test_manifest_of_an_older_folder_comes_from_its_traces(store, settings, tmp_path) -> None:
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    pairs = [Pair("demo_building_materials", "ev_rate_hold_ru", "cfo", "ru")]
+    exp = Experiment(
+        Refract(store, llm=llm, settings=settings), tmp_path, pairs, workers=1, log=lambda _: None
+    )
+    exp.run(["full"])
+    (tmp_path / "manifest.json").unlink()  # a folder from before manifests existed
+    assert exp.check_manifest() == [] and (tmp_path / "manifest.json").exists()

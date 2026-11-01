@@ -1,4 +1,8 @@
-# Ollama Cloud (free tier, no card): the models of the original experiments without a GPU.
+# Ollama Cloud: the models of the original experiments without a GPU.
+#
+# Since 31 Aug 2026 Ollama Cloud bills usage in credits. The Free plan includes starter credits for a small set of
+# starter models only; other models answer HTTP 402 ("Add usage credits") until credits or a plan are added. Check
+# which models your account may use on ollama.com before a run, and replace the ids below if needed.
 #
 #   1. sign up at ollama.com → Settings → Keys → create a key
 #   2. .env:  OLLAMA_API_KEY=<the key>   (LLM_API_KEY stays for the local server)
@@ -8,7 +12,7 @@
 # example an evaluation judged by cloud models:  refract --config examples/config/ollama-cloud.toml eval judge …
 # REFRACT_MODEL / REFRACT_VERIFIER_MODEL in the environment override the models below: clear them for cloud runs.
 #
-# The free tier runs one model at a time and has session limits: use `--workers 1` for experiments.
+# The Free plan runs one request at a time: use `--workers 1` for experiments.
 
 language = "ru"
 data_dir = "examples/demo"
