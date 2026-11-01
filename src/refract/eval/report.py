@@ -69,6 +69,7 @@ def summarize(
             else None,
             "judges": {},
             "by_language": {},
+            **_process(ok.values(), objective),
         }
         for lang in sorted({p.language for p in pairs}):
             subset = [p for p in pairs if p.language == lang]
@@ -181,6 +182,29 @@ def summarize(
     return S
 
 
+def _process(runs, objective: list[dict]) -> dict[str, Any]:
+    """How the agent got there: rounds, cache, what code did with the reviewer's findings and the statements."""
+    totals = [(v.get("trace") or {}).get("totals") or {} for v in runs]
+    agent = [t for t in totals if "llm_calls" in t]
+
+    def total(key: str) -> int | None:
+        have = [t[key] for t in agent if key in t]
+        return sum(have) if have else None
+
+    errors = total("reviewer_errors")
+    lifted = total("reviewer_errors_lifted")
+    steps = [s for v in runs for s in (v.get("trace") or {}).get("steps", []) if s.get("model")]
+    return {
+        "revisions_mean": mean([v.get("iterations", 0) for v in runs]) if agent else None,
+        "cached_share": sum(bool(s.get("cached")) for s in steps) / len(steps) if steps else None,
+        "claims_mean": mean([o["claims"] for o in objective if "claims" in o]) if objective else None,
+        "reviewer_errors_mean": errors / len(agent) if errors is not None and agent else None,
+        "lifted_share": lifted / errors if errors and lifted is not None else None,
+        "restored_mean": (total("restored") or 0) / len(agent) if total("restored") is not None else None,
+        "pruned_mean": (total("pruned") or 0) / len(agent) if total("pruned") is not None else None,
+    }
+
+
 def _f(x: Any, digits: int = 2) -> str:
     if x is None or (isinstance(x, float) and x != x):
         return "—"
@@ -213,6 +237,25 @@ def render(S: dict[str, Any]) -> str:
             f"{_pct(m.get('rule_error_rate'))} | {_f(m.get('invented_numbers_mean'))} | {_pct(m.get('language_ok_rate'))} | "
             f"{_f(m.get('cost_mean'), 4)} | {_f(m.get('latency_p50_s'), 0)} |"
         )
+    lines += [
+        "",
+        "## Process",
+        "",
+        "| System | LLM calls | Cached | Revisions | Statements | Reviewer errors | Lifted by code | Restored after revision | Pruned |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for name, m in S["systems"].items():
+        lines.append(
+            f"| `{name}` | {_f(m.get('llm_calls_mean'), 1)} | {_pct(m.get('cached_share'))} | {_f(m.get('revisions_mean'))} | "
+            f"{_f(m.get('claims_mean'), 1)} | {_f(m.get('reviewer_errors_mean'), 1)} | {_pct(m.get('lifted_share'))} | "
+            f"{_f(m.get('restored_mean'), 1)} | {_f(m.get('pruned_mean'), 1)} |"
+        )
+    lines += [
+        "",
+        "Means per answer. “Lifted by code” — reviewer errors turned into warnings: the statement matches its source, "
+        "the structure the reviewer doubted is fine, or the reviewer's own explanation calls it wording. Cached "
+        "answers take 0 s, so latency is meaningful only with a fresh cache (`LLM_CACHE_DIR`).",
+    ]
     langs = sorted({lang for m in S["systems"].values() for lang in m.get("by_language", {})})
     if len(langs) > 1:
         lines += [

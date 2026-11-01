@@ -351,6 +351,50 @@ def short_headline(content: InsightContent, limit: int = 160) -> str:
 REQUIRED_BLOCKS = ("what_happened", "why_it_matters")
 
 
+_BLOCKS = ("what_happened", "why_it_matters", "risks", "opportunities", "house_view")
+PATCH_SAME = 0.8  # a revised statement this close to an old one is that statement under a new id
+
+
+def merge_revision(
+    old: InsightContent, new: InsightContent, flagged: set[str]
+) -> tuple[InsightContent, list[str]]:
+    """A revision fixes what the review flagged; it must not rewrite the rest.
+
+    Small models often return a much shorter insight: unflagged risks, the house view or the actions disappear. A
+    statement or action that was not flagged and is missing from the revision comes back as it was, unless the
+    revision keeps it under another id (nearly the same text) or its id is now taken by another statement.
+    """
+    restored: list[str] = []
+    update: dict = {}
+    ids_new = {c.claim_id for c in new.all_claims()} | {a.action_id for a in new.actions}
+    texts_new = [c.text for c in new.all_claims()]
+    for block in _BLOCKS:
+        have = list(getattr(new, block))
+        for i, c in enumerate(getattr(old, block)):
+            if c.claim_id in flagged or c.claim_id in ids_new:
+                continue
+            if any(c.text == t or lexical_support(c.text, t) >= PATCH_SAME for t in texts_new):
+                continue
+            have.insert(min(i, len(have)), c)
+            restored.append(c.claim_id)
+        update[block] = have
+    present = {c.claim_id for b in _BLOCKS for c in update[b]}
+    actions = list(new.actions)
+    for i, a in enumerate(old.actions):
+        if a.action_id in flagged or a.action_id in ids_new or not set(a.claim_ids) <= present:
+            continue
+        if any(a.text == b.text or lexical_support(a.text, b.text) >= PATCH_SAME for b in new.actions):
+            continue
+        actions.insert(min(i, len(actions)), a)
+        restored.append(a.action_id)
+    update["actions"] = actions
+    if not new.scenarios and old.scenarios:
+        update["scenarios"] = old.scenarios
+    if not restored:
+        return new, []
+    return new.model_copy(update=update), restored
+
+
 def keep_required(
     pruned: InsightContent,
     draft: InsightContent,

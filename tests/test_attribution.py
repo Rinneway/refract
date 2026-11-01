@@ -329,7 +329,7 @@ SMOKE = json.loads((Path(__file__).parent / "fixtures" / "smoke_gemma12b.json").
 
 
 def smoke(store, key: str):
-    profile, event, role, lang = key.split("__")
+    profile, event, role, lang = key.split("__")[:4]
     settings = Settings(api_key="scripted", language=lang)
     llm = ScriptedLLM({k: v if isinstance(v, list) else [v] for k, v in SMOKE[key].items()}, settings)
     return Agent(llm, store, settings=settings, now=lambda: NOW).run(profile, event, role=role, language=lang)
@@ -358,3 +358,40 @@ def test_product_named_in_the_text_is_made_explicit(store) -> None:
     assert "b2" not in {
         c.claim_id for c in run.insight.house_view
     }  # the UK-exporters thesis is not for a farm
+
+
+def test_revision_is_a_patch_not_a_rewrite(store) -> None:
+    # The reviser answered a single (false) finding on c1 with 324 tokens: no risks, house view or actions left.
+    run = smoke(store, "demo_building_materials__ev_yuan_ru__cfo__en__rerun")
+    revise = next(s for s in run.trace.steps if s.name == "revise")
+    assert any("kept as they were" in i for i in revise.issues)
+    ins = run.insight
+    assert {r.claim_id for r in ins.risks} == {"r1", "r2"} and ins.opportunities and len(ins.house_view) == 2
+    assert {a.action_id for a in ins.actions} == {"a1", "a2"}
+    t = run.trace.totals
+    assert t.restored >= 8 and t.pruned >= 1 and t.reviewer_errors >= 1
+
+
+def test_merge_revision_respects_flags_and_renames() -> None:
+    old = _content()
+    a2 = Action(
+        action_id="a2",
+        text="Сравните налоговые режимы",
+        kind=ActionKind.ANALYSIS,
+        rationale="r",
+        claim_ids=["w1"],
+    )
+    old = old.model_copy(update={"actions": [old.actions[0], a2]})
+    renamed = SubjectClaim(claim_id="w9", text="y", origin=Origin.AI, features=["kind"], confidence=0.8)
+    new = old.model_copy(update={"why_it_matters": [renamed], "actions": []})
+    merged, restored = checks.merge_revision(old, new, flagged={"a2"})
+    assert [c.claim_id for c in merged.why_it_matters] == ["w9"]  # w1 lives on as w9
+    assert restored == []  # the actions relied on w1, now w9; a2 was flagged anyway
+    merged, restored = checks.merge_revision(old, old.model_copy(update={"actions": old.actions[:1]}), set())
+    assert restored == ["a2"] and [a.action_id for a in merged.actions] == ["a1", "a2"]
+
+
+def test_trace_counts_what_code_did_with_the_review(store, settings) -> None:
+    run = replay(store, settings, "run_2")
+    t = run.trace.totals
+    assert t.reviewer_errors == 4 and t.reviewer_errors_lifted == 4 and t.pruned == 0 and t.cached_calls == 0

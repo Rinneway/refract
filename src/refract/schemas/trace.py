@@ -43,12 +43,24 @@ class TraceStep(Contract):
 
 class TraceTotals(Contract):
     llm_calls: int = 0
+    cached_calls: int = Field(default=0, description="LLM calls answered from the disk cache (latency 0)")
     tool_calls: int = 0
     tokens_in: int = 0
     tokens_out: int = 0
     cost: float = 0.0
     latency_ms: int = 0
     iterations: int = 0
+    reviewer_errors: int = Field(
+        default=0, description="Error-level findings of the second model, all rounds"
+    )
+    reviewer_errors_lifted: int = Field(
+        default=0,
+        description="Of them, turned into warnings by code (matches the source, structure, wording)",
+    )
+    restored: int = Field(
+        default=0, description="Unflagged statements and actions a revision dropped and code kept"
+    )
+    pruned: int = Field(default=0, description="Statements and actions removed at finalisation")
 
 
 class Trace(Contract):
@@ -68,13 +80,20 @@ class Trace(Contract):
     totals: TraceTotals = Field(default_factory=TraceTotals)
 
     def recompute_totals(self, iterations: int | None = None) -> TraceTotals:
+        """Sums over the steps; counters kept by the orchestrator (review, restoring, pruning) carry over."""
+        old = self.totals
         self.totals = TraceTotals(
             llm_calls=sum(s.model is not None for s in self.steps),
+            cached_calls=sum(s.model is not None and s.cached for s in self.steps),
             tool_calls=sum(s.kind is StepKind.TOOL_CALL for s in self.steps),
             tokens_in=sum(s.tokens_in for s in self.steps),
             tokens_out=sum(s.tokens_out for s in self.steps),
             cost=round(sum(s.cost for s in self.steps), 6),
             latency_ms=sum(s.latency_ms for s in self.steps),
-            iterations=iterations if iterations is not None else self.totals.iterations,
+            iterations=iterations if iterations is not None else old.iterations,
+            reviewer_errors=old.reviewer_errors,
+            reviewer_errors_lifted=old.reviewer_errors_lifted,
+            restored=old.restored,
+            pruned=old.pruned,
         )
         return self.totals

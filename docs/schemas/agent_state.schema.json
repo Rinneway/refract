@@ -2118,6 +2118,12 @@
           "title": "Llm Calls",
           "type": "integer"
         },
+        "cached_calls": {
+          "default": 0,
+          "description": "LLM calls answered from the disk cache (latency 0)",
+          "title": "Cached Calls",
+          "type": "integer"
+        },
         "tool_calls": {
           "default": 0,
           "title": "Tool Calls",
@@ -2146,6 +2152,30 @@
         "iterations": {
           "default": 0,
           "title": "Iterations",
+          "type": "integer"
+        },
+        "reviewer_errors": {
+          "default": 0,
+          "description": "Error-level findings of the second model, all rounds",
+          "title": "Reviewer Errors",
+          "type": "integer"
+        },
+        "reviewer_errors_lifted": {
+          "default": 0,
+          "description": "Of them, turned into warnings by code (matches the source, structure, wording)",
+          "title": "Reviewer Errors Lifted",
+          "type": "integer"
+        },
+        "restored": {
+          "default": 0,
+          "description": "Unflagged statements and actions a revision dropped and code kept",
+          "title": "Restored",
+          "type": "integer"
+        },
+        "pruned": {
+          "default": 0,
+          "description": "Statements and actions removed at finalisation",
+          "title": "Pruned",
           "type": "integer"
         }
       },

@@ -177,6 +177,10 @@ STRINGS: dict[str, dict[Language, str]] = {
         "ru": "из «почему важно» убран повтор позиции института: {ids}",
         "en": "removed from “why it matters” as a repeat of the house view: {ids}",
     },
+    "note.restored_unflagged": {
+        "ru": "доработка выбросила утверждения без замечаний — оставлены как были: {ids}",
+        "en": "the revision dropped statements without findings — kept as they were: {ids}",
+    },
     "note.headline_rewritten": {
         "ru": "заголовок не прошёл проверку — переписан по проверенным утверждениям",
         "en": "headline failed review — rewritten from verified claims",

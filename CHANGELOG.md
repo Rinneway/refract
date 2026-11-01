@@ -28,8 +28,10 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - Research has a country scope: `countries` on theses and excerpts (document front matter `countries: RU`); subjects from other countries do not see them. A UK company no longer gets the Russian policy-rate forecast.
 - A house view that lost its source cites the thesis sharing its numbers, across languages.
 - Actions: a product named only in the text follows the policy like the `product` field (`product_patterns`); `contact_manager` without a manager in the text becomes `analysis` or `operational`.
+- A revision is a patch: statements and actions the review did not flag and the model dropped are kept (`checks.merge_revision`).
+- `Trace.totals` counts cached calls, the reviewer's errors and how many code lifted, statements restored after revision and pruned; the evaluation report has a Process table with them.
 - Duplicate plan steps run once.
-- Regression tests replaying thirteen real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`), including an 8-pair smoke evaluation.
+- Regression tests replaying fourteen real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`), including an 8-pair smoke evaluation.
 
 ## 0.1.0 — 2026-10-31
 

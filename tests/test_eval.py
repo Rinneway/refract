@@ -92,5 +92,8 @@ def test_experiment_end_to_end(store, settings, tmp_path) -> None:
         and "Agreement" in report
         and "By output language" in report
         and "en − ru" in report
+        and "## Process" in report
     )
+    assert full["revisions_mean"] is not None and full["reviewer_errors_mean"] is not None
+    assert retell["revisions_mean"] is None  # baselines have no agent process
     exp.run(["full"])  # resumable: nothing is recomputed

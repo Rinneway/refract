@@ -310,15 +310,26 @@ class Agent:
                     InsightContent,
                     route_name="draft_insight",
                 )
+                revised = res.value
             else:
+                findings = checks.for_revision(issues, self._softened)
                 res = self._llm(
                     trace,
                     StepKind.REVISE,
                     "revise",
-                    revise_prompt.build_messages(ctx, draft, checks.for_revision(issues, self._softened)),
+                    revise_prompt.build_messages(ctx, draft, findings),
                     InsightContent,
                 )
-            draft = self._attribute(trace, ctx, res.value) or draft
+                revised = res.value
+                if revised is not None:
+                    # A revision is a patch: what the review did not flag stays, even if the model dropped it.
+                    flagged = {i.claim_id for i in checks.errors(issues) if i.claim_id}
+                    revised, restored = checks.merge_revision(draft, revised, flagged)
+                    if restored:
+                        trace.totals.restored += len(restored)
+                        note = t("note.restored_unflagged", lang, ids=restored)
+                        trace.steps[-1].issues = [*trace.steps[-1].issues, note][:20]
+            draft = self._attribute(trace, ctx, revised) or draft
 
         # 5. Finalize.
         insight = self._finalize(trace, ctx, state, draft, issues)
@@ -450,6 +461,7 @@ class Agent:
             report=False,
         )
         llm_issues = res.value.issues if res.value else []
+        raw_errors = len(checks.errors(llm_issues))
         confirmed: list[str] = []
         if self.config.rule_checks:
             llm_issues, confirmed = checks.confirm_by_sources(llm_issues, draft, ctx)
@@ -459,6 +471,8 @@ class Agent:
                 confirmed += overruled
             llm_issues, reconciled, self._softened = checks.reconcile(llm_issues, draft, ctx)
             confirmed += reconciled
+        trace.totals.reviewer_errors += raw_errors
+        trace.totals.reviewer_errors_lifted += raw_errors - len(checks.errors(llm_issues))
         merged = checks.merge(rule, llm_issues)
         self._need_more = res.value.need_more_data if res.value else []
         trace.steps[-1].verdict = "ok" if not checks.errors(merged) else "issues"
@@ -496,6 +510,9 @@ class Agent:
                 pruned, restored = checks.keep_required(
                     checks.drop_claims(draft, bad), draft, hard, lang, dropped=bad
                 )
+                kept = {c.claim_id for c in pruned.all_claims()} | {a.action_id for a in pruned.actions}
+                gone = {c.claim_id for c in draft.all_claims()} | {a.action_id for a in draft.actions}
+                trace.totals.pruned += len(gone - kept)
                 draft = pruned
                 verdict, notes = "issues", [t("note.pruned", lang, ids=sorted(bad)), *restored]
             draft, fallback_notes = checks.fallback_blocks(draft, ctx)

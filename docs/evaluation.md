@@ -49,6 +49,8 @@ An event without factors is tagged once and the tags are shared by all systems (
 
 **By code** (no judge needed, `harness._objective`): rule errors that reach the reader (unknown sources, facts without sources, house views without research, unknown feature keys, invented numbers), invented numbers per answer, impact above the computed ceiling, cost, latency p50/p90, LLM calls.
 
+**Process** (from `Trace.totals`, a table of its own in the report): LLM calls, the share answered from the cache, revision rounds, statements in the answer, the reviewer's error-level findings, the share of them code turned into warnings, statements a revision dropped and code kept, statements pruned at finalisation. Cached answers take 0 s: measure latency with a fresh `LLM_CACHE_DIR`.
+
 **Against human labels** (if `gold_impact` is filled): accuracy and quadratic-weighted κ of the stated impact level.
 
 ## Statistics

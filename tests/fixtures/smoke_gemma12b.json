@@ -1,5 +1,5 @@
 {
- "_note": "Real answers of qwen3.5:9b (main) and gemma4:12b (verifier) via local Ollama on 8 demo pairs (refract eval run --systems full), in call order. Demo data only. Keys: profile__event__role__language.",
+ "_note": "Real answers of qwen3.5:9b (main) and gemma4:12b (verifier) via local Ollama on 8 demo pairs (refract eval run --systems full), in call order. Demo data only. Keys: profile__event__role__language. The __rerun entry is a second run of the same pair after the country scope change (its revision dropped most of the insight).",
  "demo_family_saver__ev_rate_hold_ru__individual__ru": {
   "plan": {
    "rationale": "Событие — сохранение ключевой ставки на уровне 14% — напрямую влияет на плавающую ипотеку семьи (увеличивает платеж) и доходность депозита, а также определяет стоимость будущего льготного кредита для пекарни.",
@@ -3013,6 +3013,311 @@
       ]
      }
     ]
+   }
+  ]
+ },
+ "demo_building_materials__ev_yuan_ru__cfo__en__rerun": {
+  "plan": {
+   "rationale": "The event describes a significant depreciation of the Chinese Yuan (CNY) against the Ruble, which directly impacts the subject's import costs since it imports goods from China. To assess the full impact, we need to understand the bank's official stance on this currency movement and its broader economic implications.",
+   "steps": [
+    {
+     "step_id": "s1",
+     "tool": "get_house_view",
+     "purpose": "Retrieve Demo Bank's research theses regarding the CNY depreciation, inflation, and commodity markets to establish a baseline for the event's interpretation.",
+     "args": {
+      "factors": [
+       "fx:CNY",
+       "inflation",
+       "commodities"
+      ],
+      "topics": [
+       "fx",
+       "inflation",
+       "commodities"
+      ],
+      "query": "CNY depreciation impact on imports and inflation Russia 2026",
+      "limit": 5
+     }
+    },
+    {
+     "step_id": "s2",
+     "tool": "get_counterparties",
+     "purpose": "Identify the specific industries of the subject's suppliers and customers to determine if the currency shift affects their supply chain stability or pricing power.",
+     "args": {
+      "role": "supplier",
+      "limit": 5
+     }
+    },
+    {
+     "step_id": "s3",
+     "tool": "get_counterparties",
+     "purpose": "Identify the specific industries of the subject's customers to evaluate how a weaker Yuan might influence demand for construction materials in the domestic market.",
+     "args": {
+      "role": "customer",
+      "limit": 5
+     }
+    },
+    {
+     "step_id": "s4",
+     "tool": "get_group",
+     "purpose": "Analyze the structure of the subject's corporate group to understand if other entities within the group are exposed to CNY or related sectors.",
+     "args": {}
+    }
+   ]
+  },
+  "draft_insight": [
+   {
+    "headline": "Cheaper yuan lowers your import costs, but volatility remains a risk for your cash flow.",
+    "what_happened": [
+     {
+      "claim_id": "c1",
+      "text": "The yuan depreciated to 11.35 rubles, the lowest level since April, representing an approximate 4% decline over the past month.",
+      "origin": "fact",
+      "confidence": 0.95,
+      "source_ids": [
+       "src_art_yuan_ru"
+      ]
+     },
+     {
+      "claim_id": "c2",
+      "text": "Market participants attribute this strengthening of the ruble to large sales of foreign currency revenue by exporters at the end of the tax period and reduced demand for currency from importers.",
+      "origin": "fact",
+      "confidence": 0.8,
+      "source_ids": [
+       "src_art_yuan_ru"
+      ]
+     }
+    ],
+    "why_it_matters": [
+     {
+      "claim_id": "w1",
+      "text": "Your import costs from China will decrease immediately as the yuan is cheaper, directly improving your gross margin on goods purchased by your largest supplier (14% of outgoing payments).",
+      "origin": "ai",
+      "features": [
+       "foreign_trade",
+       "counterparties.supplier.cp_import_309"
+      ],
+      "confidence": 0.85
+     },
+     {
+      "claim_id": "w2",
+      "text": "Since you hold loans and leasing with Demo Bank, the cost of servicing this debt remains tied to the policy rate; the currency move does not lower your interest expenses.",
+      "origin": "ai",
+      "features": [
+       "products.loans",
+       "products.leasing",
+       "policy_rate"
+      ],
+      "confidence": 0.95
+     },
+     {
+      "claim_id": "w3",
+      "text": "Your largest customer (developer) accounts for 31% of incoming payments; their revenue depends on construction sector demand, which is sensitive to the broader economic slowdown implied by the currency shift.",
+      "origin": "ai",
+      "features": [
+       "counterparties.customer.cp_dev_101",
+       "sector:41"
+      ],
+      "confidence": 0.75
+     }
+    ],
+    "overall_impact": "medium",
+    "overall_direction": "positive",
+    "risks": [
+     {
+      "claim_id": "r1",
+      "text": "The bank views the ruble strengthening as temporary; a reversal could spike your import costs again within the next quarter, disrupting budget planning.",
+      "origin": "ai",
+      "confidence": 0.6,
+      "kind": "risk",
+      "impact": "medium",
+      "horizon": "short",
+      "source_ids": [
+       "src_demo_macro_2026q4_t5"
+      ],
+      "caveat": "This assumes the bank's thesis on temporary strengthening holds true."
+     },
+     {
+      "claim_id": "r2",
+      "text": "If freight costs rise significantly, your margins could be squeezed despite cheaper currency, as logistics is a key risk for exporters' margins in this region.",
+      "origin": "ai",
+      "confidence": 0.5,
+      "kind": "risk",
+      "impact": "medium",
+      "horizon": "short",
+      "source_ids": [
+       "src_demo_fxcom_2026m10_t3"
+      ],
+      "caveat": "This applies if you rely on international freight for your Chinese imports."
+     }
+    ],
+    "opportunities": [
+     {
+      "claim_id": "o1",
+      "text": "You can lock in the current low yuan rate using FX forwards to secure lower procurement costs for the remainder of the year, protecting margins against potential volatility.",
+      "origin": "ai",
+      "confidence": 0.7,
+      "kind": "opportunity",
+      "impact": "medium",
+      "horizon": "short",
+      "source_ids": [
+       "src_art_yuan_ru"
+      ]
+     }
+    ],
+    "house_view": [
+     {
+      "claim_id": "b1",
+      "text": "Demo Bank expects the yuan to trade between 11.5 and 12.5 rubles in Q4 2026, suggesting the current dip below 11.35 is an outlier rather than a new trend.",
+      "origin": "house_view",
+      "confidence": 0.9,
+      "source_ids": [
+       "src_demo_macro_2026q4_t5"
+      ]
+     },
+     {
+      "claim_id": "b2",
+      "text": "The bank forecasts annual inflation to slow to 6.5% by the end of 2026 and 4.5% by the end of 2027, which may support a stable macro environment for your operations.",
+      "origin": "house_view",
+      "confidence": 0.9,
+      "source_ids": [
+       "src_demo_macro_2026q4_t4"
+      ]
+     }
+    ],
+    "actions": [
+     {
+      "action_id": "a1",
+      "text": "Contact your Demo Bank manager to discuss hedging the currency risk on your upcoming Chinese imports using FX forwards.",
+      "kind": "apply_product",
+      "rationale": "You trade abroad, so the exchange rate directly affects settlements; locking in a rate protects margins if the yuan rebounds.",
+      "product": "FX forward",
+      "claim_ids": [
+       "o1"
+      ]
+     },
+     {
+      "action_id": "a2",
+      "text": "Review your procurement contracts with Chinese suppliers to determine if price adjustments are needed based on the 4% currency drop.",
+      "kind": "operational",
+      "rationale": "Cheaper yuan lowers costs, but contract terms dictate how savings are realized or shared.",
+      "claim_ids": [
+       "c1"
+      ]
+     }
+    ]
+   }
+  ],
+  "verify": [
+   {
+    "passed": false,
+    "issues": [
+     {
+      "code": "contradiction",
+      "severity": "error",
+      "message": "The draft states that the yuan depreciated to 11.35 rubles, but the news source says it 'dropped below 11.4 rubles' and specifically 'reached 11.35 rubles' during the Tuesday session. However, the draft's claim c1 says it is the 'lowest level since April', while the news source says it is the 'minimum since April'. Wait, the news says 'minimum since April' (минимума с весны - minimum since spring). The draft says 'since April'. This is a minor discrepancy, but more importantly, the news says 'dropped below 11.4' and 'reached 11.35'. The draft is consistent with the number 11.35.",
+      "claim_id": "c1",
+      "fix_hint": "None needed for the number, but ensure 'spring' vs 'April' consistency if strict."
+     },
+     {
+      "code": "no_subject_link",
+      "severity": "warning",
+      "message": "The claim w3 links the currency shift to a 'broader economic slowdown'. The context does not provide data on a 'broader economic slowdown' caused by the currency shift; it only mentions the subject's sensitivity to the construction sector.",
+      "claim_id": "w3",
+      "fix_hint": "Remove the reference to a 'broader economic slowdown' and focus on the construction sector's sensitivity to the currency/macro environment as defined in the features."
+     },
+     {
+      "code": "house_view_without_research",
+      "severity": "warning",
+      "message": "The claim r2 mentions 'logistics is a key risk for exporters' margins in this region'. While the research source [src_demo_fxcom_2026m10_t3] mentions freight as a risk to exporters' margins, it does not specify 'in this region' (Sverdlovsk/Chelyabinsk).",
+      "claim_id": "r2",
+      "fix_hint": "Remove 'in this region' to align with the general research finding."
+     },
+     {
+      "code": "number_not_in_sources",
+      "severity": "warning",
+      "message": "The claim w1 mentions 'largest supplier (14% of outgoing payments)'. The context identifies the supplier with 14% of outgoing payments as 'supplier: industry unknown'. It does not explicitly state this is the 'largest' supplier. The largest supplier is the cement producer (22%).",
+      "claim_id": "w1",
+      "fix_hint": "Correct the claim to identify the correct supplier or clarify that it refers to the supplier with 14% share, not the 'largest' one."
+     }
+    ]
+   },
+   {
+    "passed": false,
+    "issues": [
+     {
+      "code": "contradiction",
+      "severity": "error",
+      "message": "The draft states that the cheaper yuan improves the margin on goods purchased from the 'largest supplier'. However, the context identifies the largest supplier as a cement producer (22% of outgoing payments), while the supplier associated with imports from China (which is affected by the yuan) accounts for 14% of outgoing payments.",
+      "claim_id": "w1",
+      "fix_hint": "Change 'largest supplier' to 'supplier from China' or 'supplier accounting for 14% of outgoing payments'."
+     },
+     {
+      "code": "no_subject_link",
+      "severity": "warning",
+      "message": "The link between the currency shift and the customer's revenue (w3) is presented as a 'broader economic slowdown'. The context does not provide data supporting a general economic slowdown; it only specifies that the customer's revenue depends on construction sector demand.",
+      "claim_id": "w3",
+      "fix_hint": "Remove the reference to 'broader economic slowdown' and focus on the construction sector demand sensitivity."
+     },
+     {
+      "code": "number_not_in_sources",
+      "severity": "warning",
+      "message": "The confidence score of 0.95 for c1 is an arbitrary value not derived from the source.",
+      "claim_id": "c1"
+     }
+    ]
+   }
+  ],
+  "revise": [
+   {
+    "headline": "Cheaper yuan lowers your import costs, but volatility remains a risk for your cash flow.",
+    "what_happened": [
+     {
+      "claim_id": "c1",
+      "text": "The yuan depreciated to 11.35 rubles during Tuesday's session, reaching the lowest level since spring.",
+      "origin": "fact",
+      "confidence": 0.95,
+      "caveat": null
+     }
+    ],
+    "why_it_matters": [
+     {
+      "claim_id": "w1",
+      "text": "Your import costs from China will decrease immediately as the yuan is cheaper, directly improving your gross margin on goods purchased by your largest supplier (14% of outgoing payments).",
+      "origin": "ai",
+      "features": [
+       "foreign_trade",
+       "counterparties.supplier.cp_import_309"
+      ],
+      "confidence": 0.85,
+      "caveat": null
+     },
+     {
+      "claim_id": "w2",
+      "text": "Since you hold loans and leasing with Demo Bank, the cost of servicing this debt remains tied to the policy rate; the currency move does not lower your interest expenses.",
+      "origin": "ai",
+      "features": [
+       "products.loans",
+       "products.leasing",
+       "policy_rate"
+      ],
+      "confidence": 0.95,
+      "caveat": null
+     },
+     {
+      "claim_id": "w3",
+      "text": "Your largest customer (developer) accounts for 31% of incoming payments; their revenue depends on construction sector demand, which is sensitive to the broader economic slowdown implied by the currency shift.",
+      "origin": "ai",
+      "features": [
+       "counterparties.customer.cp_dev_101",
+       "sector:41"
+      ],
+      "confidence": 0.75,
+      "caveat": null
+     }
+    ],
+    "overall_impact": "medium",
+    "overall_direction": "positive"
    }
   ]
  }
