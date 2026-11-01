@@ -97,3 +97,27 @@ def test_experiment_end_to_end(store, settings, tmp_path) -> None:
     assert full["revisions_mean"] is not None and full["reviewer_errors_mean"] is not None
     assert retell["revisions_mean"] is None  # baselines have no agent process
     exp.run(["full"])  # resumable: nothing is recomputed
+
+
+def test_judge_stops_on_a_rejected_key_and_saves_nothing(store, settings, tmp_path) -> None:
+    from refract.llm import LLMError
+
+    calls = []
+
+    def unauthorised(messages, schema):
+        calls.append(1)
+        raise LLMError("gemma4:31b: HTTP 401: Error code: 401 - Unauthorized")
+
+    llm = ScriptedLLM(
+        {"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK], "*": [unauthorised]},
+        settings,
+    )
+    rf = Refract(store, llm=llm, settings=settings)
+    pairs = [Pair("demo_building_materials", "ev_rate_hold_ru", "cfo", lang) for lang in ("ru", "en")]
+    log: list[str] = []
+    exp = Experiment(rf, tmp_path, pairs, workers=1, log=log.append)
+    exp.run(["full"])
+    log.clear()
+    exp.judge(["judge2", "verifier"])  # systems: only what was run (no single_call / retelling noise)
+    assert len(calls) == 1 and not (tmp_path / "judge").exists()
+    assert sum("stopped" in m for m in log) == 2 and not any("single_call" in m for m in log)

@@ -12,8 +12,10 @@ refract eval report --out runs/exp1 --reference full
 ```
 
 - `pairs` — every profile × every event × every language, with the default reader role for each subject kind. Edit the file to choose pairs, set roles or add human labels (`gold_impact`, `gold_relevant`).
-- `run` — writes `runs/<system>/<pair>.json`: the answer, the exact context the system saw, cost, latency, number of LLM calls, the trace (for agent variants) and code-computed metrics. Existing files are skipped (`--force` recomputes).
-- `judge` — writes `judge/<judge>/<system>/<pair>.json`. The judge sees the system's own context and its answer in one neutral form, without the system's name. The first judge is primary; the second is used for agreement.
+- `run` — writes `runs/<system>/<pair>.json`: the answer, the exact context the system saw, cost, latency, number of LLM calls, the trace (for agent variants) and code-computed metrics. Answered pairs are skipped (`--force` recomputes); failed ones are retried.
+- `judge` — writes `judge/<judge>/<system>/<pair>.json`. The judge sees the system's own context and its answer in one neutral form, without the system's name. The first judge is primary; the second is used for agreement. Only systems that were run are judged; a call that fails is not saved and is retried next time; a rejected key (HTTP 401/403) stops the step with a hint.
+
+Judges should come from neither the author's nor the reviewer's family. With local models the judge step can run on Ollama Cloud with its own config, the answers staying local: `refract --config examples/config/ollama-cloud.toml eval judge --out runs/exp1 --judges judge2,verifier` (the key goes to `OLLAMA_API_KEY`; clear `REFRACT_MODEL` / `REFRACT_VERIFIER_MODEL` first, `eval` prints a note when they override the config).
 - `report` — `report.md` and `summary.json`.
 
 An event without factors is tagged once and the tags are shared by all systems (`_events/`), so systems differ only in what is being compared.

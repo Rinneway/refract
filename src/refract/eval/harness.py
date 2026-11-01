@@ -30,7 +30,9 @@ from ..agent import checks as rule_checks
 from ..agent.chat import context_from_state
 from ..agent.context import InsightContext
 from ..agent.impact import ORDER, impact_cap
+from ..doctor import error_hint
 from ..facade import Refract
+from ..llm import LLMError
 from ..prompts import classify as classify_prompt
 from ..prompts import insight as insight_prompt
 from ..schemas import ImpactLevel, InsightContent, NewsEvent
@@ -117,7 +119,8 @@ class Experiment:
             futures = [pool.submit(fn, x) for x in items]
             for f in as_completed(futures):
                 try:
-                    self.log(f.result())
+                    if msg := f.result():
+                        self.log(msg)
                 except Exception as e:  # noqa: BLE001 — one failed pair must not stop the experiment
                     self.log(f"error: {type(e).__name__}: {e}")
 
@@ -190,8 +193,8 @@ class Experiment:
         def one(task) -> str:
             system, pair = task
             path = self.out / "runs" / system / f"{pair.id}.json"
-            if path.exists() and not force:
-                return f"{system} {pair.id}: cached"
+            if not force and (_read(path) or {}).get("content"):
+                return f"{system} {pair.id}: cached"  # a failed run is retried
             event = self.rf.store.events[pair.event_id]
             started = time.perf_counter()
             if system in ABLATIONS:
@@ -271,9 +274,17 @@ class Experiment:
     # ------------------------------------------------------------------ judge
 
     def judge(self, judges: Iterable[str], systems: Iterable[str] | None = None, force: bool = False) -> None:
+        """Score every system's answers. Only systems that were run are judged; a call that fails (no key, no
+        model) is not saved, so the next `judge` retries it; an authorisation error stops the whole step."""
         judges = list(judges)
-        systems = list(systems or sorted(p.name for p in (self.out / "runs").iterdir() if p.is_dir()))
+        ran = (
+            sorted(p.name for p in (self.out / "runs").iterdir() if p.is_dir())
+            if (self.out / "runs").exists()
+            else []
+        )
+        systems = [s for s in (systems or ran) if s in ran]
         tasks = [(j, s, p) for j in judges for s in systems for p in self.pairs]
+        stop: list[str] = []
         inst = {
             "institution": self.rf.settings.institution.display("en"),
             "institution_gen": self.rf.settings.institution.genitive("ru"),
@@ -282,11 +293,15 @@ class Experiment:
 
         def one(task) -> str:
             judge, system, pair = task
+            if stop:
+                return ""
             path = self.out / "judge" / _safe(judge) / system / f"{pair.id}.json"
-            if path.exists() and not force:
+            if not force and (_read(path) or {}).get("score") is not None:
                 return f"{judge}/{system} {pair.id}: cached"
             data = _read(self.out / "runs" / system / f"{pair.id}.json")
-            if not data or not data.get("content"):
+            if data is None:
+                return ""  # the pair was not run for this system
+            if not data.get("content"):
                 _write(path, {"score": None, "error": "no answer from the system"})
                 return f"{judge}/{system} {pair.id}: no answer"
             lang = pair.language
@@ -294,14 +309,25 @@ class Experiment:
             msgs = jp.judge_messages(
                 data["context"], jp.render_answer(data["content"], lang, names), lang, names
             )
-            res = self.rf.llm.chat_json(
-                judge,
-                msgs,
-                jp.JudgeScore,
-                max_tokens=r.max_tokens,
-                step=f"judge_{system}",
-                timeout_s=r.timeout_s,
-            )
+            try:
+                res = self.rf.llm.chat_json(
+                    judge,
+                    msgs,
+                    jp.JudgeScore,
+                    max_tokens=r.max_tokens,
+                    step=f"judge_{system}",
+                    timeout_s=r.timeout_s,
+                )
+            except LLMError as e:
+                if "HTTP 401" in str(e) or "HTTP 403" in str(e):
+                    stop.append(error_hint(str(e), self.rf.llm) or str(e))
+                    return f"stopped: {judge} — {stop[0]}"
+                raise
+            if res.value is None:
+                if res.error and ("HTTP 401" in res.error or "HTTP 403" in res.error):
+                    stop.append(error_hint(res.error, self.rf.llm) or res.error)
+                    return f"stopped: {judge} — {stop[0]}"
+                return f"{judge}/{system} {pair.id}: no score ({res.error}) — will be retried"
             _write(
                 path,
                 {
@@ -315,6 +341,8 @@ class Experiment:
             return f"{judge}/{system} {pair.id}: {res.value.overall if res.value else '—'}"
 
         self._parallel(one, tasks)
+        if stop:
+            self.log(f"judging stopped, nothing was saved for the remaining answers: {stop[0]}")
 
 
 def _text_of(content: dict) -> str:

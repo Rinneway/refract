@@ -1,8 +1,12 @@
 # Ollama Cloud (free tier, no card): the models of the original experiments without a GPU.
 #
 #   1. sign up at ollama.com → Settings → Keys → create a key
-#   2. .env:  LLM_API_KEY=<the key>
-#   3. copy this file to refract.toml and run `refract check`
+#   2. .env:  OLLAMA_API_KEY=<the key>   (LLM_API_KEY stays for the local server)
+#   3. refract --config examples/config/ollama-cloud.toml check
+#
+# The key is read from OLLAMA_API_KEY, so the same .env serves local runs and, with --config, cloud runs — for
+# example an evaluation judged by cloud models:  refract --config examples/config/ollama-cloud.toml eval judge …
+# REFRACT_MODEL / REFRACT_VERIFIER_MODEL in the environment override the models below: clear them for cloud runs.
 #
 # The free tier runs one model at a time and has session limits: use `--workers 1` for experiments.
 
@@ -11,6 +15,7 @@ data_dir = "examples/demo"
 
 [llm]
 base_urls = ["https://ollama.com/v1"]
+api_key_env = "OLLAMA_API_KEY"
 currency = "USD"
 timeout_s = 300
 timeout_scale = 2

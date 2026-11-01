@@ -184,11 +184,15 @@ def cmd_eval(args) -> int:
         S = write_report(out, pairs, judges, args.reference)
         _out((out / "report.md").read_text(encoding="utf-8"))
         return 0 if S["systems"] else 1
-    exp = Experiment(_rf(args), out, pairs, workers=args.workers)
+    rf = _rf(args)
+    for note in rf.settings.notes:
+        if "overrides" in note or "not set" in note:
+            _out(f"note: {note}")
+    exp = Experiment(rf, out, pairs, workers=args.workers)
     if not (out / "pairs.jsonl").exists():
         save_pairs(pairs, out / "pairs.jsonl")
     if args.step == "run":
-        exp.run(args.systems.split(","), force=args.force)
+        exp.run((args.systems or "full,single_call,retelling").split(","), force=args.force)
     elif args.step == "judge":
         exp.judge(
             args.judges.split(",") if args.judges else ["verifier"],
@@ -336,7 +340,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--out", required=True, help="experiment folder (for `pairs`: the pairs file)")
     sp.add_argument("--pairs", help="pairs file (default <out>/pairs.jsonl)")
     sp.add_argument("--languages", default="ru", help="for `pairs`: ru,en")
-    sp.add_argument("--systems", default="full,single_call,retelling")
+    sp.add_argument(
+        "--systems",
+        help="comma-separated; `run` default: full,single_call,retelling; `judge` default: every system that was run",
+    )
     sp.add_argument("--judges", help="model aliases or ids, comma-separated; the first is primary")
     sp.add_argument("--reference", default="full")
     sp.add_argument("--workers", type=int, default=4)

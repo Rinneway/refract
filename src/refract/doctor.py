@@ -83,7 +83,7 @@ def check_model(client: LLMClient, alias: str, context_tokens: int = 9000) -> Mo
         )
     except LLMError as e:
         rep.add("FAIL", f"no answer: {e}")
-        if hint := _error_hint(str(e), client):
+        if hint := error_hint(str(e), client):
             rep.add("HINT", hint)
         return rep
     seconds = time.perf_counter() - t0
@@ -135,7 +135,8 @@ def _is_local(url: str) -> bool:
     return any(h in url for h in ("localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"))
 
 
-def _error_hint(error: str, client: LLMClient) -> str | None:
+def error_hint(error: str, client: LLMClient) -> str | None:
+    """What to do about a failed call: a placeholder key on a remote endpoint, a missing model, no server."""
     s, url = client.settings, client.settings.base_urls[0]
     if "HTTP 401" in error or "HTTP 403" in error:
         if not _is_local(url) and (s.api_key or "").lower() in ("ollama", "none", "x", "-"):

@@ -13,7 +13,7 @@ Any endpoint that speaks the OpenAI Chat Completions API works.
 | LiteLLM proxy | your proxy URL | proxy key | cost is read from the `x-litellm-response-cost` header |
 | vLLM | `http://localhost:8000/v1` | any string | |
 | Ollama (local) | `http://localhost:11434/v1` | any string, e.g. `ollama` | set `OLLAMA_CONTEXT_LENGTH=16384`; ready config: [`examples/config/ollama-local.toml`](../examples/config/ollama-local.toml) |
-| Ollama Cloud | `https://ollama.com/v1` | a key from ollama.com → Settings → Keys | free tier, one model at a time; config: [`examples/config/ollama-cloud.toml`](../examples/config/ollama-cloud.toml) |
+| Ollama Cloud | `https://ollama.com/v1` | a key from ollama.com → Settings → Keys, in `OLLAMA_API_KEY` | free tier, one model at a time; config: [`examples/config/ollama-cloud.toml`](../examples/config/ollama-cloud.toml) reads the key from `OLLAMA_API_KEY` (`[llm].api_key_env`), so local and cloud configs share one `.env` |
 | LM Studio | `http://localhost:1234/v1` | any string | |
 
 Several URLs separated by commas form a failover chain: on a network error or HTTP 5xx the next URL is tried. HTTP 400/422 on a structured-output request makes the client retry in JSON mode and then with the JSON Schema written into the system prompt; the working mode is remembered per model.

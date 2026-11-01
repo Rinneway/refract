@@ -32,3 +32,19 @@ def test_defaults_without_config(monkeypatch, tmp_path) -> None:
     s = load_settings(tmp_path / "missing.toml", env_file=tmp_path / ".env")
     assert s.model_id("main") == s.model_id("verifier") == "gpt-4o-mini"
     assert s.route("draft_insight:fallback").max_tokens == 4000
+
+
+def test_cloud_config_reads_its_own_key(monkeypatch, tmp_path) -> None:
+    for var in ("LLM_BASE_URL", "LLM_BASE_URLS", "REFRACT_MODEL", "REFRACT_VERIFIER_MODEL", "OLLAMA_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("LLM_API_KEY", "ollama")  # the local placeholder stays in .env
+    env = tmp_path / ".env"
+    env.write_text("")
+    cloud = ROOT / "examples" / "config" / "ollama-cloud.toml"
+    s = load_settings(cloud, env_file=env)
+    assert s.api_key == "ollama" and any("OLLAMA_API_KEY is not set" in n for n in s.notes)
+    monkeypatch.setenv("OLLAMA_API_KEY", "sk-cloud")
+    monkeypatch.setenv("REFRACT_VERIFIER_MODEL", "gemma4:12b")
+    s = load_settings(cloud, env_file=env)
+    assert s.api_key == "sk-cloud" and s.base_urls == ("https://ollama.com/v1",)
+    assert any("REFRACT_VERIFIER_MODEL overrides" in n for n in s.notes)  # shown before `eval judge`

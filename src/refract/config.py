@@ -178,13 +178,20 @@ def load_settings(config_path: str | Path | None = None, *, env_file: str | Path
         notes.append("endpoints from LLM_BASE_URL (environment or .env)")
         if toml_urls and toml_urls != base_urls:
             notes.append(f"LLM_BASE_URL overrides [llm].base_urls = {list(toml_urls)} from {path}")
+    if (key_env := llm.get("api_key_env")) and not os.getenv(key_env):
+        notes.append(
+            f"[llm].api_key_env = {key_env} from {path}, but {key_env} is not set — using LLM_API_KEY"
+        )
     for var, alias in (("REFRACT_MODEL", "main"), ("REFRACT_VERIFIER_MODEL", "verifier")):
         if os.getenv(var) and alias in raw.get("models", {}):
             notes.append(f"{var} overrides [models.{alias}] from {path}")
     return Settings(
         notes=tuple(notes),
         language=norm_lang(os.getenv("REFRACT_LANGUAGE") or raw.get("language") or "ru"),
-        api_key=os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or llm.get("api_key"),
+        api_key=(os.getenv(llm["api_key_env"]) if llm.get("api_key_env") else None)
+        or os.getenv("LLM_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or llm.get("api_key"),
         base_urls=base_urls,
         timeout_s=float(os.getenv("LLM_TIMEOUT_S") or llm.get("timeout_s", 120)),
         timeout_scale=float(os.getenv("REFRACT_TIMEOUT_SCALE") or llm.get("timeout_scale", 1.0)),
