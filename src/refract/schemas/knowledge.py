@@ -21,6 +21,12 @@ class Figure(Contract):
     period: str | None = None
 
 
+def applies_to(countries: list[str], country: str | None) -> bool:
+    """A thesis or excerpt tied to other economies does not apply to the subject (a Russian policy-rate forecast
+    says nothing about a UK company's loan); one tied to no country applies everywhere."""
+    return not countries or not country or country.upper() in {c.upper() for c in countries}
+
+
 class Thesis(Contract):
     """A position of the institution on a topic, with numbers and the exact quote it rests on."""
 
@@ -37,6 +43,11 @@ class Thesis(Contract):
     page: int | None = Field(default=None, ge=1)
     quote: str = Field(description="Exact quote from the document")
     language: str = "ru"
+    countries: list[str] = Field(
+        default_factory=list,
+        description="ISO 3166-1 alpha-2 codes of the economies the thesis is about (a central bank's rate, a tax "
+        "rule, UK exporters → GB); empty — not tied to a country",
+    )
     is_stale: bool = Field(default=False, description="The document is too old for current conclusions")
 
 
@@ -50,4 +61,7 @@ class KnowledgeChunk(Contract):
     page: int | None = Field(default=None, ge=1)
     text: str
     language: str = "ru"
+    countries: list[str] = Field(
+        default_factory=list, description="ISO codes of the economies the document is about; empty — any"
+    )
     tags: list[str] = Field(default_factory=list)

@@ -18,6 +18,7 @@ from datetime import date
 from pathlib import Path
 
 from ..schemas import KnowledgeChunk, NewsEvent, Profile, Thesis
+from ..schemas.knowledge import applies_to
 from .ingest import read_documents, split_chunks
 from .search import BM25, Embedder, HybridIndex
 
@@ -102,23 +103,29 @@ class DataStore:
 
     # ---------- research
 
-    def search_chunks(self, query: str, k: int = 3) -> list[KnowledgeChunk]:
+    def search_chunks(self, query: str, k: int = 3, country: str | None = None) -> list[KnowledgeChunk]:
         if not self._chunk_index:
             return []
         fresh = [
             (i, s)
-            for i, s in self._chunk_index.top(query, k * 3)
-            if not self.is_stale(self.chunks[i].doc_date)
+            for i, s in self._chunk_index.top(query, k * 6)
+            if not self.is_stale(self.chunks[i].doc_date) and applies_to(self.chunks[i].countries, country)
         ]
         return [self.chunks[i] for i, _ in fresh[:k]]
 
-    def find_theses(self, factors: list[str], topics: list[str], query: str = "", k: int = 6) -> list[Thesis]:
-        """Theses by matching factors and topics plus text search; fresh documents first, stale ones last."""
+    def find_theses(
+        self, factors: list[str], topics: list[str], query: str = "", k: int = 6, country: str | None = None
+    ) -> list[Thesis]:
+        """Theses by matching factors and topics plus text search; fresh documents first, stale ones last.
+
+        With `country`, theses tied to other economies are skipped."""
         text_scores = (
             self._thesis_index.scores(query) if (self._thesis_index and query) else [0.0] * len(self.theses)
         )
         ranked = []
         for t, ts in zip(self.theses, text_scores, strict=True):
+            if not applies_to(t.countries, country):
+                continue
             score = 2.0 * len(set(t.factors) & set(factors)) + 1.5 * (t.topic in topics) + 0.5 * ts
             if score > 0:
                 stale = t.is_stale or self.is_stale(t.doc_date)

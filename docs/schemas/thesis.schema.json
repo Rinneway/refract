@@ -145,6 +145,14 @@
       "title": "Language",
       "type": "string"
     },
+    "countries": {
+      "description": "ISO 3166-1 alpha-2 codes of the economies the thesis is about (a central bank's rate, a tax rule, UK exporters → GB); empty — not tied to a country",
+      "items": {
+        "type": "string"
+      },
+      "title": "Countries",
+      "type": "array"
+    },
     "is_stale": {
       "default": false,
       "description": "The document is too old for current conclusions",

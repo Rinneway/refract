@@ -6,7 +6,11 @@ A document may start with a small front matter block:
     title: Policy rate outlook
     date: 2026-10-01
     language: en
+    countries: GB
     ---
+
+`countries` (ISO codes, comma-separated) ties the document to economies: its excerpts and theses are not used for
+subjects from other countries. Without it the document applies everywhere.
 
 Without it the title is the first heading or the file name, and the date is unknown. PDFs keep page numbers, so
 the house view can cite “p. 3”; Markdown files are split by `## ` headings, and the section number plays the role
@@ -34,6 +38,11 @@ class Document:
     language: str
     pages: list[tuple[int, str]] = field(default_factory=list)  # (page or section number, text)
     path: Path | None = None
+    countries: list[str] = field(default_factory=list)
+
+
+def _countries(value: str | None) -> list[str]:
+    return [c.strip().upper() for c in re.split(r"[,;\s]+", value or "") if c.strip()]
 
 
 def _front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -73,6 +82,7 @@ def read_text_document(path: Path) -> Document:
         language=meta.get("language") or _guess_lang(body),
         pages=[(i, s.strip()) for i, s in enumerate(sections, 1)],
         path=path,
+        countries=_countries(meta.get("countries")),
     )
 
 
@@ -124,6 +134,7 @@ def split_chunks(doc: Document, max_chars: int = CHUNK_CHARS) -> list[KnowledgeC
                             page=page,
                             text=buf,
                             language=doc.language,
+                            countries=doc.countries,
                         )
                     )
                 buf = ""

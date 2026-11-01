@@ -149,3 +149,38 @@ def test_policy_files_are_complete() -> None:
             assert rule.product("ru") and rule.product("en")
         for f in rule.when.get("factors", []):
             assert is_known_factor(f.replace(":*", ":x")), f
+
+
+def test_products_named_in_the_text_follow_the_policy(store) -> None:
+    from refract.schemas import EventType
+
+    p, e = store.profiles["demo_building_materials"], store.events["ev_rate_hold_ru"]
+    cands = candidate_actions(p, e)
+    hidden = Action(action_id="a1", text="Оформите факторинг", kind=ActionKind.ANALYSIS, rationale="r")
+    offered = Action(
+        action_id="a2",
+        text="Разместите свободные деньги на депозит",
+        kind=ActionKind.FINANCIAL,
+        rationale="r",
+    )
+    out, notes = enforce_actions(content([hidden, offered]), cands, e, lang="ru")
+    assert [(a.action_id, a.product) for a in out.actions] == [("a2", "Депозит или неснижаемый остаток")]
+    assert any("a1" in n and "factoring" in n for n in notes)
+    tax = e.model_copy(update={"event_type": EventType.TAX})
+    out, _ = enforce_actions(content([offered]), cands, tax, lang="ru")
+    assert "a2" not in {a.action_id for a in out.actions}  # no products for tax events, not even in the text
+
+
+def test_contact_manager_must_involve_the_manager(store) -> None:
+    p, e = store.profiles["demo_building_materials"], store.events["ev_rate_hold_ru"]
+    own = Action(
+        action_id="a1", text="Review your cash-flow forecast", kind=ActionKind.CONTACT_MANAGER, rationale="r"
+    )
+    bank = Action(
+        action_id="a2", text="Ask your Demo Bank manager", kind=ActionKind.CONTACT_MANAGER, rationale="r"
+    )
+    out, _ = enforce_actions(content([own, bank]), candidate_actions(p, e), e, lang="en")
+    assert [(a.action_id, a.kind) for a in out.actions] == [
+        ("a1", ActionKind.ANALYSIS),
+        ("a2", ActionKind.CONTACT_MANAGER),
+    ]

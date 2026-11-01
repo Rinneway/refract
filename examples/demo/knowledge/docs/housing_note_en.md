@@ -3,6 +3,7 @@ id: demo_housing_2026
 title: Demo Bank Research — Housing market note
 date: 2026-09-15
 language: en
+countries: RU
 ---
 
 # Demo Bank Research — Housing market note

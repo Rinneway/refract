@@ -25,8 +25,11 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - A risk or opportunity that says there is no effect (“…this is not a direct risk”) is a rule error.
 - When a revision round runs anyway, the reviser also sees the reconciled wording remarks and softens the text itself.
 - A reviewer's “number not in sources” stands only if the number check finds it too; “not a settled fact” is read as a remark on wording.
+- Research has a country scope: `countries` on theses and excerpts (document front matter `countries: RU`); subjects from other countries do not see them. A UK company no longer gets the Russian policy-rate forecast.
+- A house view that lost its source cites the thesis sharing its numbers, across languages.
+- Actions: a product named only in the text follows the policy like the `product` field (`product_patterns`); `contact_manager` without a manager in the text becomes `analysis` or `operational`.
 - Duplicate plan steps run once.
-- Regression tests replaying five real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`).
+- Regression tests replaying thirteen real runs answer by answer, in Russian and English, with gemma4:e4b and gemma4:12b as reviewers (`tests/fixtures/`), including an 8-pair smoke evaluation.
 
 ## 0.1.0 — 2026-10-31
 

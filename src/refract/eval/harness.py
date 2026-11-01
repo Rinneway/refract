@@ -245,7 +245,8 @@ class Experiment:
             structured = False
         else:  # single_call
             ev = self.classified(event, pair.language)
-            theses = rf.store.find_theses(ev.macro_factors, [], ev.title, k=6)
+            country = rf.store.profiles[pair.profile_id].country
+            theses = rf.store.find_theses(ev.macro_factors, [], ev.title, k=6, country=country)
             ctx = self._ctx(pair, ev, theses)
             res = rf.llm.chat_json(
                 r.model,

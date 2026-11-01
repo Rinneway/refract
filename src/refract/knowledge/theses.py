@@ -100,6 +100,7 @@ def to_theses(
                 page=page,
                 quote=d.quote,
                 language=doc.language,
+                countries=doc.countries,
                 is_stale=stale,
             )
         )

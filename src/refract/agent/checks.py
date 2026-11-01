@@ -513,7 +513,7 @@ _ASSUMPTION = re.compile(
 )
 _NO_SOURCE = re.compile(
     r"нет (?:явной )?ссылк|нет ссылок|отсутству\w* ссылк|без ссылк|не указан\w* источник"
-    r"|no (?:source|citation|reference)|does not cite|missing (?:source|citation)",
+    r"|no (?:\w+ )?(?:source|citation|reference)|does not cite|missing (?:source|citation)",
     re.IGNORECASE,
 )
 _RECONCILED = {IssueCode.CONTRADICTION, IssueCode.HOUSE_VIEW_WITHOUT_RESEARCH}
@@ -664,6 +664,10 @@ def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightCont
 
 _PREFIX = re.compile(r"^\s*(риск|возможность|risk|opportunity)\s*[:—-]\s*", re.IGNORECASE)
 _ATTR = {
+    "house_source": {
+        "ru": "{cid}: позиции института добавлен источник из аналитики — {ids}",
+        "en": "{cid}: the house view now cites its research source — {ids}",
+    },
     "number_source": {
         "ru": "{cid}: добавлен источник числа — {ids}",
         "en": "{cid}: added the source of its number — {ids}",
@@ -777,6 +781,16 @@ FEATURE_ALIASES = {
 SOURCE_WITH_PROFILE = 0.25  # an inference about the subject also rests on the source it partly retells
 
 
+def _evidence_numbers(text: str) -> set[float]:
+    """Numbers that identify a source: not small counts and not years (a forecast “for 2026” is everywhere)."""
+    return {n for n in numbers(text) if not (n.is_integer() and (n <= 12 or 1900 <= n <= 2100))}
+
+
+HOUSE_MIN_SUPPORT = (
+    0.6  # without shared numbers, only a near-retelling: a loose match would launder a misattribution
+)
+
+
 def resolve_feature(key: str, features: list[tuple[str, str]]) -> str | None:
     """A listed key for `key`: itself if known, an alias (sector → industry), or the one key ending in it
     (loans → products.loans, cp_dev_101 → counterparties.customer.cp_dev_101)."""
@@ -799,6 +813,9 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
     - a statement without sources gets the source that contains all its numbers, else the source it is nearly a
       retelling of (lexical support ≥ 0.5); a statement about the subject also cites the subject data, together
       with the source it partly retells (≥ 0.25);
+    - a house view without a research source cites the thesis or excerpt sharing its numbers (two, or the only one;
+      across languages; a number from the news does not block the match), else
+      the one it nearly retells (≥ 0.6); a statement crediting the institution looks for its source in research first;
     - “Risk:” / “Возможность:” prefixes are removed from the text.
 
     Every change is reported for the trace; nothing is invented — only links to text that is already in context.
@@ -807,6 +824,7 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
     profile_id = "src_profile"
     texts = {**_source_texts(ctx), profile_id: " ".join([ctx.profile.summary, *(d for _, d in feats)])}
     notes: list[str] = []
+    research = {sr.source_id for sr in ctx.sources() if sr.type is SourceType.RESEARCH} & set(texts)
 
     def fix(c, need_features: bool):
         update: dict = {}
@@ -823,9 +841,30 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
         if missing and (keys := infer_features(c.text, feats)):
             update["features"] = features = keys
             notes.append(_ATTR["features"][lang].format(cid=c.claim_id, keys=keys))
-        scored = sorted(((lexical_support(c.text, t), sid) for sid, t in texts.items()), reverse=True)
+        # A house view, or a statement crediting the institution, rests on its research: look there first.
+        house = c.origin is Origin.HOUSE_VIEW
+        pool = research if (house or _names_institution(c.text, ctx)) else set(texts)
+        scored = sorted(
+            ((lexical_support(c.text, t), sid) for sid, t in texts.items() if sid in pool), reverse=True
+        )
+        if not house and not scored:
+            scored = sorted(((lexical_support(c.text, t), sid) for sid, t in texts.items()), reverse=True)
         has_numbers = bool(invented_numbers([c.text], ""))
-        if not c.source_ids:
+        if house and not set(c.source_ids) & research:
+            # “house view without research” is a rule error: cite the thesis sharing the statement's numbers (this
+            # works across languages; a number taken from the news does not block it), else the one it retells.
+            own = _evidence_numbers(c.text)
+            need = min(2, len(own))
+            by_numbers = sorted(
+                ((len(own & numbers(texts[sid])), score, sid) for score, sid in scored), reverse=True
+            )
+            pick = [sid for shared, _, sid in by_numbers[:1] if need and shared >= need] or [
+                sid for score, sid in scored[:1] if score >= HOUSE_MIN_SUPPORT
+            ]
+            if pick:
+                update["source_ids"] = [*c.source_ids, *pick]
+                notes.append(_ATTR["house_source"][lang].format(cid=c.claim_id, ids=pick))
+        elif not c.source_ids:
             by_numbers = [
                 sid for _, sid in scored if has_numbers and not invented_numbers([c.text], texts[sid])
             ]
@@ -871,6 +910,7 @@ def attribute(content: InsightContent, ctx: InsightContext) -> tuple[InsightCont
             "why_it_matters": [fix(c, True) for c in content.why_it_matters],
             "risks": [fix(c, True) for c in content.risks],
             "opportunities": [fix(c, True) for c in content.opportunities],
+            "house_view": [fix(c, False) for c in content.house_view],
         }
     )
     return new, notes

@@ -189,7 +189,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          98 tests on a scripted model — no network needed
+tests/          104 tests on a scripted model — no network needed
 ```
 
 ## Data and confidentiality

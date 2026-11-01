@@ -46,8 +46,8 @@ NACE Rev. 2 and OKVED 2 share sections (A–U) and two-digit divisions, so profi
 
 ## Research
 
-- `KnowledgeChunk` — a fragment of a document (≈ 800 characters, never across a page or a Markdown `##` section) with `doc_title`, `doc_date`, `page`, `language`.
-- `Thesis` — a position of the institution: `topic`, `statement`, `figures`, `horizon`, `factors`, the exact `quote`, `doc_title`, `doc_date`, `page`, `is_stale`. Theses older than a year are ranked last and are never used to restore a removed house view.
+- `KnowledgeChunk` — a fragment of a document (≈ 800 characters, never across a page or a Markdown `##` section) with `doc_title`, `doc_date`, `page`, `language`, `countries` (from the document's front matter).
+- `Thesis` — a position of the institution: `topic`, `statement`, `figures`, `horizon`, `factors`, the exact `quote`, `doc_title`, `doc_date`, `page`, `countries`, `is_stale`. `countries` (ISO codes) ties a thesis to economies — a central bank's rate, a national tax rule; empty means it applies everywhere. Subjects from other countries never see it. Theses older than a year are ranked last and are never used to restore a removed house view.
 
 ## Insight
 

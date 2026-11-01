@@ -118,12 +118,16 @@ class Toolbox:
         limit: int = 6,
     ) -> tuple[Any, list[SourceRef]]:
         theses = self.store.find_theses(
-            as_str_list(factors), as_str_list(topics), str(query or ""), cap(limit, 6, 8)
+            as_str_list(factors),
+            as_str_list(topics),
+            str(query or ""),
+            cap(limit, 6, 8),
+            country=self.profile.country,
         )
         return theses, [thesis_source(th, self.institution, self.lang) for th in theses]
 
     def _search_research(self, query: str = "", limit: int = 3) -> tuple[Any, list[SourceRef]]:
-        chunks = self.store.search_chunks(str(query), cap(limit, 3, 3))
+        chunks = self.store.search_chunks(str(query), cap(limit, 3, 3), country=self.profile.country)
         return chunks, [chunk_source(c, self.institution, self.lang) for c in chunks]
 
     def _search_news(self, query: str = "", limit: int = 3) -> tuple[Any, list[SourceRef]]:

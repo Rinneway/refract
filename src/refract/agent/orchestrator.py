@@ -530,6 +530,11 @@ class Agent:
                     policy=self.policy,
                     lang=lang,
                     offer_products=self.settings.offer_products,
+                    institution_names=(
+                        ctx.institution.name,
+                        ctx.institution.name_ru,
+                        ctx.institution.name_gen,
+                    ),
                 )
                 notes += action_notes
             known = {s.source_id for s in ctx.sources()}

@@ -22,7 +22,10 @@
     "page": 2,
     "quote": "Мы ожидаем, что центральный банк сохранит ключевую ставку на уровне 14% до конца 2026 года.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -47,7 +50,10 @@
     "page": 2,
     "quote": "Наш базовый прогноз ставки на конец 2027 года — 12%.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -66,7 +72,10 @@
     "page": 2,
     "quote": "Для заёмщиков с плавающей ставкой это означает, что расходы на обслуживание долга в ближайшие два квартала не снизятся.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -97,7 +106,10 @@
     "page": 3,
     "quote": "Мы ожидаем замедления годовой инфляции до 6,5% к концу 2026 года и до 4,5% к концу 2027 года.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -129,7 +141,10 @@
     "page": 4,
     "quote": "Наш прогноз среднего курса юаня на IV квартал — 11,5–12,5 рубля, доллара — 84–90 рублей.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -155,7 +170,10 @@
     "page": 5,
     "quote": "Мы ожидаем, что рост корпоративного кредитного портфеля замедлится до 9% в 2026 году.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -175,7 +193,10 @@
     "page": 2,
     "quote": "По нашей оценке, снижение порога доходов для уплаты НДС на упрощённой системе затронет прежде всего общепит и розницу: у них низкая доля входящего НДС и мало вычетов.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -193,7 +214,10 @@
     "page": 2,
     "quote": "Мы рекомендуем предпринимателям заранее пересчитать цены и проверить, не выгоднее ли перейти на другой налоговый режим.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -219,7 +243,10 @@
     "page": 3,
     "quote": "Мы ожидаем, что рост расходов населения на кафе и рестораны замедлится до 3% в реальном выражении в 2026 году после 9% годом ранее.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -238,7 +265,10 @@
     "page": 4,
     "quote": "Льготные программы кредитования остаются важным источником финансирования для микробизнеса: ставка по ним в 1,5–2 раза ниже рыночной.",
     "language": "ru",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -281,7 +311,10 @@
     "page": 2,
     "quote": "we recommend hedging at least half of the expected dollar receipts for the next two quarters.",
     "language": "en",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "GB"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -345,7 +378,10 @@
     "page": 2,
     "quote": "We expect new-build sales to fall by 15–20% in 2026 as market mortgage rates stay above 20%.",
     "language": "en",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   },
   {
     "schema_version": "1.0.0",
@@ -364,6 +400,9 @@
     "page": 3,
     "quote": "We see the main risk for building-materials wholesalers in longer receivables rather than in lower volumes.",
     "language": "en",
-    "is_stale": false
+    "is_stale": false,
+    "countries": [
+      "RU"
+    ]
   }
 ]

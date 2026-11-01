@@ -323,3 +323,38 @@ def test_number_findings_need_the_number_check() -> None:
     rule = [_issue(IssueCode.NUMBER_NOT_IN_SOURCES, "w2")]
     out, _ = checks.overrule_structural(llm, rule, "ru")
     assert [i.severity for i in out] == ["warning", "error"]
+
+
+SMOKE = json.loads((Path(__file__).parent / "fixtures" / "smoke_gemma12b.json").read_text(encoding="utf-8"))
+
+
+def smoke(store, key: str):
+    profile, event, role, lang = key.split("__")
+    settings = Settings(api_key="scripted", language=lang)
+    llm = ScriptedLLM({k: v if isinstance(v, list) else [v] for k, v in SMOKE[key].items()}, settings)
+    return Agent(llm, store, settings=settings, now=lambda: NOW).run(profile, event, role=role, language=lang)
+
+
+def test_uk_subject_gets_no_russian_rate_forecast(store) -> None:
+    run = smoke(store, "demo_london_studio__ev_dollar_en__cfo__en")
+    cited = {s for c in run.insight.all_claims() for s in c.source_ids}
+    assert not any(s.startswith("src_demo_macro_") for s in cited)
+    assert "w2" not in {c.claim_id for c in run.insight.why_it_matters}  # “rates stay at 14%” — Russia's rate
+
+
+def test_house_view_gets_its_thesis_back_across_languages(store) -> None:
+    run = smoke(store, "demo_building_materials__ev_yuan_ru__cfo__en")
+    house = {c.claim_id: c.source_ids for c in run.insight.house_view}
+    # English statements, Russian theses: matched by 11.5–12.5 and 6.5 / 4.5; the news' 11.35 does not block it.
+    assert house == {"b1": ["src_demo_macro_2026q4_t5"], "b2": ["src_demo_macro_2026q4_t4"]}
+    kinds = {a.action_id: a.kind for a in run.insight.actions}
+    assert kinds["a2"] is ActionKind.ANALYSIS  # “request a detailed analysis…” was labelled contact_manager
+
+
+def test_product_named_in_the_text_is_made_explicit(store) -> None:
+    run = smoke(store, "demo_grain_farm__ev_wheat_en__cfo__en")
+    a2 = next(a for a in run.insight.actions if a.action_id == "a2")
+    assert a2.product == "Factoring"  # “Apply for Factoring…” with product = null; the rule did fire
+    assert "b2" not in {
+        c.claim_id for c in run.insight.house_view
+    }  # the UK-exporters thesis is not for a farm

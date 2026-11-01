@@ -7,6 +7,7 @@ replace the defaults.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
@@ -109,6 +110,11 @@ class Policy:
                 )
             )
         return tuple(out)
+
+    def product_patterns(self) -> dict[str, re.Pattern[str]]:
+        """Product key → a pattern that names the product in free text (`product_patterns` in the JSON)."""
+        raw = self._actions.get("product_patterns", {})
+        return {k: re.compile(v, re.IGNORECASE) for k, v in raw.items() if not k.startswith("_")}
 
     def fallback(self, lang: str) -> dict[str, str]:
         fb = self._actions["fallback"]

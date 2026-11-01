@@ -41,3 +41,19 @@ def test_hybrid_index_fuses_dense_scores(tmp_path) -> None:
     assert index.top("зерно", 1)[0][0] == 2  # no lexical overlap — found by embeddings
     assert list(tmp_path.glob("emb_*.json"))
     assert BM25(docs).top("зерно") == []
+
+
+def test_research_is_scoped_to_the_subjects_country(store, tmp_path) -> None:
+    from refract.knowledge.ingest import read_text_document
+
+    uk = {t.thesis_id for t in store.find_theses(["policy_rate", "fx:USD"], [], k=8, country="GB")}
+    ru = {t.thesis_id for t in store.find_theses(["policy_rate", "fx:USD"], [], k=8, country="RU")}
+    assert not any(t.startswith("demo_macro_") for t in uk)  # a Russian rate forecast is not for a UK company
+    assert "demo_fxcom_2026m10_t2" in uk and "demo_fxcom_2026m10_t2" not in ru  # UK exporters only
+    assert any(t.startswith("demo_macro_") for t in ru)
+    assert all(not c.doc_id.startswith("demo_macro") for c in store.search_chunks("ставка", 3, country="GB"))
+    doc = tmp_path / "d.md"
+    doc.write_text(
+        "---\nid: d\ncountries: ru, gb\n---\n# T\n\n## S\n\n" + "Текст раздела. " * 10, encoding="utf-8"
+    )
+    assert read_text_document(doc).countries == ["RU", "GB"]

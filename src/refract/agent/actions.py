@@ -7,6 +7,8 @@ is replaced by the fallback action from the policy.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from ..i18n import norm_lang, t
@@ -25,6 +27,15 @@ from .impact import event_countries, event_divisions
 from .policy import DEFAULT_POLICY, ActionRule, Policy
 
 MAX_ACTIONS = 3
+# An action to contact the manager must say so; otherwise it is the reader's own step.
+_MANAGER = re.compile(
+    r"менеджер|банк|перезвон|обратн\w* звон|manager|bank|call ?back|relationship", re.IGNORECASE
+)
+_ANALYSIS = re.compile(
+    r"анализ|оцен|рассчит|пересчит|сравн|пересмотр|провер|review|analy[sz]|assess|estimat|calculat|compar|check"
+    r"|forecast|model",
+    re.IGNORECASE,
+)
 _COMMODITIES = {"oil", "gas", "metals", "coal", "agri", "gold", "energy_prices"}
 _DIRECTION = {
     "ru": {"negative": "для субъекта событие негативно", "positive": "для субъекта событие позитивно"},
@@ -151,14 +162,54 @@ def enforce_actions(
     policy: Policy = DEFAULT_POLICY,
     lang: str = "ru",
     offer_products: bool = True,
+    institution_names: Iterable[str] = (),
 ) -> tuple[InsightContent, list[str]]:
-    """Bring the draft's actions in line with the policy. Returns the fixed draft and notes for the trace."""
+    """Bring the draft's actions in line with the policy. Returns the fixed draft and notes for the trace.
+
+    Besides the `product` field, the text is checked: an action that names a product the fired rules do not offer
+    (“apply for factoring”) is removed, one that names an offered product gets it; “contact the manager” without a
+    product and without a manager, bank or callback in the text becomes the reader's own analysis or operational
+    step.
+    """
     en = norm_lang(lang) == "en"
     notes: list[str] = []
     kept: list[Action] = []
     product_used = False
     direction = Direction(content.overall_direction).value
+    patterns = policy.product_patterns()
+    names = [n.lower() for n in institution_names if n]
     for a in content.actions:
+        text = _norm(a.text)
+        if not a.product and (named := [k for k, rx in patterns.items() if rx.search(text)]):
+            allowed = offer_products and e.event_type != EventType.TAX
+            c = next((c for c in candidates if c.rule.product_key in named), None) if allowed else None
+            need = c.rule.when.get("direction_for_subject") if c else None
+            if c is None or (need and need != direction):
+                notes.append(
+                    f"{a.action_id}: removed — its text offers a product the fired rules do not ({named[0]})"
+                    if en
+                    else f"{a.action_id}: убрано — в тексте продукт, которого нет в сработавших правилах ({named[0]})"
+                )
+                continue
+            a = a.model_copy(update={"product": c.rule.product(lang)})
+            notes.append(
+                f"{a.action_id}: the product named in the text is set — {a.product}"
+                if en
+                else f"{a.action_id}: продукт из текста указан явно — {a.product}"
+            )
+        if (
+            a.kind in (ActionKind.CONTACT_MANAGER, ActionKind.REQUEST_CALLBACK)
+            and not a.product  # a product is offered through the manager anyway
+            and not _MANAGER.search(text)
+            and not any(n in text for n in names)
+        ):
+            kind = ActionKind.ANALYSIS if _ANALYSIS.search(text) else ActionKind.OPERATIONAL
+            notes.append(
+                f"{a.action_id}: {a.kind.value} → {kind.value} — the text does not involve the manager"
+                if en
+                else f"{a.action_id}: {a.kind.value} → {kind.value} — в тексте нет обращения к менеджеру"
+            )
+            a = a.model_copy(update={"kind": kind})
         if a.product:
             c = _rule_for(a.product, candidates)
             need = c.rule.when.get("direction_for_subject") if c else None

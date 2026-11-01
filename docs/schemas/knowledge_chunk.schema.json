@@ -49,6 +49,14 @@
       "title": "Language",
       "type": "string"
     },
+    "countries": {
+      "description": "ISO codes of the economies the document is about; empty — any",
+      "items": {
+        "type": "string"
+      },
+      "title": "Countries",
+      "type": "array"
+    },
     "tags": {
       "items": {
         "type": "string"
