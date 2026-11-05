@@ -76,3 +76,12 @@ def test_a_long_paragraph_is_cut_at_sentence_ends() -> None:
         doc_id="u", title="t", doc_date=None, language="ru", pages=[(1, "x" * 2500)], path=Path("u")
     )
     assert [len(c.text) for c in split_chunks(unbroken)] == [800, 800, 800, 100]
+
+
+def test_search_matches_word_forms(store) -> None:
+    from refract.knowledge.search import stem
+
+    assert {stem(w) for w in ("ставка", "ставку", "ставки", "ставке")} == {"ставк"}
+    assert stem("налога") == stem("налог") and stem("рубля") == stem("рубль") and stem("кредитов") == "кредит"
+    assert stem("rates") == stem("rate") and stem("policies") == "policy" and stem("2026") == "2026"
+    assert store.search_events("ставка", k=1)[0].event_id == "ev_rate_hold_ru"  # the title says «ставку»

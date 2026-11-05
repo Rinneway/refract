@@ -292,13 +292,87 @@ STOP_EN = set(
 STOP = STOP_RU | STOP_EN
 
 
+# Common Russian inflectional endings, longest first: «ставка», «ставку», «ставки» → «ставк»; «налога» → «налог».
+_RU_ENDINGS = tuple(
+    sorted(
+        [
+            "иями",
+            "ями",
+            "ами",
+            "ией",
+            "иях",
+            "ях",
+            "ах",
+            "ого",
+            "его",
+            "ому",
+            "ему",
+            "ыми",
+            "ими",
+            "ых",
+            "их",
+            "ым",
+            "им",
+            "ой",
+            "ей",
+            "ий",
+            "ый",
+            "ая",
+            "яя",
+            "ое",
+            "ее",
+            "ие",
+            "ые",
+            "ую",
+            "юю",
+            "ов",
+            "ев",
+            "ом",
+            "ем",
+            "ам",
+            "ям",
+            "ть",
+            "а",
+            "я",
+            "ы",
+            "и",
+            "у",
+            "ю",
+            "е",
+            "о",
+            "ь",
+        ],
+        key=len,
+        reverse=True,
+    )
+)
+
+
+def stem(word: str) -> str:
+    """A light stem: a Russian case or number ending, or an English plural -s, removed (keeping at least three
+    letters), then the first six letters. Enough for search to match «ставка» with «ставку» and «rate» with
+    «rates»; not a full morphological analysis."""
+    if word.isdigit():
+        return word
+    if "а" <= word[-1] <= "я" or word[-1] in "ёь":
+        for ending in _RU_ENDINGS:
+            if word.endswith(ending) and len(word) - len(ending) >= 3:
+                word = word[: -len(ending)]
+                break
+    elif word.endswith("ies") and len(word) > 4:
+        word = word[:-3] + "y"
+    elif word.endswith("s") and not word.endswith("ss") and len(word) > 3:
+        word = word[:-1]
+    return word[:6]
+
+
 def tokens(text: str) -> list[str]:
-    """Lower-cased words without stop words, crudely stemmed to the first six letters."""
+    """Lower-cased words without stop words, lightly stemmed (`stem`)."""
     out = []
     for w in WORD.findall((text or "").lower().replace("ё", "е")):
         if w in STOP or len(w) < 2:
             continue
-        out.append(w[:6] if len(w) > 6 and not w.isdigit() else w)
+        out.append(stem(w))
     return out
 
 
