@@ -107,6 +107,7 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             "version": __version__,
             "language": r.settings.language,
             "llm_configured": bool(r.settings.api_key),
+            "data_problems": r.store.problems,
         }
 
     @app.get("/profiles", dependencies=[Depends(auth)])

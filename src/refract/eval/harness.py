@@ -37,7 +37,7 @@ from ..llm import LLMError
 from ..prompts import classify as classify_prompt
 from ..prompts import insight as insight_prompt
 from ..schemas import ImpactLevel, InsightContent, NewsEvent
-from ..textutil import invented_numbers, script_share
+from ..textutil import invented_numbers, read_json, read_text, script_share
 from . import judge as jp
 
 BASELINES = ("single_call", "retelling")
@@ -66,11 +66,7 @@ class Pair:
 
 
 def load_pairs(path: str | Path) -> list[Pair]:
-    return [
-        Pair(**json.loads(line))
-        for line in Path(path).read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    return [Pair(**json.loads(line)) for line in read_text(path).splitlines() if line.strip()]
 
 
 def save_pairs(pairs: Iterable[Pair], path: str | Path) -> None:
@@ -94,7 +90,7 @@ def make_pairs(
 
 
 def _read(path: Path) -> dict | None:
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    return read_json(path) if path.exists() else None
 
 
 def _write(path: Path, data: Any) -> None:

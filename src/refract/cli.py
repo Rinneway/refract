@@ -33,7 +33,10 @@ def _rf(args):
     settings = load_settings(getattr(args, "config", None))
     if getattr(args, "lang", None):
         settings = settings.with_language(args.lang)
-    return Refract.from_dir(getattr(args, "data", None), settings=settings)
+    rf = Refract.from_dir(getattr(args, "data", None), settings=settings)
+    for problem in rf.store.problems:  # skipped files: say so instead of silently working with less data
+        sys.stderr.write(f"refract: {problem}\n")
+    return rf
 
 
 def cmd_demo(args) -> int:
@@ -70,6 +73,7 @@ def _fail(msg: str) -> int:
 def cmd_analyze(args) -> int:
     from .agent import ABLATIONS, ablation
     from .render import insight_markdown, trace_markdown
+    from .textutil import read_text
 
     rf = _rf(args)
     if args.profile not in rf.store.profiles:
@@ -83,7 +87,7 @@ def cmd_analyze(args) -> int:
     elif args.title and (args.text or args.text_file):
         if args.text_file and not Path(args.text_file).is_file():
             return _fail(f"no such file: {args.text_file}")
-        text = Path(args.text_file).read_text(encoding="utf-8") if args.text_file else args.text
+        text = read_text(args.text_file, fallbacks=("cp1251",)) if args.text_file else args.text
         event = rf.news_from_text(args.title, text, publisher=args.publisher, url=args.url)
     else:
         return _fail("give --event ID, or --title with --text / --text-file")
@@ -493,11 +497,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .textutil import DataError
+
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)
     except BrokenPipeError:  # `refract … | head`
         return 0
+    except DataError as e:  # a broken config or data file: the message names it
+        return _fail(str(e))
 
 
 if __name__ == "__main__":  # pragma: no cover

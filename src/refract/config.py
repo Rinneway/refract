@@ -16,6 +16,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from .i18n import Language, norm_lang
+from .textutil import DataError, read_text
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -150,7 +151,10 @@ def load_settings(config_path: str | Path | None = None, *, env_file: str | Path
     """Read `refract.toml` (or `REFRACT_CONFIG`) and environment variables (`.env` is loaded first)."""
     load_dotenv(env_file) if env_file else load_dotenv()
     path = Path(config_path or os.getenv("REFRACT_CONFIG", "refract.toml"))
-    raw: dict[str, Any] = tomllib.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    try:
+        raw: dict[str, Any] = tomllib.loads(read_text(path)) if path.exists() else {}
+    except tomllib.TOMLDecodeError as e:
+        raise DataError(f"{path}: not valid TOML — {e}") from None
 
     llm = raw.get("llm", {})
     inst = raw.get("institution", {})

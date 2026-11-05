@@ -73,7 +73,7 @@ Open `/docs` for the OpenAPI UI.
 
 | Method | Path | Body / result |
 | --- | --- | --- |
-| GET | `/health` | `{status, version, language, llm_configured}` |
+| GET | `/health` | `{status, version, language, llm_configured, data_problems}` |
 | GET | `/profiles` · `/profiles/{id}` | list · `Profile` |
 | GET | `/profiles/{id}/feed?top=10&since=…&tag=true&all=false&language=…` | `Feed`: stored news ranked for the subject |
 | GET | `/events?limit=50` · `/events/{id}` | list · `NewsEvent` |
@@ -146,3 +146,5 @@ Works with the `mcp` SDK 1.x (`FastMCP`) and 2.x (`MCPServer`).
 2. Put research documents into `knowledge/docs/` and run `refract theses --docs knowledge/docs --out knowledge/theses.json`; review the result — only theses whose quote is verbatim on the page are kept.
 3. Add events from feeds, from your own pipeline (`NewsEvent` JSON) or as text through any interface.
 4. Set `[institution]` and, if needed, your own `[policies]`.
+
+Files may be saved as UTF-8 with or without a byte-order mark (Windows Notepad adds one); research texts may also be in Windows-1251. A file or an object that does not load — broken JSON, a profile that fails its schema, a damaged PDF — is skipped with a note that names the file and the reason: the CLI prints the notes, `GET /health` lists them in `data_problems`, Python has them in `rf.store.problems`. A repeated id is reported too; the last object wins.

@@ -25,6 +25,7 @@ from datetime import date
 from pathlib import Path
 
 from ..schemas import KnowledgeChunk
+from ..textutil import read_text
 
 CHUNK_CHARS = 800
 _FRONT = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -71,7 +72,7 @@ def _guess_lang(text: str) -> str:
 
 
 def read_text_document(path: Path) -> Document:
-    meta, body = _front_matter(path.read_text(encoding="utf-8"))
+    meta, body = _front_matter(read_text(path, fallbacks=("cp1251",)))
     heading = re.search(r"^#\s+(.+)$", body, re.MULTILINE)
     title = meta.get("title") or (heading.group(1).strip() if heading else path.stem)
     sections = [s for s in re.split(r"\n(?=##\s)", body) if s.strip()]
@@ -105,13 +106,20 @@ def read_pdf_document(path: Path) -> Document:
     )
 
 
-def read_documents(folder: Path) -> list[Document]:
+def read_documents(folder: Path, problems: list[str] | None = None) -> list[Document]:
+    """Every .md, .txt and .pdf under `folder`. A file that cannot be read (another encoding, a damaged PDF,
+    no PDF support installed) is skipped with a note in `problems`; without `problems` the error is raised."""
     docs = []
     for path in sorted(folder.glob("**/*")):
-        if path.suffix.lower() in (".md", ".markdown", ".txt"):
-            docs.append(read_text_document(path))
-        elif path.suffix.lower() == ".pdf":
-            docs.append(read_pdf_document(path))
+        suffix = path.suffix.lower()
+        if suffix not in (".md", ".markdown", ".txt", ".pdf"):
+            continue
+        try:
+            docs.append(read_pdf_document(path) if suffix == ".pdf" else read_text_document(path))
+        except Exception as e:  # one unreadable document must not stop the others
+            if problems is None:
+                raise
+            problems.append(f"{path}: skipped — {e}" if not str(e).startswith(str(path)) else f"{e}; skipped")
     return docs
 
 

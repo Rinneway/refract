@@ -27,6 +27,7 @@ from .knowledge.store import DataStore
 from .llm.client import LLM, LLMClient
 from .recent import Recent
 from .schemas import AgentState, ChatTurn, Feed, Insight, NewsArticle, NewsEvent, Profile, Trace
+from .textutil import read_json
 
 
 def _hash(*parts: str) -> str:
@@ -228,7 +229,7 @@ class Refract:
         return path
 
     def load_run(self, path: str | Path) -> AgentRun:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = read_json(path)
         insight = Insight.model_validate(data["insight"]) if data.get("insight") else None
         state = AgentState.model_validate(data["state"])
         run = AgentRun(insight=insight, trace=Trace.model_validate(data["trace"]), state=state)

@@ -12,25 +12,63 @@ Replace it with a database-backed class with the same methods when you need to; 
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from ..schemas import KnowledgeChunk, NewsEvent, Profile, Thesis
 from ..schemas.knowledge import applies_to
+from ..textutil import DataError, read_json
 from .ingest import read_documents, split_chunks
 from .search import BM25, Embedder, HybridIndex
 
 STALE_AFTER_DAYS = 365
 
 
-def load_models(paths: Iterable[Path], model):
+def load_models(paths: Iterable[Path], model, problems: list[str] | None = None) -> list:
+    """Objects from JSON files (one object or a list per file). A file or an object that does not load is
+    skipped with a note in `problems` naming the file — one typo must not take the whole folder down. Without
+    `problems` the first error is raised."""
     out = []
     for p in paths:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        out += [model.model_validate(x) for x in (data if isinstance(data, list) else [data])]
+        try:
+            data = read_json(p)
+        except DataError as e:
+            if problems is None:
+                raise
+            problems.append(str(e))
+            continue
+        for i, x in enumerate(data if isinstance(data, list) else [data]):
+            try:
+                out.append(model.model_validate(x))
+            except ValidationError as e:
+                where = (
+                    (x.get("profile_id") or x.get("event_id") or x.get("thesis_id"))
+                    if isinstance(x, dict)
+                    else None
+                )
+                what = "; ".join(
+                    f"{'.'.join(map(str, err['loc'])) or '(object)'}: {err['msg']}" for err in e.errors()[:3]
+                )
+                note = f"{p}{f' [{where}]' if where else f' item {i}' if isinstance(data, list) else ''}: skipped — {what}"
+                if problems is None:
+                    raise DataError(note) from None
+                problems.append(note)
     return out
+
+
+def _unique(items: list, key: str, kind: str, problems: list[str]) -> list:
+    """The last object of an id wins, as before; a repeated id is reported."""
+    seen: dict[str, int] = {}
+    for item in items:
+        ident = getattr(item, key)
+        seen[ident] = seen.get(ident, 0) + 1
+    problems += [
+        f"{kind} {ident} appears {n} times; the last one is used" for ident, n in seen.items() if n > 1
+    ]
+    return items
 
 
 class DataStore:
@@ -45,6 +83,9 @@ class DataStore:
         cache_dir: Path | None = None,
         today: date | None = None,
     ) -> None:
+        self.problems: list[
+            str
+        ] = []  # files and objects `from_dir` skipped, each naming the file and the reason
         self.profiles = {p.profile_id: p for p in profiles}
         self.events = {e.event_id: e for e in events}
         self.theses = list(theses)
@@ -76,15 +117,23 @@ class DataStore:
             ]
         knowledge = root / "knowledge"
         docs_dir = knowledge / "docs"
-        chunks = [c for d in read_documents(docs_dir) for c in split_chunks(d)] if docs_dir.exists() else []
-        return cls(
-            load_models(profile_files, Profile),
-            load_models(sorted((root / "events").glob("*.json")), NewsEvent),
-            load_models(sorted(knowledge.glob("theses*.json")), Thesis),
-            chunks,
+        problems: list[str] = []
+        docs = read_documents(docs_dir, problems) if docs_dir.exists() else []
+        store = cls(
+            _unique(load_models(profile_files, Profile, problems), "profile_id", "profile", problems),
+            _unique(
+                load_models(sorted((root / "events").glob("*.json")), NewsEvent, problems),
+                "event_id",
+                "event",
+                problems,
+            ),
+            load_models(sorted(knowledge.glob("theses*.json")), Thesis, problems),
+            [c for d in docs for c in split_chunks(d)],
             embed=embed,
             cache_dir=cache_dir,
         )
+        store.problems = problems
+        return store
 
     # ---------- profiles and events
 

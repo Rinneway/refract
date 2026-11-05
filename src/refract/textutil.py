@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import difflib
+import json
 import re
+from pathlib import Path
+from typing import Any
 
 # A number token: digits with optional thousand groups (“1 200”, “1,200”) and an optional decimal part. Digits glued
 # to letters or underscores (source ids like src_doc_2026q4_t5, “Q3”) are not numbers of the text.
@@ -182,3 +185,28 @@ def trim_sentence(text: str, limit: int = 160, min_len: int = 40) -> str:
     if cuts:
         return text[: max(cuts)].rstrip(" ,;:—–-")
     return text[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:—–- ") + "…"
+
+
+class DataError(ValueError):
+    """A file of the user's data or configuration that cannot be read; the message names the file."""
+
+
+def read_text(path: str | Path, fallbacks: tuple[str, ...] = ()) -> str:
+    """Read a file people write by hand: UTF-8 with or without a byte-order mark (Windows Notepad adds one),
+    then each of `fallbacks` (e.g. cp1251 for Russian texts saved on Windows)."""
+    raw = Path(path).read_bytes()
+    for encoding in ("utf-8-sig", *fallbacks):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    tried = ", ".join(("UTF-8", *fallbacks))
+    raise DataError(f"{path}: not a text file in {tried}")
+
+
+def read_json(path: str | Path) -> Any:
+    """JSON from a hand-written file (BOM tolerated); DataError naming the file and the line if it is broken."""
+    try:
+        return json.loads(read_text(path))
+    except json.JSONDecodeError as e:
+        raise DataError(f"{path}: not valid JSON — {e.msg} at line {e.lineno}, column {e.colno}") from None

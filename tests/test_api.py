@@ -26,7 +26,8 @@ def api(store, settings):
 
 
 def test_read_endpoints(api) -> None:
-    assert api.get("/health").json()["status"] == "ok"
+    health = api.get("/health").json()
+    assert health["status"] == "ok" and health["data_problems"] == []
     ids = {p["profile_id"] for p in api.get("/profiles").json()}
     assert "demo_coffee_ip" in ids and api.get("/profiles/demo_coffee_ip").json()["kind"] == "sole_proprietor"
     assert api.get("/events/ev_wheat_en").json()["language"] == "en"

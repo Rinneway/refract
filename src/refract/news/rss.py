@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import hashlib
 import html
-import json
 import re
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -23,6 +22,7 @@ from pathlib import Path
 
 from ..knowledge.search import tokens
 from ..schemas import NewsArticle, NewsEvent
+from ..textutil import read_json
 
 USER_AGENT = "Mozilla/5.0 (compatible; refract-news/0.1; +https://github.com/Rinneway/refract)"
 _TAG = re.compile(r"<[^>]+>")
@@ -37,7 +37,7 @@ class Feed:
 
 
 def load_feeds(path: str | Path) -> list[Feed]:
-    return [Feed(**f) for f in json.loads(Path(path).read_text(encoding="utf-8"))]
+    return [Feed(**f) for f in read_json(path)]
 
 
 def _clean(text: str | None) -> str:
