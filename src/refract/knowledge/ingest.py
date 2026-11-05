@@ -123,11 +123,38 @@ def read_documents(folder: Path, problems: list[str] | None = None) -> list[Docu
     return docs
 
 
+_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+|\n+")
+
+
+def _pieces(paragraph: str, max_chars: int) -> list[str]:
+    """A paragraph longer than `max_chars` (a text without blank lines, a PDF page) cut at sentence ends; a
+    sentence longer than that, at spaces. Shorter paragraphs stay whole."""
+    if len(paragraph) <= max_chars:
+        return [paragraph]
+    out, buf = [], ""
+    for sentence in _SENTENCE_END.split(paragraph):
+        while len(sentence) > max_chars:  # no sentence end in sight: cut at the last space that fits
+            cut = sentence.rfind(" ", 0, max_chars)
+            cut = cut if cut > max_chars // 2 else max_chars
+            head, sentence = sentence[:cut].strip(), sentence[cut:].strip()
+            if buf:
+                out.append(buf)
+                buf = ""
+            out.append(head)
+        if buf and len(buf) + 1 + len(sentence) > max_chars:
+            out.append(buf)
+            buf = ""
+        buf = f"{buf} {sentence}".strip()
+    return [*out, buf] if buf else out
+
+
 def split_chunks(doc: Document, max_chars: int = CHUNK_CHARS) -> list[KnowledgeChunk]:
-    """Paragraphs merged into chunks of about `max_chars`; a chunk never crosses a page or section."""
+    """Paragraphs merged into chunks of about `max_chars`; a chunk never crosses a page or section, and a long
+    paragraph is cut at sentence ends, so no chunk outgrows a small model's context."""
     out: list[KnowledgeChunk] = []
     for page, text in doc.pages:
-        parts = [p.strip() for p in re.split(r"\n\s*\n", text) if len(p.strip()) > 40]
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if len(p.strip()) > 40]
+        parts = [piece for p in paragraphs for piece in _pieces(p, max_chars)]
         buf, n = "", 0
         for part in [*parts, None]:
             if part is None or (buf and len(buf) + len(part) > max_chars):

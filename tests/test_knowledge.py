@@ -57,3 +57,22 @@ def test_research_is_scoped_to_the_subjects_country(store, tmp_path) -> None:
         "---\nid: d\ncountries: ru, gb\n---\n# T\n\n## S\n\n" + "Текст раздела. " * 10, encoding="utf-8"
     )
     assert read_text_document(doc).countries == ["RU", "GB"]
+
+
+def test_a_long_paragraph_is_cut_at_sentence_ends() -> None:
+    from pathlib import Path
+
+    from refract.knowledge.ingest import Document, split_chunks
+
+    text = " ".join(
+        f"Предложение {i}: банк ожидает снижения ставки до {10 + i % 5}% к концу года." for i in range(300)
+    )
+    doc = Document(doc_id="d", title="t", doc_date=None, language="ru", pages=[(1, text)], path=Path("d.txt"))
+    chunks = split_chunks(doc)
+    assert len(chunks) > 20 and max(len(c.text) for c in chunks) <= 800
+    assert all(c.text.endswith("года.") for c in chunks)  # whole sentences
+    assert " ".join(c.text for c in chunks) == text  # nothing lost
+    unbroken = Document(
+        doc_id="u", title="t", doc_date=None, language="ru", pages=[(1, "x" * 2500)], path=Path("u")
+    )
+    assert [len(c.text) for c in split_chunks(unbroken)] == [800, 800, 800, 100]
