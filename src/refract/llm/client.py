@@ -28,6 +28,7 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from pydantic import BaseModel, ValidationError
 
 from ..config import Settings, load_settings
+from .salvage import extract_json, salvage
 
 T = TypeVar("T", bound=BaseModel)
 STRUCTURED_MODES = ("json_schema", "json_object", "prompt")
@@ -56,6 +57,7 @@ class JsonResult(Generic[T]):
     value: T | None
     error: str | None
     calls: list[ChatResult]
+    notes: list[str] = field(default_factory=list)  # what code changed to make the answer valid
 
     @property
     def ok(self) -> bool:
@@ -79,7 +81,7 @@ class JsonResult(Generic[T]):
 
     @property
     def warnings(self) -> list[str]:
-        return list(dict.fromkeys(w for c in self.calls for w in c.warnings))
+        return list(dict.fromkeys([*(w for c in self.calls for w in c.warnings), *self.notes]))
 
 
 class LLMError(RuntimeError):
@@ -252,7 +254,12 @@ class LLMClient:
             )
             calls.append(second)
             value, error = parse_json(schema, second.text)
-        return JsonResult(value=value, error=error, calls=calls)
+        notes: list[str] = []
+        if value is None:
+            value, notes = salvage_answers(schema, [c.text for c in reversed(calls)])
+            if value is not None:
+                error = None
+        return JsonResult(value=value, error=error, calls=calls, notes=notes)
 
     def embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         """Embeddings from the first endpoint that answers (for hybrid retrieval)."""
@@ -419,6 +426,16 @@ def _format_rejected(e: LLMError) -> bool:
 
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+
+
+def salvage_answers(schema: type[T], texts: list[str]) -> tuple[T | None, list[str]]:
+    """The last resort after a failed repair: keep the valid part of the first answer that has one."""
+    for text in texts:
+        value, notes = salvage(schema, extract_json(text))
+        if value is not None:
+            shown = notes[:4] + ([f"… {len(notes) - 4} more"] if len(notes) > 4 else [])
+            return value, [f"schema error fixed by code: {n}" for n in shown]
+    return None, []
 
 
 def parse_json(schema: type[T], text: str) -> tuple[T | None, str | None]:

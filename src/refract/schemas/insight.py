@@ -105,6 +105,9 @@ class Action(Contract):
     claim_ids: list[str] = Field(default_factory=list, description="Statements the action relies on")
 
 
+_CLAIM_BLOCKS = ("what_happened", "why_it_matters", "risks", "opportunities", "house_view")
+
+
 class InsightContent(Contract):
     """The part of the insight the model generates (structured output)."""
 
@@ -126,6 +129,41 @@ class InsightContent(Contract):
         if isinstance(data, dict) and isinstance(data.get("headline"), str) and len(data["headline"]) > 160:
             return {**data, "headline": trim_sentence(data["headline"], 160)}
         return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unique_ids(cls, data: object) -> object:
+        """Small models repeat an id (two statements “c1”); the later one gets a suffix (“c1_2”) instead of the
+        whole insight failing. An action that cites the repeated id keeps pointing at the first statement."""
+        if not isinstance(data, dict):
+            return data
+        out = dict(data)
+        for blocks, key in ((_CLAIM_BLOCKS, "claim_id"), (("actions",), "action_id")):
+            seen: set[str] = set()
+            for block in blocks:
+                items = out.get(block)
+                if not isinstance(items, list):
+                    continue
+                renamed = []
+                for item in items:
+                    ident = item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+                    ident = ident.strip() if isinstance(ident, str) else ident
+                    if isinstance(ident, str) and ident in seen:
+                        n = 2
+                        while f"{ident}_{n}" in seen:
+                            n += 1
+                        new = f"{ident}_{n}"
+                        item = (
+                            {**item, key: new}
+                            if isinstance(item, dict)
+                            else item.model_copy(update={key: new})
+                        )
+                        ident = new
+                    if isinstance(ident, str):
+                        seen.add(ident)
+                    renamed.append(item)
+                out[block] = renamed
+        return out
 
     def all_claims(self) -> list[Claim]:
         return [*self.what_happened, *self.why_it_matters, *self.risks, *self.opportunities, *self.house_view]

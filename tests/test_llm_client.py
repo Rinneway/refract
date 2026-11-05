@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from typing import Literal
 
 import httpx
 import openai
@@ -239,3 +240,19 @@ def test_damaged_cache_file_is_a_miss_not_a_crash(tmp_path) -> None:
         assert c.chat_json("main", msgs, Answer).value.value == 4
     assert len(fakes["http://a/v1"].calls) == 2  # the half-written file was re-fetched, the foreign one read
     assert not list((tmp_path / "cache").glob("*.tmp"))  # writes go through a temporary file
+
+
+class Plan(BaseModel):
+    level: Literal["low", "medium", "high"]
+    items: list[Answer] = []
+
+
+def test_valid_part_is_kept_when_the_repair_fails_too(tmp_path) -> None:
+    bad = '{"level": "High ", "items": [{"value": 1}, {"value": "many"}, {"value": 3}]}'
+    c, fakes = client(tmp_path, lambda url: lambda p: raw(bad))  # the repair answer repeats the mistake
+    res = c.chat_json("main", [{"role": "user", "content": "u"}], Plan, use_cache=False)
+    assert res.value == Plan(level="high", items=[Answer(value=1), Answer(value=3)])
+    assert len(fakes["http://a/v1"].calls) == 2 and res.error is None
+    assert any("items.1 dropped" in w for w in res.warnings) and any(
+        "read as “high”" in w for w in res.warnings
+    )
