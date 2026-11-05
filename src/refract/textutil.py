@@ -7,7 +7,10 @@ import re
 
 # A number token: digits with optional thousand groups (“1 200”, “1,200”) and an optional decimal part. Digits glued
 # to letters or underscores (source ids like src_doc_2026q4_t5, “Q3”) are not numbers of the text.
-NUM = re.compile(r"(?<!\w)(?:\d{1,3}(?:[  ,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)")
+# Thousands are separated by a space, a no-break space (U+00A0), a thin space (U+2009) or a narrow no-break space
+# (U+202F) — Russian typography and many models use the last three. Written as escapes so editors cannot lose them.
+_THOUSANDS = " \u00a0\u2009\u202f"
+NUM = re.compile(rf"(?<!\w)(?:\d{{1,3}}(?:[{_THOUSANDS},]\d{{3}})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)")
 
 # External text (news, what a user typed) goes to the model inside <news>…</news>, so the model can tell data from
 # instructions. Tags inside the text itself are removed, so the text cannot close the block early.
@@ -55,7 +58,7 @@ def _variants(token: str) -> set[float]:
     """All readings of a number token. “1,200” is 1200 in English and 1.2 in Russian — both are kept, so a
     claim and its source match whichever convention each of them uses."""
     out: set[float] = set()
-    compact = token.replace(" ", "").replace(" ", "")
+    compact = re.sub(f"[{_THOUSANDS}]", "", token)
     candidates = set()
     if re.fullmatch(
         r"\d{1,3}(?:,\d{3})+(?:\.\d+)?", compact

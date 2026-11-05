@@ -56,3 +56,16 @@ def test_script_share() -> None:
     assert script_share("The rate stays at 14%", "en") == 1.0
     assert script_share("Ставка сохраняется", "en") == 0.0
     assert script_share("14% / 2026", "ru") == 1.0
+
+
+def test_thousands_with_typographic_spaces_are_one_number() -> None:
+    """Russian typography and many models separate thousands with a no-break, thin or narrow no-break space;
+    “12 600” must stay one number, not 12 and an “invented” 600."""
+    context = "продажи 12 600 штук; рост 1 250 000 руб."
+    for space in (" ", " ", " "):
+        assert numbers(f"12{space}600") == {12600.0}
+        assert (
+            invented_numbers([f"Продажи 12{space}600 штук", f"рост 1{space}250{space}000 руб."], context)
+            == set()
+        )
+    assert invented_numbers(["Продажи 12 700 штук"], context) == {12700.0}  # a different number still counts
