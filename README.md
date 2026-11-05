@@ -197,7 +197,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
 docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          150 tests on a scripted model and a fake OpenAI-compatible server — no network needed
+tests/          159 tests on a scripted model and a fake OpenAI-compatible server — no network needed
 ```
 
 ## Data and confidentiality
