@@ -27,6 +27,8 @@ from ..textutil import read_json
 USER_AGENT = "Mozilla/5.0 (compatible; refract-news/0.1; +https://github.com/Rinneway/refract)"
 _TAG = re.compile(r"<[^>]+>")
 _ATOM = "{http://www.w3.org/2005/Atom}"
+_CONTENT = "{http://purl.org/rss/1.0/modules/content/}"
+_DECLARED = re.compile(rb"^\s*<\?xml[^>]*encoding=", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -58,24 +60,27 @@ def _date(value: str | None) -> datetime:
     return datetime.now(timezone.utc)
 
 
-def parse_feed(xml_text: str, feed: Feed) -> list[tuple[NewsArticle, str]]:
-    """(article, summary) pairs from an RSS 2.0 or Atom document."""
-    root = ET.fromstring(xml_text)
+def _atom_link(entry: ET.Element) -> str:
+    """The article itself: rel="alternate" or no rel — not the comments, the feed or an enclosure."""
+    links = entry.findall(f"{_ATOM}link")
+    best = next((x for x in links if x.get("rel") in (None, "", "alternate")), links[0] if links else None)
+    return ((best.get("href") if best is not None else "") or "").strip()
+
+
+def parse_feed(xml: str | bytes, feed: Feed) -> list[tuple[NewsArticle, str]]:
+    """(article, summary) pairs from an RSS 2.0 or Atom document. Pass bytes when you have them: the parser then
+    honours the document's own encoding (many Russian feeds are windows-1251)."""
+    root = ET.fromstring(xml)
     out: list[tuple[NewsArticle, str]] = []
     items = root.iter("item")
     atom = list(root.iter(f"{_ATOM}entry"))
     for it in items:
         title, link = _clean(it.findtext("title")), (it.findtext("link") or "").strip()
         if title and link:
-            out.append(
-                (
-                    _article(feed, title, link, _date(it.findtext("pubDate"))),
-                    _clean(it.findtext("description")),
-                )
-            )
+            summary = it.findtext("description") or it.findtext(f"{_CONTENT}encoded")
+            out.append((_article(feed, title, link, _date(it.findtext("pubDate"))), _clean(summary)))
     for it in atom:
-        link_el = it.find(f"{_ATOM}link")
-        link = (link_el.get("href") if link_el is not None else "") or ""
+        link = _atom_link(it)
         title = _clean(it.findtext(f"{_ATOM}title"))
         when = _date(it.findtext(f"{_ATOM}published") or it.findtext(f"{_ATOM}updated"))
         summary = _clean(it.findtext(f"{_ATOM}summary") or it.findtext(f"{_ATOM}content"))
@@ -99,7 +104,12 @@ def _article(feed: Feed, title: str, link: str, when: datetime) -> NewsArticle:
 def fetch(feed: Feed, timeout: float = 15) -> list[tuple[NewsArticle, str]]:
     req = urllib.request.Request(feed.url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return parse_feed(resp.read().decode("utf-8", errors="replace"), feed)
+        body, charset = resp.read(), resp.headers.get_content_charset()
+    if charset and not _DECLARED.match(body[:200]) and charset.lower().replace("-", "") != "utf8":
+        return parse_feed(
+            body.decode(charset, errors="replace"), feed
+        )  # the encoding is only in the HTTP header
+    return parse_feed(body, feed)
 
 
 def _similar(a: str, b: str) -> float:
@@ -142,14 +152,20 @@ def group_events(
     return events
 
 
-def collect(feeds: list[Feed], *, limit_per_feed: int = 30) -> tuple[list[NewsEvent], dict[str, str]]:
-    """Fetch every feed; returns events and a per-feed status ("ok: N" or the error)."""
-    items, status = [], {}
+def collect(
+    feeds: list[Feed], *, limit_per_feed: int = 30, known_urls: set[str] | None = None
+) -> tuple[list[NewsEvent], dict[str, str]]:
+    """Fetch every feed; returns the events and a per-feed status ("ok: N" or the error). Articles whose URL is
+    in `known_urls` (already stored) are left out, so a repeated fetch adds only what is new."""
+    items, status, known = [], {}, known_urls or set()
     for f in feeds:
         try:
             got = fetch(f)[:limit_per_feed]
-            items += got
-            status[f.name] = f"ok: {len(got)}"
+            new = [(a, s) for a, s in got if a.url not in known]
+            items += new
+            status[f.name] = f"ok: {len(got)}" + (
+                f", {len(got) - len(new)} already stored" if len(new) < len(got) else ""
+            )
         except Exception as e:  # noqa: BLE001 — one broken feed must not stop the others
             status[f.name] = f"error: {e}"
     return group_events(items), status

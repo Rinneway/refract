@@ -200,14 +200,21 @@ def cmd_theses(args) -> int:
 def cmd_news(args) -> int:
     from datetime import datetime, timezone
 
+    from .knowledge.store import load_models
     from .news.rss import collect, load_feeds
+    from .schemas import NewsEvent
 
-    events, status = collect(load_feeds(args.feeds), limit_per_feed=args.limit)
+    folder = Path(args.data) / "events"
+    stored = load_models(sorted(folder.glob("*.json")), NewsEvent, problems=[]) if folder.exists() else []
+    known = {a.url for e in stored for a in e.articles if a.url}
+    events, status = collect(load_feeds(args.feeds), limit_per_feed=args.limit, known_urls=known)
     for name, s in status.items():
         sys.stderr.write(f"{name}: {s}\n")
-    folder = Path(args.data) / "events"
+    if not events:
+        _out("no new events")
+        return 0
     folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"rss_{datetime.now(timezone.utc):%Y%m%d_%H%M}.json"
+    path = folder / f"rss_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}.json"
     path.write_text(
         json.dumps([e.model_dump(mode="json") for e in events], ensure_ascii=False, indent=1),
         encoding="utf-8",

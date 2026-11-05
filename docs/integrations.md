@@ -138,7 +138,7 @@ Works with the `mcp` SDK 1.x (`FastMCP`) and 2.x (`MCPServer`).
 [{"name": "Bank of England — news", "url": "https://www.bankofengland.co.uk/rss/news", "language": "en"}]
 ```
 
-`refract news fetch --feeds feeds.json --data my_data` writes `my_data/events/rss_<timestamp>.json`. Articles with similar titles within 48 hours become one event with several articles. Only titles, links, dates and the feeds' own summaries are stored; if you have the right to use full texts, put them into `NewsArticle.text` yourself. The URLs in `examples/feeds.example.json` are examples — check them before relying on them.
+`refract news fetch --feeds feeds.json --data my_data` writes `my_data/events/rss_<timestamp>.json` with the news that is not stored yet (articles whose URL is already in `my_data/events/` are left out, so run it as often as you like). Articles with similar titles within 48 hours become one event with several articles. Feeds in any encoding the document declares (many Russian feeds are windows-1251) or only the HTTP header names are read correctly; for Atom, the article link is taken, not the comments. Only titles, links, dates and the feeds' own summaries are stored; if you have the right to use full texts, put them into `NewsArticle.text` yourself. The URLs in `examples/feeds.example.json` are examples — check them before relying on them.
 
 ## Your own data
 
