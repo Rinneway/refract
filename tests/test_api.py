@@ -64,6 +64,19 @@ def test_token(monkeypatch, store, settings) -> None:
     assert c.get("/health").status_code == 200
 
 
+def test_web_page_is_served_without_a_token(monkeypatch, store, settings) -> None:
+    monkeypatch.setenv("REFRACT_API_TOKEN", "secret")
+    c = TestClient(create_app(Refract(store, llm=ScriptedLLM({}, settings), settings=settings)))
+    page = c.get("/")
+    assert page.status_code == 200 and page.headers["content-type"].startswith("text/html")
+    assert "<title>Refract</title>" in page.text and "/profiles/" in page.text  # a page on the same API
+    assert (
+        "http://" not in page.text.replace("http://www.w3.org", "") and "https://" not in page.text
+    )  # offline
+    assert c.get("/profiles").status_code == 401  # the data stays behind the token
+    assert c.get("/health").json()["institution"] == {"ru": "Демо-банка", "en": "Demo Bank"}
+
+
 def test_progress_shows_step_labels_in_the_run_language_from_the_start(api) -> None:
     job = api.post(
         "/insights",

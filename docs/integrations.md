@@ -67,13 +67,18 @@ refract models                                 configured models and what the en
 refract schemas --out DIR                      JSON Schemas of the contracts
 ```
 
+## Web page
+
+`refract serve` also serves a page at `/`: the subject's feed, live progress of the agent, the insight with the origin of every statement and numbered sources, follow-up questions and the trace. It is one file (`src/refract/web/index.html`) with no external resources, built only on the endpoints below, so it doubles as an example of a client. With `REFRACT_API_TOKEN` set the page asks for the token and keeps it for the browser session.
+
 ## REST API
 
 Open `/docs` for the OpenAPI UI.
 
 | Method | Path | Body / result |
 | --- | --- | --- |
-| GET | `/health` | `{status, version, language, llm_configured, data_problems}` |
+| GET | `/` | the web page |
+| GET | `/health` | `{status, version, language, llm_configured, data_problems, institution}` |
 | GET | `/profiles` · `/profiles/{id}` | list · `Profile` |
 | GET | `/profiles/{id}/feed?top=10&since=…&tag=true&all=false&language=…` | `Feed`: stored news ranked for the subject |
 | GET | `/events?limit=50` · `/events/{id}` | list · `NewsEvent` |

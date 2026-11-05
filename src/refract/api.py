@@ -25,10 +25,11 @@ import queue
 import threading
 import uuid
 from datetime import datetime
+from importlib import resources
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -99,15 +100,22 @@ def create_app(rf: Refract | None = None) -> FastAPI:
         if token and authorization != f"Bearer {token}":
             raise HTTPException(401, "invalid or missing token")
 
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def page() -> str:
+        """A one-page interface on this API: the subject's feed, live progress, the insight, chat and trace."""
+        return (resources.files("refract") / "web" / "index.html").read_text(encoding="utf-8")
+
     @app.get("/health")
     def health() -> dict[str, Any]:
         r = get_rf()
+        institution = r.settings.institution
         return {
             "status": "ok",
             "version": __version__,
             "language": r.settings.language,
             "llm_configured": bool(r.settings.api_key),
             "data_problems": r.store.problems,
+            "institution": {lang: institution.genitive(lang) for lang in ("ru", "en")},
         }
 
     @app.get("/profiles", dependencies=[Depends(auth)])
