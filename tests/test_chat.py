@@ -52,6 +52,23 @@ def test_chat_rebuilds_answer_with_invented_numbers(store, settings) -> None:
     assert "37" not in res.answer and res.answer == "Ставка сохранена на уровне 14%."
 
 
+def test_chat_never_returns_an_empty_answer(store, settings) -> None:
+    run = run_demo("rate")
+    claim = {
+        "claim_id": "q1",
+        "text": "Ставка сохранена на уровне 14%.",
+        "origin": "fact",
+        "source_ids": ["src_art_rate_hold_ru"],
+        "confidence": 0.9,
+    }
+    for claims, expected in (([claim], "Ставка сохранена на уровне 14%."), ([], "")):
+        answer = {"intent": "clarify", "answer": "  ", "claims": claims}
+        llm = ScriptedLLM({"chat_plan": [{"intent": "clarify", "steps": []}], "chat": [answer]}, settings)
+        res = ChatAgent(llm, store).answer(run.state, run.insight, "Что со ставкой?")
+        assert res.response.answer.strip() and (not expected or res.response.answer == expected)
+        assert any("текста ответа" in n for s in res.trace.steps for n in s.issues)
+
+
 def test_chat_slice_calls_tools(store, settings) -> None:
     run = run_demo("rate")
     plan = {

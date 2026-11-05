@@ -259,7 +259,14 @@ class ChatAgent:
             else:
                 kept.append(c)
         text = answer.answer
-        if invented_numbers([text], context):
+        if not text.strip():
+            notes.append(
+                "the model gave no answer text — built from verified statements"
+                if en
+                else "модель не дала текста ответа — он собран из проверенных утверждений"
+            )
+            text = " ".join(c.text for c in kept) or t("chat.no_data", ctx.lang)
+        elif invented_numbers([text], context):
             notes.append(
                 "numbers outside the context in the answer — rebuilt from verified statements"
                 if en
