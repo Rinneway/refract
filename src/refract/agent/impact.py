@@ -11,6 +11,10 @@ between the event and the subject gets a strength, and the strongest link bounds
 - weak (low): only the section letter matches (section G covers both a fuel wholesaler and a clothing shop),
   weak sensitivity, a counterparty matched only by section.
 
+In trade (divisions 45–47) the division says only “wholesale” or “retail”; the goods are in the three-digit group.
+There an activity matches only the same group (46.21 grain and 46.2 in the news); news that names the division
+alone is a weak link, and news about another group (grain for a building-materials wholesaler) is no division link.
+
 National factors (the policy rate, inflation, taxes, the budget, demand, credit, construction…) link the event to
 the subject only when the event concerns the subject's country: a UK company's sensitivity to the policy rate is to
 the Bank of England's rate, not another central bank's. Currencies, commodities, sanctions, duties and logistics
@@ -30,7 +34,7 @@ from dataclasses import dataclass
 
 from ..i18n import norm_lang
 from ..schemas import ImpactLevel, NewsEvent, Profile
-from ..schemas.vocab import country_code, division, section_of
+from ..schemas.vocab import TRADE_DIVISIONS, country_code, division, group, section_of
 
 STRONG, MODERATE, WEAK = 3, 2, 1
 CAP = {STRONG: ImpactLevel.HIGH, MODERATE: ImpactLevel.MEDIUM, WEAK: ImpactLevel.LOW}
@@ -54,6 +58,14 @@ _TEXT = {
     "own_section": {
         "ru": "совпал только раздел {section}; основной вид деятельности ({code}) событие прямо не называет",
         "en": "only section {section} matches; the event does not name the main activity ({code}) directly",
+    },
+    "own_trade": {
+        "ru": "событие касается торговли (NACE/ОКВЭД {div}), но не называет товары; деятельность субъекта — {code}",
+        "en": "the event concerns trade (division {div}) without naming the goods; the subject's activity is {code}",
+    },
+    "cp_trade": {
+        "ru": "событие касается торговли ({div}) без указания товаров, как и деятельность {who} {cid} ({share})",
+        "en": "the event concerns trade (division {div}) without naming the goods, as does the {who} {cid} ({share})",
     },
     "cp_division": {
         "ru": "событие касается отрасли {who} {cid} (код {code}, {share})",
@@ -161,6 +173,26 @@ class ImpactCap:
     reason: str
 
 
+def event_groups(e: NewsEvent) -> set[str]:
+    """Three-digit groups the event names (for trade, where the division does not say what is traded)."""
+    codes = [*e.industry_codes, *(f[7:] for f in e.macro_factors if f.startswith("sector:"))]
+    return {g for g in map(group, codes) if g}
+
+
+def activity_match(code: str | None, divisions: set[str], groups: set[str]) -> int:
+    """How an activity code matches the event: STRONG — the same activity; WEAK — trade named only as a division;
+    0 — no match (another division, or another group of the same trade division)."""
+    d = division(code)
+    if not d or d not in divisions:
+        return 0
+    if d not in TRADE_DIVISIONS:
+        return STRONG
+    named = {g for g in groups if g.startswith(f"{d}.")}
+    if not named:
+        return WEAK
+    return STRONG if group(code) in named else 0
+
+
 def event_divisions(e: NewsEvent) -> set[str]:
     """Divisions the event concerns: its industry codes and sector:<code> factors."""
     out = {d for d in map(division, e.industry_codes) if d}
@@ -261,10 +293,15 @@ def event_links(
             text = _t("product", lang, product=name, factor=factor, note=note)
             links.append(Link("product", text, MODERATE if main else WEAK, f"products.{product}"))
 
+    groups = event_groups(e)
     if p.industry:
         own_div, own_sec = division(p.industry.code), p.industry.section or section_of(p.industry.code)
-        if own_div and own_div in divisions:
+        match = activity_match(p.industry.code, divisions, groups)
+        if match == STRONG:
             links.append(Link("own_division", _t("own_division", lang, code=own_div), STRONG, "industry"))
+        elif match == WEAK:
+            text = _t("own_trade", lang, div=own_div, code=p.industry.code)
+            links.append(Link("own_section", text, WEAK, "industry"))
         elif own_sec and own_sec in sections:
             links.append(
                 Link(
@@ -283,7 +320,11 @@ def event_links(
         cp_div = division(cp.industry.code)
         cp_sec = cp.industry.section or section_of(cp.industry.code)
         strong = cp.share_of_flow > policy.share_high
-        if cp_div and cp_div in divisions:
+        match = activity_match(cp.industry.code, divisions, groups)
+        if match == WEAK:  # trade named without the goods: no more than a section match
+            text = _t("cp_trade", lang, div=cp_div, who=who, cid=cp.counterparty_id, share=share)
+            links.append(Link("counterparty", text, WEAK, f"counterparties.{cp.role}.{cp.counterparty_id}"))
+        elif match == STRONG:
             text = _t("cp_division", lang, who=who, cid=cp.counterparty_id, code=cp_div, share=share)
             links.append(
                 Link(
@@ -293,16 +334,9 @@ def event_links(
                     f"counterparties.{cp.role}.{cp.counterparty_id}",
                 )
             )
-        elif cp_sec and cp_sec in sections:
+        elif cp_sec and cp_sec in sections:  # a section letter spans whole sectors: weak whatever the share
             text = _t("cp_section", lang, section=cp_sec, who=who, cid=cp.counterparty_id, share=share)
-            links.append(
-                Link(
-                    "counterparty",
-                    text,
-                    MODERATE if strong else WEAK,
-                    f"counterparties.{cp.role}.{cp.counterparty_id}",
-                )
-            )
+            links.append(Link("counterparty", text, WEAK, f"counterparties.{cp.role}.{cp.counterparty_id}"))
 
     countries = event_countries(e)
     trade = [c for c in p.foreign_trade.countries if country_code(c) in countries]

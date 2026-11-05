@@ -989,7 +989,7 @@
           "type": "array"
         },
         "industry_codes": {
-          "description": "Two-digit NACE/OKVED divisions the event names directly",
+          "description": "Two-digit NACE/OKVED divisions the event names directly; in trade (45–47) the three-digit group when the goods are known (46.2), since the division alone does not say what is traded",
           "items": {
             "type": "string"
           },

@@ -92,3 +92,29 @@ def test_national_factors_stay_in_their_country(store) -> None:
         update={"countries": []}
     )  # the country of the news is not known: no restriction
     assert [x.feature for x in event_links(london, unknown)] == ["policy_rate"]
+
+
+def test_trade_matches_by_what_is_traded(store) -> None:
+    """Division 46 is any wholesale: grain news (46.2) is not about a building-materials wholesaler (46.73)."""
+    builder, farm = store.profiles["demo_building_materials"], store.profiles["demo_grain_farm"]
+    wheat = store.events["ev_wheat_en"]  # 01 and 46.2
+    assert impact_cap(builder, wheat).level is ImpactLevel.LOW
+    assert not [x for x in event_links(builder, wheat) if x.kind == "own_division"]
+    trader = [x for x in event_links(farm, wheat) if x.feature == "counterparties.customer.cp_trader_411"]
+    assert [x.level for x in trader] == [3]  # the grain trader (46.21, 38%) is in the group the news names
+    general = wheat.model_copy(update={"industry_codes": ["46"]})  # wholesale without the goods: weak
+    assert [x.level for x in event_links(builder, general) if x.feature == "industry"] == [1]
+
+
+def test_a_section_letter_is_a_weak_link_whatever_the_share(store) -> None:
+    # USN news names retail (47) and food service (56); the farm's grain trader (46.21, 38%) shares only section G
+    links = event_links(store.profiles["demo_grain_farm"], store.events["ev_usn_vat_ru"])
+    assert [(x.kind, x.level) for x in links] == [("counterparty", 1)]
+
+
+def test_activity_groups() -> None:
+    from refract.schemas.vocab import group
+
+    assert (
+        group("46.73") == "46.7" and group("46.2") == "46.2" and group("46") is None and group("x.1") is None
+    )

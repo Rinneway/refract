@@ -107,6 +107,20 @@ def division(code: str | None) -> str | None:
     return head.zfill(2) if head.isdigit() and len(head) <= 2 else None
 
 
+# In trade the division says only “wholesale” or “retail”; what is traded is in the three-digit group
+# (46.2 agricultural raw materials, 46.7 fuel, metals and building materials).
+TRADE_DIVISIONS = frozenset({"45", "46", "47"})
+
+
+def group(code: str | None) -> str | None:
+    """Three-digit group of an activity code: '46.73' → '46.7', '46.2' → '46.2', '46' → None."""
+    two = division(code)
+    parts = (code or "").strip().split(".")
+    if two is None or len(parts) < 2 or not parts[1][:1].isdigit():
+        return None
+    return f"{two}.{parts[1][0]}"
+
+
 def section_of(code: str | None) -> str | None:
     two = division(code)
     if two is None:

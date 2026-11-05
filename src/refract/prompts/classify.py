@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, Field
 
 from ..i18n import norm_lang
@@ -10,7 +12,7 @@ from ..schemas.vocab import factors_prompt, is_known_factor
 from ..textutil import untrusted
 from . import rule
 
-VERSION = "classify-v4"
+VERSION = "classify-v5"
 MAX_FACTORS = 3
 
 
@@ -25,7 +27,8 @@ class NewsTags(BaseModel):
     industry_sections: list[str] = Field(description="Affected NACE/OKVED sections, letters A–U")
     industry_codes: list[str] = Field(
         default_factory=list,
-        description="Activities the news names directly: two-digit NACE/OKVED divisions, e.g. 46 or 47",
+        description="Activities the news names directly: two-digit NACE/OKVED divisions, e.g. 41 or 56; for trade "
+        "the three-digit group when the goods are clear, e.g. 46.2",
     )
     regions: list[str]
     countries: list[str] = Field(
@@ -45,7 +48,9 @@ SYSTEM = {
         "(что изменилось или решено); то, что в новости лишь упомянуто как фон (например, центробанк говорит о "
         "рынке труда в решении по ставке), не добавляй. Виды деятельности (две цифры NACE/ОКВЭД) указывай, только "
         "если новость прямо называет отрасль: 46 — оптовая торговля, 47 — розница, 41 — строительство зданий, "
-        "56 — общепит; общую макроновость не привязывай ко всем отраслям. В странах укажи и ту, о чьей экономике "
+        "56 — общепит; для торговли, если понятно, какие товары, — группу из трёх цифр: 46.2 — оптовая торговля "
+        "сельхозсырьём, 46.3 — продуктами, 46.7 — топливом, металлами, стройматериалами, 47.1 — неспециализированная "
+        "розница; общую макроновость не привязывай ко всем отраслям. В странах укажи и ту, о чьей экономике "
         "новость, даже если она внутренняя (решение центробанка — его страна), если её можно понять из текста. "
         "Не додумывай того, чего нет в новости. "
     ),
@@ -56,7 +61,9 @@ SYSTEM = {
         "factors, the main one first (what changed or was decided); do not add what the news only mentions as "
         "background (e.g. a central bank talking about the labour market in a rate decision). Give activities "
         "(two-digit NACE divisions) only if the news names the industry directly: 46 — wholesale, 47 — retail, "
-        "41 — construction of buildings, 56 — food service; do not attach a general macro story to every "
+        "41 — construction of buildings, 56 — food service; for trade, when the goods are clear, the three-digit "
+        "group: 46.2 — wholesale of agricultural raw materials, 46.3 — of food, 46.7 — of fuel, metals and "
+        "building materials, 47.1 — non-specialised retail; do not attach a general macro story to every "
         "industry. In countries, include the country whose economy the news is about even when it is domestic news "
         "(a central bank's decision — its country), if the text makes it clear. Do not add anything that is not in "
         "the news. "
@@ -75,13 +82,16 @@ def build_messages(event: NewsEvent, lang: str = "ru") -> list[dict[str, str]]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+_ACTIVITY = re.compile(r"\d{2}(?:\.\d{1,2})?")  # a division (46) or, in trade, a group (46.2, 46.21)
+
+
 def apply(event: NewsEvent, tags: NewsTags) -> NewsEvent:
     return event.model_copy(
         update={
             "event_type": tags.event_type,
             "macro_factors": [f for f in tags.macro_factors if is_known_factor(f)][:MAX_FACTORS],
             "industry_sections": [s.strip().upper()[:1] for s in tags.industry_sections if s.strip()],
-            "industry_codes": [d for d in tags.industry_codes if d.isdigit() and len(d) == 2],
+            "industry_codes": [d.strip() for d in tags.industry_codes if _ACTIVITY.fullmatch(d.strip())],
             "regions": tags.regions,
             "countries": tags.countries,
             "commodities": tags.commodities,

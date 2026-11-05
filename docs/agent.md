@@ -38,9 +38,9 @@ The model tends to give one news item the same level for every reader. The ceili
 
 | Link | Strength | Ceiling |
 | --- | --- | --- |
-| the event names the subject's main activity (two-digit NACE/OKVED division); a country the subject trades with; the division of a counterparty with > 30% of the flow; sensitivity ≥ 0.8 to the event's main factor | strong | high |
+| the event names the subject's main activity (two-digit NACE/OKVED division; in trade, 45–47, the three-digit group — what is traded); a country the subject trades with; the activity of a counterparty with > 30% of the flow; sensitivity ≥ 0.8 to the event's main factor | strong | high |
 | a counterparty with 10–30% of the flow; sensitivity 0.5–0.8; the subject's region; strong sensitivity to a secondary factor; a product held with the institution and priced off the event's main factor (loans, mortgage, leasing, factoring, deposits and the policy rate) when no sensitivity covers that factor | moderate | medium |
-| only the section letter matches; weak sensitivity; a counterparty matched by section only; such a product on a secondary factor | weak | low |
+| only the section letter matches (for the subject or any counterparty, whatever its share); trade named without the goods (division 46 alone); weak sensitivity; such a product on a secondary factor | weak | low |
 | no links | — | low |
 | no sensitivities computed for the subject and no strong link | — | medium |
 

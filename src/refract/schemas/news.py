@@ -57,7 +57,9 @@ class NewsEvent(Contract):
     articles: list[NewsArticle] = Field(min_length=1)
     key_facts: list[KeyFact] = Field(default_factory=list)
     industry_codes: list[str] = Field(
-        default_factory=list, description="Two-digit NACE/OKVED divisions the event names directly"
+        default_factory=list,
+        description="Two-digit NACE/OKVED divisions the event names directly; in trade (45–47) the three-digit "
+        "group when the goods are known (46.2), since the division alone does not say what is traded",
     )
     industry_sections: list[str] = Field(default_factory=list, description="Affected sections A–U")
     regions: list[str] = Field(default_factory=list)
