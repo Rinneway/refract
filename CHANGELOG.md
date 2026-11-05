@@ -49,6 +49,23 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - `agent/checks.py` is split into a package by responsibility — `rules`, `review`, `attribution`, `repair`, `messages`; `checks.<name>` keeps working.
 - End-to-end tests drive every interface — CLI, Python API, REST API, MCP — through the real HTTP client against a fake OpenAI-compatible server; `docs/schemas` is checked against the code.
 
+### Bugs found by fuzzing and review
+
+- Numbers: thousands separated by a no-break, thin or narrow no-break space (“12 600”) were split into two numbers, and the second was reported as invented. The separators in the number pattern had become ordinary spaces; they are escapes now.
+- A schema-invalid answer is no longer lost when the model's repair fails too: code keeps its valid part (enum case and wording, a single item where a list is expected, lists over their maximum, invalid optional fields and items) and notes every change in the trace. On corrupted real answers of small models, failed runs fell from 87 to 3 in 600.
+- Repeated statement and action ids are renumbered instead of failing the insight.
+- LLM cache: atomic writes; a damaged or foreign cache file is a miss, not a crash on every later run; the call log is written under a lock.
+- Chat never returns an empty answer.
+- Only the newest runs (500, `keep_runs`) and API jobs (1000) stay in memory.
+- Impact links: national factors (the policy rate, taxes, demand…) link only to subjects of the countries the news is about; trade matches by the three-digit group, what is traded; a counterparty matched by its section letter is a weak link whatever its share, as documented. The tagger (`classify-v5`) names the country of domestic news and, in trade, the group.
+- The retelling baseline now sees the same tagged event as every other system.
+- `tests/test_robustness.py` replays 150 corrupted real answers across all ablations on every test run; pyright is clean apart from optional imports.
+
+### Personal news feed
+
+- `Refract.feed`, `refract feed`, `GET /profiles/{id}/feed`, MCP `news_feed`: the stored news ranked for one subject by code — direct, background or unrelated — with the links as reasons; untagged news is tagged once; `--analyze K` explains the strongest items.
+- Evaluation: the feed's verdict against `gold_relevant` (precision, recall, F1, κ, and the share judged relevant at each link strength).
+
 ## 0.1.0 — 2026-10-31
 
 First public release: the agent as a standalone project, re-implemented on synthetic data.
