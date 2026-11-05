@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from pydantic import BaseModel
 
-from .llm.client import LLMClient, LLMError
+from .llm.client import LLM, LLMClient, LLMError
 
 FILLER = [
     "Совет директоров обсуждал денежно-кредитную политику и динамику цен на услуги.",
@@ -135,7 +135,7 @@ def _is_local(url: str) -> bool:
     return any(h in url for h in ("localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"))
 
 
-def error_hint(error: str, client: LLMClient) -> str | None:
+def error_hint(error: str, client: LLM) -> str | None:
     """What to do about a failed call: a placeholder key on a remote endpoint, a missing model, no server."""
     s, url = client.settings, client.settings.base_urls[0]
     if "HTTP 402" in error:

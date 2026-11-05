@@ -20,6 +20,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+from collections.abc import Mapping
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -63,7 +64,7 @@ def _short(value: Any, limit: int = 40) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def _enum_value(value: str, err: dict) -> str | None:
+def _enum_value(value: str, err: Mapping[str, Any]) -> str | None:
     """The allowed value a model meant: the same in lower case, or the only allowed value among its words."""
     norm = re.sub(r"[\s-]+", "_", value.strip().lower())
     allowed = re.findall(r"'([^']*)'", str((err.get("ctx") or {}).get("expected", "")))
@@ -138,9 +139,10 @@ def salvage(schema: type[T], data: Any) -> tuple[T | None, list[str]]:
                 items = _at(data, loc[:j])
             except (KeyError, IndexError, TypeError):
                 continue
-            if isinstance(items, list) and loc[j] < len(items):
-                notes.append(f"{_label(items[loc[j]], loc[: j + 1])} dropped: {reason}")
-                del items[loc[j]]
+            idx = loc[j]
+            if isinstance(items, list) and isinstance(idx, int) and idx < len(items):
+                notes.append(f"{_label(items[idx], loc[: j + 1])} dropped: {reason}")
+                del items[idx]
                 break
         else:  # a required top-level field
             if loc in dropped_fields:

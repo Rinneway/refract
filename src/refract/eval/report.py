@@ -105,9 +105,9 @@ def summarize(
                 )
                 m["language_parity"] = {"n": len(matched), "en_minus_ru": d, "ci95": [lo, hi]}
         gold = [
-            (p.gold_impact, (runs[p.id] or {}).get("objective", {}).get("impact"))
+            (p.gold_impact, ((runs[p.id] or {}).get("objective") or {}).get("impact"))
             for p in pairs
-            if p.gold_impact and runs.get(p.id) and runs[p.id].get("content")
+            if p.gold_impact and (runs.get(p.id) or {}).get("content")
         ]
         if gold:
             m["gold_impact_accuracy"] = mean([float(g == y) for g, y in gold])

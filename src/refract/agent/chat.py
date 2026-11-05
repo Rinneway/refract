@@ -46,6 +46,8 @@ class ChatRun:
 
 def context_from_state(state: AgentState, agent: Agent | None = None) -> InsightContext:
     c = state.context
+    if c.profile is None or c.event is None:
+        raise ValueError("the run state has no profile or event: it ended before the agent loaded them")
     kwargs = {}
     if agent is not None:
         kwargs = {

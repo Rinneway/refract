@@ -136,7 +136,7 @@ class Experiment:
                     seen[alias][step["model"]] = seen[alias].get(step["model"], 0) + 1
         if not any(seen.values()):
             return None
-        return {"models": {a: max(c, key=c.get) for a, c in seen.items() if c}, "prompts": {}}
+        return {"models": {a: max(c, key=lambda m, c=c: c[m]) for a, c in seen.items() if c}, "prompts": {}}
 
     def check_manifest(self) -> list[str]:
         """Compare with the manifest of the experiment's first run; write it if this is the first run.
