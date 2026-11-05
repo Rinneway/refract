@@ -181,7 +181,12 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             raise HTTPException(404, "give an existing event_id or a news item")
         cfg = ablation(req.ablation, r.config)
         job_id = uuid.uuid4().hex[:12]
-        job = _Job(ProgressTracker(ev.event_id, req.profile_id, req.role))
+        lang = req.language or r.settings.language
+        job = _Job(
+            ProgressTracker(
+                ev.event_id, req.profile_id, req.role, lang=lang, institution=r.settings.institution
+            )
+        )
         jobs[job_id] = job
 
         def work() -> None:

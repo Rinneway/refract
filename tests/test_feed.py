@@ -46,7 +46,9 @@ def test_each_subject_gets_its_own_order(store) -> None:
         ("ev_dollar_en", "direct"),
         ("ev_housing_en", "background"),
     ]  # the Bank of Russia's rate is not a UK studio's news
-    assert london.items[0].links[0].startswith("strong link — factor fx:USD")
+    assert (
+        london.items[0].links[0].startswith("strong link — US dollar exchange rate: 45% of incoming payments")
+    )
     builder = rank(store.profiles["demo_building_materials"], store.events.values(), top=None)
     assert {it.event_id: it.relevance for it in builder.items}[
         "ev_wheat_en"

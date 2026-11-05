@@ -34,7 +34,7 @@ from dataclasses import dataclass
 
 from ..i18n import norm_lang
 from ..schemas import ImpactLevel, NewsEvent, Profile
-from ..schemas.vocab import TRADE_DIVISIONS, country_code, division, group, section_of
+from ..schemas.vocab import TRADE_DIVISIONS, country_code, division, factor_label, group, section_of
 
 STRONG, MODERATE, WEAK = 3, 2, 1
 CAP = {STRONG: ImpactLevel.HIGH, MODERATE: ImpactLevel.MEDIUM, WEAK: ImpactLevel.LOW}
@@ -47,8 +47,8 @@ _DIRECTION = {
 }
 _TEXT = {
     "exposure": {
-        "ru": "фактор {factor}{note}: чувствительность {direction}, сила {strength} — {reason}",
-        "en": "factor {factor}{note}: sensitivity {direction}, strength {strength} — {reason}",
+        "ru": "{label}{note}: {reason}; влияет {direction}, сила {strength} ({factor})",
+        "en": "{label}{note}: {reason}; effect {direction}, strength {strength} ({factor})",
     },
     "secondary": {"ru": " (второстепенный фактор события)", "en": " (secondary factor of the event)"},
     "own_division": {
@@ -84,8 +84,8 @@ _TEXT = {
         "en": "the event concerns the subject's region ({region})",
     },
     "product": {
-        "ru": "у субъекта есть {product} в банке — их стоимость зависит от фактора {factor}{note}",
-        "en": "the subject holds {product} with the institution, priced off {factor}{note}",
+        "ru": "у субъекта есть {product} в банке, их стоимость зависит от фактора «{label}»{note}",
+        "en": "the subject holds {product} with the institution, priced off “{label}”{note}",
     },
     "customer": {"ru": "покупателя", "en": "customer"},
     "supplier": {"ru": "поставщика", "en": "supplier"},
@@ -270,6 +270,7 @@ def event_links(
             "exposure",
             lang,
             factor=x.factor,
+            label=factor_label(canonical_factor(x.factor), lang),
             note=note,
             direction=_DIRECTION[norm_lang(lang)][x.direction.value],
             strength=_num(x.strength, lang),
@@ -290,7 +291,7 @@ def event_links(
             main = factor == primary
             note = "" if main else _t("secondary", lang)
             name = _PRODUCT[norm_lang(lang)][product]
-            text = _t("product", lang, product=name, factor=factor, note=note)
+            text = _t("product", lang, product=name, label=factor_label(factor, lang), note=note)
             links.append(Link("product", text, MODERATE if main else WEAK, f"products.{product}"))
 
     groups = event_groups(e)

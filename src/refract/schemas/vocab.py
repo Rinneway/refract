@@ -70,6 +70,25 @@ THESIS_TOPICS: dict[str, dict[str, str]] = {
 }
 
 
+def factor_label(factor: str, lang: str = "ru") -> str:
+    """A factor as a reader names it: 'policy_rate' → «Ключевая ставка центробанка и стоимость кредитов»;
+    prefixed factors keep their value ('sector:41' → «отрасль 41», 'country:CN' → «страна CN»)."""
+    lang = "en" if lang == "en" else "ru"
+    if factor in FACTORS:
+        return FACTORS[factor][lang]
+    prefix, _, value = factor.partition(":")
+    names = {
+        "sector": ("отрасль", "industry"),
+        "region": ("регион", "region"),
+        "country": ("страна", "country"),
+        "commodity": ("сырьё", "commodity"),
+        "fx": ("курс", "exchange rate of"),
+    }
+    if value and prefix in names:
+        return f"{names[prefix][0 if lang == 'ru' else 1]} {value}"
+    return factor
+
+
 def is_known_factor(factor: str) -> bool:
     return factor in FACTORS or factor.startswith(FACTOR_PREFIXES)
 

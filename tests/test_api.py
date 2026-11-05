@@ -62,3 +62,12 @@ def test_token(monkeypatch, store, settings) -> None:
     assert c.get("/profiles").status_code == 401
     assert c.get("/profiles", headers={"Authorization": "Bearer secret"}).status_code == 200
     assert c.get("/health").status_code == 200
+
+
+def test_progress_shows_step_labels_in_the_run_language_from_the_start(api) -> None:
+    job = api.post(
+        "/insights",
+        json={"profile_id": "demo_building_materials", "event_id": "ev_rate_hold_ru", "language": "en"},
+    ).json()
+    labels = [s["label"] for s in api.get(f"/jobs/{job['job_id']}").json()["steps"]]
+    assert "Profile" in labels and not any("_" in label for label in labels)

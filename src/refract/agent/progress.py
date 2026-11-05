@@ -15,6 +15,8 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from ..config import Institution
+from ..i18n import STRINGS, t
 from ..schemas import Contract
 
 SKELETON = ("get_profile", "plan", "draft_insight", "verify", "finalize")
@@ -36,12 +38,27 @@ class InsightProgress(Contract):
     steps: list[ProgressStep] = Field(default_factory=list)
 
 
+def step_labels(lang: str = "ru", institution: Institution | None = None) -> dict[str, str]:
+    """Labels of the agent's steps in the run language, as the agent's own progress events name them."""
+    inst = institution or Institution()
+    names = {"institution": inst.display(lang), "institution_gen": inst.genitive(lang)}
+    return {n: t(f"step.{n}", lang, **names) for n in SKELETON if f"step.{n}" in STRINGS}
+
+
 class ProgressTracker:
     def __init__(
-        self, event_id: str, profile_id: str, role: str | None = None, labels: dict[str, str] | None = None
+        self,
+        event_id: str,
+        profile_id: str,
+        role: str | None = None,
+        labels: dict[str, str] | None = None,
+        *,
+        lang: str = "ru",
+        institution: Institution | None = None,
     ) -> None:
+        """Steps not started yet are shown with `labels` (default: the agent's own labels in `lang`)."""
         self._lock = threading.Lock()
-        labels = labels or {}
+        labels = labels if labels is not None else step_labels(lang, institution)
         self._state = InsightProgress(
             event_id=event_id,
             profile_id=profile_id,
