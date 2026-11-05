@@ -36,7 +36,7 @@ The agent turns a profile into keyed features — `kind`, `industry`, `scale.seg
 
 ## News event
 
-`event_id`, `title`, `summary`, `published_at`, `articles` (one or more: `article_id`, `url`, `publisher`, `title`, `text`, `language`), `key_facts`, and the tags: `event_type`, `macro_factors` (≤ 3, the main one first), `industry_codes` (two-digit divisions the news names directly), `industry_sections`, `countries`, `regions`, `commodities`, `importance`, `language`. Events without factors are tagged by the agent on first use.
+`event_id`, `title`, `summary`, `published_at`, `articles` (one or more: `article_id`, `url`, `publisher`, `title`, `text`, `language`), `key_facts`, and the tags: `event_type`, `macro_factors` (≤ 3, the main one first), `industry_codes` (two-digit divisions the news names directly), `industry_sections`, `countries` (the countries the news is about, the domestic one included: national factors link only to subjects of these countries; empty — unknown), `regions`, `commodities`, `importance`, `language`. Events without factors are tagged by the agent on first use.
 
 ## Factor vocabulary
 

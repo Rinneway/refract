@@ -45,7 +45,9 @@
     "C"
   ],
   "regions": [],
-  "countries": [],
+  "countries": [
+    "RU"
+  ],
   "commodities": [],
   "macro_factors": [
     "sme_support",

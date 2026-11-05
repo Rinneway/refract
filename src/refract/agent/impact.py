@@ -11,6 +11,11 @@ between the event and the subject gets a strength, and the strongest link bounds
 - weak (low): only the section letter matches (section G covers both a fuel wholesaler and a clothing shop),
   weak sensitivity, a counterparty matched only by section.
 
+National factors (the policy rate, inflation, taxes, the budget, demand, credit, construction…) link the event to
+the subject only when the event concerns the subject's country: a UK company's sensitivity to the policy rate is to
+the Bank of England's rate, not another central bank's. Currencies, commodities, sanctions, duties and logistics
+cross borders. An event whose countries are unknown is not restricted.
+
 A product the subject holds with the institution whose price moves with the event's main factor (a loan and the
 policy rate, a deposit and the policy rate) is a moderate link: the effect is direct, but its size depends on
 an amount the profile does not hold. On a secondary factor of the event it is weak.
@@ -172,6 +177,21 @@ def canonical_factor(factor: str) -> str:
     return factor
 
 
+# Factors that describe one country's economy; the rest (fx:, commodities, sanctions, tariffs, logistics) cross borders.
+NATIONAL_FACTORS = frozenset(
+    {
+        "policy_rate", "inflation", "taxes", "budget", "sme_support", "labor_market", "consumer_demand",
+        "credit_market", "construction", "regulation", "gdp", "bonds", "equities", "energy_prices",
+    }
+)  # fmt: skip
+
+
+def abroad(p: Profile, e: NewsEvent) -> bool:
+    """The event concerns other countries than the subject's (False when either is unknown)."""
+    countries, home = event_countries(e), country_code(p.country or "")
+    return bool(countries) and bool(home) and home not in countries
+
+
 def event_countries(e: NewsEvent) -> set[str]:
     names = list(e.countries) + [f[8:] for f in e.macro_factors if f.startswith("country:")]
     return {c for c in map(country_code, names) if c}
@@ -203,9 +223,12 @@ def event_links(
     # The first factor of an event is the main one (the classifier puts it first). A policy-rate decision may
     # mention the labour market, but for a subject with a payroll that is background, not a strong link.
     primary = canonical_factor(e.macro_factors[0]) if e.macro_factors else None
+    foreign = abroad(p, e)
     for x in sorted(p.exposures, key=lambda x: -x.strength):
         if not _factor_hit(x.factor, factors, divisions):
             continue
+        if foreign and canonical_factor(x.factor) in NATIONAL_FACTORS:
+            continue  # another country's rate, taxes or demand
         level, note = _exposure_level(x.strength, policy), ""
         if x.via == "group":
             level = max(WEAK, level - 1)
@@ -226,7 +249,7 @@ def event_links(
     covered = {canonical_factor(x.factor) for x in p.exposures}
     held = {k for k, v in p.products.model_dump().items() if v}
     for factor in [primary, *sorted(factors - {primary})] if primary else []:
-        if factor in covered:
+        if factor in covered or (foreign and factor in NATIONAL_FACTORS):
             continue
         for product in PRODUCT_FACTORS.get(factor, ()):
             if product not in held:

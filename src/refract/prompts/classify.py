@@ -10,7 +10,7 @@ from ..schemas.vocab import factors_prompt, is_known_factor
 from ..textutil import untrusted
 from . import rule
 
-VERSION = "classify-v3"
+VERSION = "classify-v4"
 MAX_FACTORS = 3
 
 
@@ -28,7 +28,9 @@ class NewsTags(BaseModel):
         description="Activities the news names directly: two-digit NACE/OKVED divisions, e.g. 46 or 47",
     )
     regions: list[str]
-    countries: list[str] = Field(description="ISO 3166-1 alpha-2 codes of countries involved")
+    countries: list[str] = Field(
+        description="ISO 3166-1 alpha-2 codes of the countries the news is about, the domestic one included"
+    )
     commodities: list[str]
     importance: float = Field(ge=0, le=1, description="Strength of the event for the economy, 0–1")
     key_facts: list[str] = Field(max_length=3, description="Up to three key facts with numbers and dates")
@@ -43,7 +45,9 @@ SYSTEM = {
         "(что изменилось или решено); то, что в новости лишь упомянуто как фон (например, центробанк говорит о "
         "рынке труда в решении по ставке), не добавляй. Виды деятельности (две цифры NACE/ОКВЭД) указывай, только "
         "если новость прямо называет отрасль: 46 — оптовая торговля, 47 — розница, 41 — строительство зданий, "
-        "56 — общепит; общую макроновость не привязывай ко всем отраслям. Не додумывай того, чего нет в новости. "
+        "56 — общепит; общую макроновость не привязывай ко всем отраслям. В странах укажи и ту, о чьей экономике "
+        "новость, даже если она внутренняя (решение центробанка — его страна), если её можно понять из текста. "
+        "Не додумывай того, чего нет в новости. "
     ),
     "en": (
         "You tag news for a business analytics system. Determine the event type, impact factors strictly from the "
@@ -53,7 +57,9 @@ SYSTEM = {
         "background (e.g. a central bank talking about the labour market in a rate decision). Give activities "
         "(two-digit NACE divisions) only if the news names the industry directly: 46 — wholesale, 47 — retail, "
         "41 — construction of buildings, 56 — food service; do not attach a general macro story to every "
-        "industry. Do not add anything that is not in the news. "
+        "industry. In countries, include the country whose economy the news is about even when it is domestic news "
+        "(a central bank's decision — its country), if the text makes it clear. Do not add anything that is not in "
+        "the news. "
     ),
 }
 VOCAB = {"ru": "\n\nСловарь факторов:\n", "en": "\n\nFactor vocabulary:\n"}

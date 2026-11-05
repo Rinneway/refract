@@ -61,7 +61,12 @@ class NewsEvent(Contract):
     )
     industry_sections: list[str] = Field(default_factory=list, description="Affected sections A–U")
     regions: list[str] = Field(default_factory=list)
-    countries: list[str] = Field(default_factory=list, description="ISO codes or names of countries involved")
+    countries: list[str] = Field(
+        default_factory=list,
+        description="ISO codes or names of the countries the news is about, the domestic one included. National "
+        "factors (the policy rate, taxes, demand…) link the event only to subjects of these countries; empty — "
+        "unknown, no restriction",
+    )
     commodities: list[str] = Field(default_factory=list)
     macro_factors: list[str] = Field(
         default_factory=list, description="Up to three factors from the vocabulary, the main one first"

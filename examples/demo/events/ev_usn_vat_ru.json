@@ -45,7 +45,9 @@
     "G"
   ],
   "regions": [],
-  "countries": [],
+  "countries": [
+    "RU"
+  ],
   "commodities": [],
   "macro_factors": [
     "taxes",

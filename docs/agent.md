@@ -44,6 +44,8 @@ The model tends to give one news item the same level for every reader. The ceili
 | no links | — | low |
 | no sensitivities computed for the subject and no strong link | — | medium |
 
+National factors — the policy rate, inflation, taxes, the budget, SME support, the labour market, consumer demand, credit, construction, regulation, growth, bonds and equities, energy tariffs — link the event to the subject only when the event's `countries` include the subject's country: a UK company's sensitivity to the policy rate is to the Bank of England's rate, not the Bank of Russia's. Currencies, commodities, sanctions, duties and logistics cross borders. An event whose countries are unknown is not restricted; the tagger is asked to name the country even for domestic news.
+
 `high` also needs a strong event (`importance` ≥ 0.6); a moderate link to a very weak event (< 0.3) gives `low`. A sensitivity via the group, or to a secondary factor of the event, is one step weaker. Countries are compared by ISO code with Russian and English aliases (“ОАЭ”, “UAE”, “Объединённые Арабские Эмираты” → `AE`).
 
 An FX account or an investment portfolio is not linked by itself: whether a currency or a market touches it depends on its composition, which the profile does not hold — that comes from the subject's sensitivities. The model sees the links and the ceiling in the context; an impact above it is a warning in the review and is clamped at finalisation, with a note in the trace. All thresholds are fields of `ImpactPolicy`.

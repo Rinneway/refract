@@ -1012,7 +1012,7 @@
           "type": "array"
         },
         "countries": {
-          "description": "ISO codes or names of countries involved",
+          "description": "ISO codes or names of the countries the news is about, the domestic one included. National factors (the policy rate, taxes, demand…) link the event only to subjects of these countries; empty — unknown, no restriction",
           "items": {
             "type": "string"
           },

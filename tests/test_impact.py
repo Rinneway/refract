@@ -24,7 +24,11 @@ from refract.schemas.vocab import country_code, division, section_of
             "ev_rate_hold_ru",
             ImpactLevel.MEDIUM,
         ),  # a loan priced off the rate, no sensitivity
-        ("demo_london_studio", "ev_rate_hold_ru", ImpactLevel.MEDIUM),  # sensitivity 0.5 — moderate
+        (
+            "demo_london_studio",
+            "ev_rate_hold_ru",
+            ImpactLevel.LOW,
+        ),  # its rate is the Bank of England's, not this one
         ("demo_family_saver", "ev_wheat_en", ImpactLevel.LOW),  # nothing in common
         ("demo_designer_npd", "ev_yuan_ru", ImpactLevel.LOW),  # trades with KZ and AE, not CN
         ("demo_grain_farm", "ev_wheat_en", ImpactLevel.HIGH),  # own activity, exports to TR and EG
@@ -36,14 +40,16 @@ def test_impact_ceiling(store, profile, event, level) -> None:
 
 
 def test_secondary_factor_is_weaker(store) -> None:
-    # ev_dollar_en: fx:USD is primary, inflation is secondary
+    # ev_dollar_en: fx:USD is primary, inflation is secondary (countries cleared: US inflation is not a Russian
+    # family's inflation)
     family = store.profiles["demo_family_saver"]
-    links = event_links(family, store.events["ev_dollar_en"], "en")
+    links = event_links(family, store.events["ev_dollar_en"].model_copy(update={"countries": []}), "en")
     assert links and all("secondary" in x.text for x in links if x.kind == "exposure")
 
 
 def test_thresholds_are_configurable(store) -> None:
-    p, e = store.profiles["demo_london_studio"], store.events["ev_rate_hold_ru"]
+    p, e = store.profiles["demo_grain_farm"], store.events["ev_rate_hold_ru"]  # policy_rate 0.6
+    assert impact_cap(p, e).level is ImpactLevel.MEDIUM
     assert impact_cap(p, e, policy=ImpactPolicy(strong_exposure=0.5)).level is ImpactLevel.HIGH
 
 
@@ -72,3 +78,17 @@ def test_product_link_counts_once_and_not_over_a_sensitivity(store) -> None:
     links = [x for x in event_links(coffee, rate) if x.kind == "product"]
     assert [x.feature for x in links] == ["products.loans"] and links[0].level == 2
     assert not [x for x in event_links(builder, rate) if x.kind == "product"]  # policy_rate is a sensitivity
+
+
+def test_national_factors_stay_in_their_country(store) -> None:
+    london, family = store.profiles["demo_london_studio"], store.profiles["demo_family_saver"]
+    rate, dollar = store.events["ev_rate_hold_ru"], store.events["ev_dollar_en"]  # RU; US
+    assert not [x for x in event_links(london, rate) if x.feature == "policy_rate"]
+    assert [x.feature for x in event_links(london, dollar) if x.kind == "exposure"] == [
+        "fx:USD"
+    ]  # crosses borders
+    assert not event_links(family, dollar)  # US inflation is not a Russian family's inflation
+    unknown = rate.model_copy(
+        update={"countries": []}
+    )  # the country of the news is not known: no restriction
+    assert [x.feature for x in event_links(london, unknown)] == ["policy_rate"]

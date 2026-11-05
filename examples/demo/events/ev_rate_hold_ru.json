@@ -39,7 +39,9 @@
   "industry_codes": [],
   "industry_sections": [],
   "regions": [],
-  "countries": [],
+  "countries": [
+    "RU"
+  ],
   "commodities": [],
   "macro_factors": [
     "policy_rate"
