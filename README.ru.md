@@ -42,6 +42,7 @@ ev_rate_hold_ru  ×  demo_building_materials (оптовик с кредитам
 - **Любой субъект**: компании, ИП, самозанятые и частные лица. Роли читателя — от финансового директора и казначея до «предпринимателя» и «частного лица».
 - **Два языка.** Инсайт на русском или английском, на каком бы языке ни была новость.
 - **Любой провайдер** с OpenAI-совместимым API: OpenAI, OpenRouter, LiteLLM, vLLM, Ollama, LM Studio. Модель задаётся для каждого шага отдельно; есть резервные адреса, учёт стоимости и кэш на диске.
+- **Персональная лента**: из сотни новостей код выбирает те немногие, что касаются этого субъекта, и объясняет почему — ещё до обращения к модели.
 - **Готов к интеграции**: Python API, CLI, REST API с прогрессом в реальном времени (SSE), MCP-сервер, сборщик RSS.
 - **Готов к исследованиям**: абляции, базовые линии, несколько LLM-судей, согласие судей, бутстреп-интервалы.
 
@@ -132,9 +133,9 @@ curl -s localhost:8000/insights -H 'content-type: application/json' \
 # → {"job_id": "…"}; шаги в реальном времени: curl -N localhost:8000/jobs/<job_id>/stream
 ```
 
-**MCP** — `uv run refract mcp` даёт Claude Desktop, Cursor и другим MCP-клиентам инструменты `list_profiles`, `analyze_news`, `ask_followup`, `get_trace`, `search_research`.
+**MCP** — `uv run refract mcp` даёт Claude Desktop, Cursor и другим MCP-клиентам инструменты `list_profiles`, `news_feed`, `analyze_news`, `ask_followup`, `get_trace`, `search_research`.
 
-**Новости** — `refract news fetch --feeds examples/feeds.example.json --data my_data` собирает RSS и Atom в события без дублей. Сохраняются заголовки, ссылки и аннотации лент, полные тексты статей — нет.
+**Новости** — `refract news fetch --feeds examples/feeds.example.json --data my_data` собирает RSS и Atom в события без дублей. Сохраняются заголовки, ссылки и аннотации лент, полные тексты статей — нет. `refract feed --profile demo_coffee_ip` ранжирует сохранённые новости для одного субъекта кодом: какие касаются его напрямую, какие — фон, и почему; `--analyze 3` разбирает три верхние.
 
 **Своя аналитика** — положите Markdown, TXT или PDF в `knowledge/docs/`. Команда `refract theses --docs … --out knowledge/theses.json` извлечёт тезисы института и оставит только те, чья цитата дословно есть на странице.
 

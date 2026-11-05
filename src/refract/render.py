@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .config import Institution
 from .i18n import norm_lang, t
-from .schemas import ChatResponse, Insight, Trace
+from .schemas import ChatResponse, Feed, Insight, Trace
 
 _TITLES = {
     "ru": {
@@ -107,4 +107,38 @@ def chat_markdown(res: ChatResponse, institution: Institution | None = None) -> 
     if res.follow_ups:
         out.append("")
         out += [f"→ {q}" for q in res.follow_ups]
+    return "\n".join(out)
+
+
+_FEED = {
+    "ru": {
+        "title": "Новости для {profile}", "direct": "касается напрямую", "background": "фон", "none": "не касается",
+        "ceiling": "предел влияния", "considered": "Подходящих событий: {n}, показано: {k}.",
+        "untagged": "Не размечены (учтены только связи по отрасли и стране): {ids}.", "empty": "Нет событий.",
+    },
+    "en": {
+        "title": "News for {profile}", "direct": "concerns you directly", "background": "background",
+        "none": "unrelated", "ceiling": "impact ceiling", "considered": "Matching events: {n}, shown: {k}.",
+        "untagged": "Not tagged (only activity and country links count): {ids}.", "empty": "No events.",
+    },
+}  # fmt: skip
+
+
+def feed_markdown(feed: Feed, links: int = 2) -> str:
+    """The feed as a list: title, date, relevance and impact ceiling, then the strongest links."""
+    lang = norm_lang(feed.language)
+    T = _FEED[lang]
+    out = [f"## {T['title'].format(profile=feed.profile_id)}", ""]
+    if not feed.items:
+        out.append(T["empty"])
+    for i, it in enumerate(feed.items, 1):
+        date = it.published_at.strftime("%Y-%m-%d")
+        out.append(
+            f"{i}. **{it.title}** — {date}, `{it.event_id}` · {T[it.relevance]} · {T['ceiling']}: "
+            f"{it.impact_ceiling.value}"
+        )
+        out += [f"   - {x}" for x in it.links[:links]]
+    out += ["", T["considered"].format(n=feed.considered, k=len(feed.items))]
+    if feed.untagged:
+        out.append(T["untagged"].format(ids=", ".join(feed.untagged)))
     return "\n".join(out)

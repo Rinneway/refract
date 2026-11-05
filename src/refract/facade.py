@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from .agent import Agent, AgentConfig, AgentRun, ChatAgent, ChatRun
+from .agent.feed import rank as rank_feed
+from .agent.feed import tag_event
 from .agent.impact import ImpactPolicy
 from .agent.policy import DEFAULT_POLICY, Policy
 from .config import Settings, load_settings
@@ -24,7 +26,7 @@ from .i18n import norm_lang
 from .knowledge.store import DataStore
 from .llm.client import LLM, LLMClient
 from .recent import Recent
-from .schemas import AgentState, ChatTurn, Insight, NewsArticle, NewsEvent, Profile, Trace
+from .schemas import AgentState, ChatTurn, Feed, Insight, NewsArticle, NewsEvent, Profile, Trace
 
 
 def _hash(*parts: str) -> str:
@@ -66,6 +68,10 @@ def news_from_text(
         ],
         language=lang,
     )
+
+
+def _aware(t: datetime) -> datetime:
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
 class Refract:
@@ -163,6 +169,44 @@ class Refract:
         run = self.runs[insight_id]
         agent = self.agent(on_progress=on_progress)
         return ChatAgent(self.llm, self.store, agent=agent).answer(run.state, run.insight, question, history)
+
+    def feed(
+        self,
+        profile_id: str,
+        *,
+        top: int | None = 10,
+        since: datetime | None = None,
+        language: str | None = None,
+        tag: bool = True,
+        include_unrelated: bool = False,
+    ) -> Feed:
+        """Stored events ranked for the subject by code, strongest links first (`agent/feed.py`). Events without
+        factors are tagged once by the model if `tag` and a model is configured; without one, they are ranked by
+        activity and country links only."""
+        profile = self.store.profiles[profile_id]
+        lang = norm_lang(language or self.settings.language)
+        untagged: list[str] = []
+        for event in list(self.store.events.values()):
+            if event.macro_factors or (since and _aware(event.published_at) < _aware(since)):
+                continue
+            tagged = tag_event(self.llm, self.settings, event, lang) if tag and self._can_tag() else None
+            if tagged is not None:
+                self.store.add_event(tagged)
+            else:
+                untagged.append(event.event_id)
+        return rank_feed(
+            profile,
+            self.store.events.values(),
+            lang=lang,
+            policy=self.impact_policy,
+            top=top,
+            since=since,
+            include_unrelated=include_unrelated,
+            untagged=untagged,
+        )
+
+    def _can_tag(self) -> bool:
+        return self._llm is not None or bool(self.settings.api_key)
 
     news_from_text = staticmethod(news_from_text)
 

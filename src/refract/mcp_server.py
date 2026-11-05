@@ -5,16 +5,17 @@ Install with `pip install 'refract-agent[mcp]'` and register the command `refrac
     {"mcpServers": {"refract": {"command": "refract", "args": ["mcp", "--data", "/path/to/data"],
                                 "env": {"LLM_API_KEY": "…", "LLM_BASE_URL": "…", "REFRACT_MODEL": "…"}}}}
 
-Tools: list_profiles, get_profile, list_events, analyze_news, ask_followup, get_trace, search_research.
+Tools: list_profiles, get_profile, news_feed, list_events, analyze_news, ask_followup, get_trace, search_research.
 """
 
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from .facade import Refract
-from .render import chat_markdown, insight_markdown, trace_markdown
+from .render import chat_markdown, feed_markdown, insight_markdown, trace_markdown
 
 
 def build_server(rf: Refract):
@@ -47,6 +48,18 @@ def build_server(rf: Refract):
         """The full profile of a subject as JSON."""
         p = rf.store.profiles.get(profile_id)
         return p.model_dump_json(indent=1) if p else f"Unknown profile {profile_id}"
+
+    @server.tool()
+    def news_feed(profile_id: str, top: int = 10, since: str | None = None) -> str:
+        """Which stored news concern the subject, strongest links first — ranked by code, with the reason for each.
+        since: YYYY-MM-DD. Use analyze_news on an event_id from the list to get the full insight."""
+        if profile_id not in rf.store.profiles:
+            return f"Unknown profile {profile_id}; call list_profiles."
+        try:
+            start = datetime.fromisoformat(since) if since else None
+        except ValueError:
+            return "since must be YYYY-MM-DD."
+        return feed_markdown(rf.feed(profile_id, top=max(1, min(top, 50)), since=start))
 
     @server.tool()
     def list_events(limit: int = 20) -> str:

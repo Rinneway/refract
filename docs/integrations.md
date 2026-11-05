@@ -14,6 +14,8 @@ Until the package is published, install from the repository: `pip install "refra
 ## Python
 
 ```python
+from datetime import datetime
+
 from refract import Refract, AgentConfig, ablation
 from refract.render import insight_markdown, trace_markdown
 
@@ -29,6 +31,11 @@ print(trace_markdown(run.trace))
 
 # follow-up
 reply = rf.chat(run.insight.insight_id, "How exposed are we to freight costs?").response
+
+# which stored news concern the subject, strongest links first (code; untagged news is tagged once by the model)
+feed = rf.feed("demo_grain_farm", top=5, since=datetime(2026, 10, 1))
+for item in feed.items:
+    print(item.relevance, item.impact_ceiling.value, item.title, item.links[0])
 
 # components off, e.g. for a quick draft without the review
 quick = rf.analyze("demo_grain_farm", "ev_wheat_en", config=ablation("no_verifier"))
@@ -48,6 +55,8 @@ refract profiles | events [--data DIR]
 refract analyze --profile ID (--event ID | --title T --text X | --text-file F)
                 [--role R] [--lang ru|en] [--ablation NAME] [--iterations N] [--out DIR] [--json]
 refract chat --run FILE --q "…" [--q "…"]
+refract feed --profile ID [--top N] [--since YYYY-MM-DD] [--all] [--no-tag] [--analyze K [--out DIR]] [--json]
+                                               stored news ranked for the subject; --analyze runs the agent on the K strongest
 refract theses --docs DIR --out FILE           extract verified theses from research
 refract news fetch --feeds FILE --data DIR     RSS / Atom → events
 refract eval pairs|run|judge|report …          experiments, see evaluation.md
@@ -66,6 +75,7 @@ Open `/docs` for the OpenAPI UI.
 | --- | --- | --- |
 | GET | `/health` | `{status, version, language, llm_configured}` |
 | GET | `/profiles` · `/profiles/{id}` | list · `Profile` |
+| GET | `/profiles/{id}/feed?top=10&since=…&tag=true&all=false&language=…` | `Feed`: stored news ranked for the subject |
 | GET | `/events?limit=50` · `/events/{id}` | list · `NewsEvent` |
 | POST | `/events` | `{title, text, publisher?, url?, published_at?, language?}` → `NewsEvent` |
 | POST | `/insights` | `{profile_id, event_id | news, role?, language?, ablation?}` → `{job_id}`; with `?wait=true` → `Insight` |
@@ -86,7 +96,7 @@ es.addEventListener("started", (e) => show(JSON.parse(e.data).label));
 es.addEventListener("closed", (e) => { es.close(); load(JSON.parse(e.data).insight_id); });
 ```
 
-With `REFRACT_API_TOKEN` set, every endpoint except `/health` needs `Authorization: Bearer <token>` (EventSource cannot send headers — put the API behind a proxy that adds it, or keep the stream endpoint on a private network). Insights live in memory; restarting the API forgets them (save runs with the Python API if you need them later).
+With `REFRACT_API_TOKEN` set, every endpoint except `/health` needs `Authorization: Bearer <token>` (EventSource cannot send headers — put the API behind a proxy that adds it, or keep the stream endpoint on a private network). Insights live in memory — the newest 500 runs and 1000 jobs; older ones and everything after a restart answer 404 (save runs with the Python API if you need them later).
 
 ## MCP
 
@@ -113,6 +123,7 @@ With uv instead of a global install: `"command": "uv", "args": ["--directory", "
 | --- | --- | --- |
 | `list_profiles` | — | ids, kinds and summaries |
 | `get_profile` | `profile_id` | the profile as JSON |
+| `news_feed` | `profile_id`, `top`, `since` | the news that concern the subject, strongest links first, with the reasons |
 | `list_events` | `limit` | latest events |
 | `analyze_news` | `profile_id`, `event_id` or `title` + `text`, `role`, `language`, `publisher`, `url` | the insight in Markdown with its `insight_id` |
 | `ask_followup` | `insight_id`, `question` | the answer with origins and sources |

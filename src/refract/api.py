@@ -37,7 +37,7 @@ from .agent.progress import InsightProgress, ProgressTracker
 from .facade import Refract, news_from_text
 from .recent import Recent
 from .render import insight_markdown
-from .schemas import ChatResponse, ChatTurn, Insight, NewsEvent, Profile, Trace
+from .schemas import ChatResponse, ChatTurn, Feed, Insight, NewsEvent, Profile, Trace
 
 
 class NewsIn(BaseModel):
@@ -122,6 +122,21 @@ def create_app(rf: Refract | None = None) -> FastAPI:
         if not p:
             raise HTTPException(404, "profile not found")
         return p
+
+    @app.get("/profiles/{profile_id}/feed", response_model=Feed, dependencies=[Depends(auth)])
+    def feed(
+        profile_id: str,
+        top: int = Query(10, ge=1, le=200),
+        since: datetime | None = None,
+        tag: bool = Query(True, description="tag news without factors with the model first"),
+        all: bool = Query(False, description="also news with nothing in common with the subject"),
+        language: Literal["ru", "en"] | None = None,
+    ) -> Feed:
+        """Stored news ranked for the subject by code, strongest links first."""
+        r = get_rf()
+        if profile_id not in r.store.profiles:
+            raise HTTPException(404, "profile not found")
+        return r.feed(profile_id, top=top, since=since, tag=tag, include_unrelated=all, language=language)
 
     @app.get("/events", dependencies=[Depends(auth)])
     def events(limit: int = Query(50, ge=1, le=500)) -> list[dict[str, Any]]:

@@ -50,6 +50,10 @@ National factors — the policy rate, inflation, taxes, the budget, SME support,
 
 An FX account or an investment portfolio is not linked by itself: whether a currency or a market touches it depends on its composition, which the profile does not hold — that comes from the subject's sensitivities. The model sees the links and the ceiling in the context; an impact above it is a warning in the review and is clamped at finalisation, with a note in the trace. All thresholds are fields of `ImpactPolicy`.
 
+## News feed
+
+Before explaining one event, a reader with a hundred news items needs to know which few concern them. `Refract.feed` (`refract feed`, `GET /profiles/{id}/feed`, the MCP tool `news_feed`) ranks the stored events for a subject by the same typed links that bound the impact level, without a model: an event is **direct** when its strongest link is at least moderate, **background** when there are only weak links, and is left out when there are none (`--all` keeps it). Within a level, events are ordered by the impact ceiling, the number of links, the event's own importance and recency; every item carries its links as reasons. News without factors (from RSS or pasted text) is tagged once by the agent's tagging step; without a configured model it is ranked by activity and country links only and listed as untagged. `refract feed --analyze K` runs the agent on the K strongest direct items. The evaluation measures the ranking against human `gold_relevant` labels.
+
 ## Action policy
 
 Rules live in `policies/actions.json`. Code decides which rules fire from the subject's features and the event's tags (factors, event types, subject kinds, held and missing products, trade countries, large customers in the industry the event names). The model sees the fired rules with their conditions that code cannot check (“the event is negative for the subject”, “the rate stays high”) and adapts the wording. Code then enforces:

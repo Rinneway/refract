@@ -24,6 +24,7 @@ from .common import (
     SourceRef,
     SourceType,
 )
+from .feed import Feed, FeedItem
 from .insight import (
     Action,
     ActionKind,
@@ -77,6 +78,8 @@ __all__ = [
     "Effect",
     "EventType",
     "Exposure",
+    "Feed",
+    "FeedItem",
     "Figure",
     "ForeignTrade",
     "Horizon",

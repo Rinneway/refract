@@ -144,6 +144,39 @@ def cmd_list(args) -> int:
     return 0
 
 
+def cmd_feed(args) -> int:
+    from datetime import datetime
+
+    from .eval.harness import DEFAULT_ROLE
+    from .render import feed_markdown, insight_markdown
+
+    rf = _rf(args)
+    if args.profile not in rf.store.profiles:
+        return _fail(f"unknown profile {args.profile!r}; `refract profiles` lists them")
+    try:
+        since = datetime.fromisoformat(args.since) if args.since else None
+    except ValueError:
+        return _fail(f"--since {args.since!r}: use YYYY-MM-DD")
+    feed = rf.feed(args.profile, top=args.top, since=since, tag=not args.no_tag, include_unrelated=args.all)
+    if args.json and not args.analyze:
+        _out(feed.model_dump_json(indent=1))
+        return 0
+    _out(feed_markdown(feed))
+    direct = [it for it in feed.items if it.relevance == "direct"][: args.analyze]
+    role = args.role or DEFAULT_ROLE.get(rf.store.profiles[args.profile].kind.value, "other")
+    for it in direct:
+        run = rf.analyze(args.profile, it.event_id, role=role)
+        if args.out:
+            sys.stderr.write(f"saved: {rf.save_run(run, args.out)}\n")
+        _out("\n---\n")
+        _out(
+            insight_markdown(run.insight, rf.settings.institution)
+            if run.insight
+            else f"{it.event_id}: no insight — {run.trace.failure_reason()}"
+        )
+    return 0
+
+
 def cmd_theses(args) -> int:
     from .config import load_settings
     from .knowledge.theses import extract_theses
@@ -316,6 +349,7 @@ def cmd_schemas(args) -> int:
         S.AgentState,
         S.ChatRequest,
         S.ChatResponse,
+        S.Feed,
         InsightProgress,
     ]
     for m in models:
@@ -378,6 +412,22 @@ def build_parser() -> argparse.ArgumentParser:
         sp = sub.add_parser(what, help=f"list {what} in the store")
         data_arg(sp)
         sp.set_defaults(fn=cmd_list, what=what)
+
+    sp = sub.add_parser("feed", help="stored news ranked for one subject by code, strongest links first")
+    data_arg(sp)
+    sp.add_argument("--profile", required=True)
+    sp.add_argument("--top", type=int, default=10)
+    sp.add_argument("--since", help="only news published on or after this date, YYYY-MM-DD")
+    sp.add_argument("--all", action="store_true", help="also news with nothing in common with the subject")
+    sp.add_argument("--no-tag", action="store_true", help="do not tag untagged news with the model")
+    sp.add_argument(
+        "--analyze", type=int, default=0, metavar="K", help="run the agent on the K strongest direct items"
+    )
+    sp.add_argument("--role", help="reader role for --analyze (default: by the subject's kind)")
+    sp.add_argument("--out", help="with --analyze: folder to save the runs")
+    sp.add_argument("--lang", choices=["ru", "en"])
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(fn=cmd_feed)
 
     sp = sub.add_parser("theses", help="extract the institution's theses from documents (uses the LLM)")
     sp.add_argument("--docs", required=True)

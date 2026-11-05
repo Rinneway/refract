@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "FeedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
+          "type": "string"
+        },
+        "relevance": {
+          "description": "direct — at least a moderate link to the subject; background — only weak links; none",
+          "enum": [
+            "direct",
+            "background",
+            "none"
+          ],
+          "title": "Relevance",
+          "type": "string"
+        },
+        "strength": {
+          "description": "Strength of the strongest link: 3 strong, 2 moderate, 1 weak",
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Strength",
+          "type": "integer"
+        },
+        "impact_ceiling": {
+          "$ref": "#/$defs/ImpactLevel",
+          "description": "The highest impact level the agent may give this event"
+        },
+        "reason": {
+          "description": "Why: the strongest link, as the agent sees it",
+          "title": "Reason",
+          "type": "string"
+        },
+        "links": {
+          "description": "Every link between the event and the subject",
+          "items": {
+            "type": "string"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "importance": {
+          "description": "Strength of the event regardless of the subject",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Importance",
+          "type": "number"
+        },
+        "tagged": {
+          "description": "False: the event has no factors, so only activity and country links count",
+          "title": "Tagged",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "event_id",
+        "title",
+        "published_at",
+        "language",
+        "relevance",
+        "strength",
+        "impact_ceiling",
+        "reason",
+        "importance",
+        "tagged"
+      ],
+      "title": "FeedItem",
+      "type": "object"
+    },
+    "ImpactLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ImpactLevel",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "language": {
+      "title": "Language",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "items": {
+      "description": "Strongest links first; within a level by ceiling, links, recency",
+      "items": {
+        "$ref": "#/$defs/FeedItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "considered": {
+      "description": "Events that passed the filters, before `top`",
+      "title": "Considered",
+      "type": "integer"
+    },
+    "untagged": {
+      "description": "Events the model could not tag",
+      "items": {
+        "type": "string"
+      },
+      "title": "Untagged",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile_id",
+    "language",
+    "created_at",
+    "items",
+    "considered"
+  ],
+  "title": "Feed",
+  "type": "object"
+}

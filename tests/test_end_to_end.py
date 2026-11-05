@@ -297,3 +297,20 @@ def test_mcp_server(server) -> None:
     assert "14%" in text_of(
         asyncio.run(mcp.call_tool("ask_followup", {"insight_id": iid, "question": "Что дальше?"}))
     )
+
+
+def test_feed_tags_untagged_news_and_analyzes_the_top_item(server, capsys) -> None:
+    from refract import Refract
+
+    rf = Refract.from_dir()
+    news = rf.news_from_text(
+        "ЦБ сохранил ставку", "Банк России сохранил ключевую ставку на уровне 14% годовых."
+    )
+    rf.store.add_event(news)
+    feed = rf.feed("demo_family_saver", top=None)
+    assert news.event_id in [it.event_id for it in feed.items] and server.schemas() == ["NewsTags"]
+
+    assert main(["feed", "--profile", "demo_building_materials", "--analyze", "1"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("## Новости для demo_building_materials") and "Как получен вывод" not in out
+    assert "InsightContent" in server.schemas()  # the strongest direct item went through the agent

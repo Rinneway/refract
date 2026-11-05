@@ -42,6 +42,7 @@ ev_rate_hold_ru  ×  demo_building_materials (wholesaler with loans, a developer
 - **Any subject.** Companies, sole proprietors, self-employed people and private individuals, with reader roles from CFO and treasurer to “entrepreneur” and “individual”.
 - **Bilingual.** Insights in Russian or English, whatever the language of the news.
 - **Provider-agnostic.** Any OpenAI-compatible endpoint: OpenAI, OpenRouter, LiteLLM, vLLM, Ollama, LM Studio — with per-step model routing, failover, cost accounting and a disk cache.
+- **A personal feed.** Of a hundred news items, code picks the few that concern this subject and says why, before any model is asked.
 - **Ready to integrate.** Python API, CLI, REST API with live progress (SSE), MCP server, RSS collector.
 - **Ready to study.** Built-in ablations, baselines, multiple LLM judges, inter-judge agreement and bootstrap confidence intervals.
 
@@ -132,9 +133,9 @@ curl -s localhost:8000/insights -H 'content-type: application/json' \
 # → {"job_id": "…"}; live steps: curl -N localhost:8000/jobs/<job_id>/stream
 ```
 
-**MCP** — `uv run refract mcp` exposes `list_profiles`, `analyze_news`, `ask_followup`, `get_trace`, `search_research` to Claude Desktop, Cursor and other MCP clients.
+**MCP** — `uv run refract mcp` exposes `list_profiles`, `news_feed`, `analyze_news`, `ask_followup`, `get_trace`, `search_research` to Claude Desktop, Cursor and other MCP clients.
 
-**News** — `refract news fetch --feeds examples/feeds.example.json --data my_data` collects RSS/Atom feeds into deduplicated events (titles, links, feed summaries; no full texts).
+**News** — `refract news fetch --feeds examples/feeds.example.json --data my_data` collects RSS/Atom feeds into deduplicated events (titles, links, feed summaries; no full texts). `refract feed --profile demo_coffee_ip` ranks the stored news for one subject by code — which concern it directly, which are background, and why; `--analyze 3` explains the top three.
 
 **Your own research** — put Markdown, text or PDF files into `knowledge/docs/`; `refract theses --docs … --out knowledge/theses.json` extracts the institution's theses and keeps only those whose quote is found verbatim on the page.
 
