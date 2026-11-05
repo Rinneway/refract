@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import threading
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generic, Protocol, TypeVar
@@ -120,6 +122,7 @@ class LLMClient:
             for url in self.settings.base_urls
         }
         self._mode: dict[str, str] = {}  # structured-output mode that works for a model id
+        self._log_lock = threading.Lock()  # evaluation calls the model from several threads
 
     # ------------------------------------------------------------------ public API
 
@@ -313,15 +316,25 @@ class LLMClient:
         return 0.0
 
     def _cache_get(self, key: str) -> ChatResult | None:
+        """A damaged or foreign cache file (an interrupted write, another version) is a miss, not a crash."""
         path = self.cache_dir / f"{key}.json"
         if not path.exists():
             return None
-        return ChatResult(**json.loads(path.read_text(encoding="utf-8")))
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return ChatResult(**{k: v for k, v in data.items() if k in _RESULT_FIELDS})
+        except (OSError, ValueError, TypeError):
+            return None
 
     def _cache_put(self, key: str, result: ChatResult) -> None:
-        (self.cache_dir / f"{key}.json").write_text(
-            json.dumps(asdict(result), ensure_ascii=False), encoding="utf-8"
-        )
+        """Atomic: parallel workers writing the same answer, or a run stopped mid-write, never leave half a file."""
+        path = self.cache_dir / f"{key}.json"
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        try:
+            tmp.write_text(json.dumps(asdict(result), ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, path)
+        except OSError:
+            tmp.unlink(missing_ok=True)  # the cache is an optimisation: a failed write is not an error
 
     def _log(self, r: ChatResult, *, step: str | None, error: str | None) -> None:
         rec = {
@@ -338,8 +351,9 @@ class LLMClient:
             "cached": r.cached,
             "error": error,
         }
-        with self.log_path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        line = json.dumps(rec, ensure_ascii=False) + "\n"
+        with self._log_lock, self.log_path.open("a", encoding="utf-8") as f:
+            f.write(line)
 
     def _log_error(self, model_id: str, url: str | None, step: str | None, err: Exception | None) -> None:
         self._log(ChatResult(text="", model=model_id, base_url=url), step=step, error=repr(err))
@@ -364,6 +378,9 @@ def context_warning(messages: list[dict[str, str]], prompt_tokens: int) -> str |
             "truncated the context (Ollama: set OLLAMA_CONTEXT_LENGTH, e.g. 16384, and restart it)"
         )
     return None
+
+
+_RESULT_FIELDS = {f.name for f in fields(ChatResult)}
 
 
 def _cache_key(payload: dict[str, Any]) -> str:

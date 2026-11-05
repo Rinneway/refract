@@ -224,3 +224,18 @@ def test_check_explains_a_placeholder_key_on_a_remote_endpoint(tmp_path, monkeyp
     c.list_models = lambda: {"https://ollama.com/v1": ["glm-5.3-flash"]}
     ok, report = run_check(c, ["main"])
     assert not ok and "placeholder" in report and "overrides" in report
+
+
+def test_damaged_cache_file_is_a_miss_not_a_crash(tmp_path) -> None:
+    c, fakes = client(tmp_path, lambda url: lambda p: raw('{"value": 4}'))
+    msgs = [{"role": "user", "content": "u"}]
+    assert c.chat_json("main", msgs, Answer).value.value == 4
+    (path,) = (tmp_path / "cache").glob("*.json")
+    for damaged in (
+        '{"text": "{\\"value\\": 4',
+        json.dumps({"text": '{"value": 4}', "model": "m-1", "base_url": "http://a/v1", "gone_field": 1}),
+    ):
+        path.write_text(damaged, encoding="utf-8")  # a write cut by Ctrl+C; a file from another version
+        assert c.chat_json("main", msgs, Answer).value.value == 4
+    assert len(fakes["http://a/v1"].calls) == 2  # the half-written file was re-fetched, the foreign one read
+    assert not list((tmp_path / "cache").glob("*.tmp"))  # writes go through a temporary file
