@@ -94,3 +94,23 @@ def test_chat_slice_calls_tools(store, settings) -> None:
     run_chat = ChatAgent(llm, store).answer(run.state, run.insight, "А что с поставщиками?")
     assert "get_counterparties" in [s.name for s in run_chat.trace.steps]
     assert "Контрагенты по платежам" in llm.messages["chat"][-1]["content"]
+
+
+def test_only_recent_runs_stay_in_memory(store, settings) -> None:
+    from refract.demo import OK, RATE_PLAN, _rate_draft
+    from refract.facade import Refract
+    from refract.recent import Recent
+
+    recent = Recent(2)
+    for k in "abc":
+        recent[k] = k
+    assert list(recent) == ["b", "c"]
+    recent["b"] = "b2"  # a rewrite moves the entry to the newest end
+    recent["d"] = "d"
+    assert list(recent.items()) == [("b", "b2"), ("d", "d")]
+
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    rf = Refract(store, llm=llm, settings=settings, keep_runs=1)
+    first = rf.analyze("demo_building_materials", "ev_rate_hold_ru")
+    second = rf.analyze("demo_building_materials", "ev_rate_hold_ru", role="owner")
+    assert list(rf.runs) == [second.insight.insight_id] and first.insight.insight_id not in rf.runs

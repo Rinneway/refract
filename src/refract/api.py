@@ -35,6 +35,7 @@ from . import __version__
 from .agent import ABLATIONS, ablation
 from .agent.progress import InsightProgress, ProgressTracker
 from .facade import Refract, news_from_text
+from .recent import Recent
 from .render import insight_markdown
 from .schemas import ChatResponse, ChatTurn, Insight, NewsEvent, Profile, Trace
 
@@ -86,7 +87,7 @@ def create_app(rf: Refract | None = None) -> FastAPI:
         title="Refract API", version=__version__, description="Grounded, personalised insights from news."
     )
     state: dict[str, Any] = {"rf": rf}
-    jobs: dict[str, _Job] = {}
+    jobs: Recent[str, _Job] = Recent(1000)  # the newest jobs; older ones answer 404
     token = os.getenv("REFRACT_API_TOKEN")
 
     def get_rf() -> Refract:

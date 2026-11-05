@@ -23,6 +23,7 @@ from .config import Settings, load_settings
 from .i18n import norm_lang
 from .knowledge.store import DataStore
 from .llm.client import LLM, LLMClient
+from .recent import Recent
 from .schemas import AgentState, ChatTurn, Insight, NewsArticle, NewsEvent, Profile, Trace
 
 
@@ -77,7 +78,10 @@ class Refract:
         config: AgentConfig | None = None,
         policy: Policy | None = None,
         impact_policy: ImpactPolicy | None = None,
+        keep_runs: int = 500,
     ) -> None:
+        """`keep_runs` — how many recent runs stay in memory for chat and the API; older ones are forgotten, so a
+        long-running server does not grow without bound (save runs with `save_run` to keep them)."""
         self.store = store
         self.settings = settings or getattr(llm, "settings", None) or load_settings()
         self.config = config or AgentConfig(language=self.settings.language)
@@ -89,7 +93,7 @@ class Refract:
         self.impact_policy = impact_policy
         self._llm = llm
         self._lock = threading.Lock()
-        self.runs: dict[str, AgentRun] = {}
+        self.runs: Recent[str, AgentRun] = Recent(keep_runs)
 
     @classmethod
     def from_dir(cls, path: str | Path | None = None, **kwargs: Any) -> Refract:
