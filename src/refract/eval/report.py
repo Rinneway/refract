@@ -135,6 +135,9 @@ def summarize(
             }
         S["systems"][system] = m
 
+    if relevance := _relevance(out, pairs, systems):
+        S["relevance"] = relevance
+
     if primary and reference in systems:
         ref = _judge_scores(out, primary, reference, pairs)
         S["pairwise"] = {}
@@ -167,6 +170,42 @@ def summarize(
     S["humans"] = humans
     S["agreement"] = [a for a in (_agreement(out, systems, pairs, j1, j2) for j1, j2 in combos) if a["n"]]
     return S
+
+
+def _relevance(out: Path, pairs: list[Pair], systems: list[str]) -> dict[str, Any] | None:
+    """The feed's verdict (a link of at least moderate strength, computed by code) against `gold_relevant`."""
+    strength: dict[str, int] = {}
+    for p in pairs:
+        if p.gold_relevant is None:
+            continue
+        for system in systems:
+            s = (_read(out / "runs" / system / f"{p.id}.json") or {}).get("link_strength")
+            if s is not None:
+                strength[p.id] = s
+                break
+    rows = [(bool(p.gold_relevant), strength[p.id]) for p in pairs if p.id in strength]
+    if not rows:
+        return None
+    tp = sum(g and s >= 2 for g, s in rows)
+    fp = sum(not g and s >= 2 for g, s in rows)
+    fn = sum(g and s < 2 for g, s in rows)
+    precision = tp / (tp + fp) if tp + fp else None
+    recall = tp / (tp + fn) if tp + fn else None
+    f1 = 2 * precision * recall / (precision + recall) if precision and recall else None
+    by_strength = {
+        level: {"n": len(xs), "relevant_share": mean([float(g) for g in xs])}
+        for level in range(4)
+        if (xs := [g for g, s in rows if s == level])
+    }
+    return {
+        "n": len(rows),
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "accuracy": mean([float(g == (s >= 2)) for g, s in rows]),
+        "kappa": weighted_kappa([int(g) for g, _ in rows], [int(s >= 2) for _, s in rows], [0, 1]),
+        "by_strength": by_strength,
+    }
 
 
 def _agreement(out: Path, systems: list[str], pairs: list[Pair], j1: str, j2: str) -> dict[str, Any]:
@@ -379,6 +418,23 @@ def render(S: dict[str, Any]) -> str:
                 f"{_f(a['criteria'][c]['kappa'])} ({_pct(a['criteria'][c]['exact'])})" for a in S["agreement"]
             ]
             lines.append(f"| κ, {c} | " + " | ".join(cells) + " |")
+    if rel := S.get("relevance"):
+        names = {0: "none", 1: "weak", 2: "moderate", 3: "strong"}
+        lines += [
+            "",
+            f"## Relevance against human labels (n = {rel['n']})",
+            "",
+            "Code calls a pair relevant when its strongest subject–event link is at least moderate (the feed's "
+            "“direct”); `gold_relevant` in the pairs file is the human verdict.",
+            "",
+            f"Precision {_f(rel['precision'])}, recall {_f(rel['recall'])}, F1 {_f(rel['f1'])}, "
+            f"accuracy {_pct(rel['accuracy'])}, κ {_f(rel['kappa'])}.",
+            "",
+            "| Strongest link | pairs | relevant by people |",
+            "|---|---|---|",
+        ]
+        for level, row in rel["by_strength"].items():
+            lines.append(f"| {names[int(level)]} | {row['n']} | {_pct(row['relevant_share'])} |")
     gold = {k: m for k, m in S["systems"].items() if "gold_impact_accuracy" in m}
     if gold:
         lines += [

@@ -29,7 +29,8 @@ from ..agent import ABLATIONS, ablation
 from ..agent import checks as rule_checks
 from ..agent.chat import context_from_state
 from ..agent.context import InsightContext
-from ..agent.impact import ORDER, impact_cap
+from ..agent.feed import tag_event
+from ..agent.impact import DEFAULT_IMPACT, ORDER, event_links, impact_cap
 from ..doctor import error_hint
 from ..facade import Refract
 from ..llm import LLMError
@@ -180,17 +181,15 @@ class Experiment:
         path = self.out / "_events" / f"{event.event_id}.json"
         if (cached := _read(path)) is not None:
             return NewsEvent.model_validate(cached)
-        r = self.rf.settings.route("classify_news")
-        res = self.rf.llm.chat_json(
-            r.model,
-            classify_prompt.build_messages(event, lang),
-            classify_prompt.NewsTags,
-            max_tokens=r.max_tokens,
-            step="eval_classify",
-        )
-        tagged = classify_prompt.apply(event, res.value) if res.value else event
+        tagged = tag_event(self.rf.llm, self.rf.settings, event, lang, step="eval_classify") or event
         _write(path, tagged.model_dump(mode="json"))
         return tagged
+
+    def link_strength(self, pair: Pair, event: NewsEvent) -> int:
+        """The strongest subject–event link computed by code (0–3): the relevance the feed would give the pair."""
+        profile = self.rf.store.profiles[pair.profile_id]
+        links = event_links(profile, event, pair.language, self.rf.impact_policy or DEFAULT_IMPACT)
+        return max((x.level for x in links), default=0)
 
     def _ctx(self, pair: Pair, event: NewsEvent, theses=None) -> InsightContext:
         rf = self.rf
@@ -255,7 +254,12 @@ class Experiment:
             else:
                 data = self._run_baseline(system, pair, event)
             data.update(
-                {"system": system, "pair": asdict(pair), "wall_s": round(time.perf_counter() - started, 2)}
+                {
+                    "system": system,
+                    "pair": asdict(pair),
+                    "wall_s": round(time.perf_counter() - started, 2),
+                    "link_strength": self.link_strength(pair, self.classified(event, pair.language)),
+                }
             )
             _write(path, data)
             return (
@@ -288,8 +292,8 @@ class Experiment:
     def _run_baseline(self, system: str, pair: Pair, event: NewsEvent) -> dict[str, Any]:
         rf = self.rf
         r = rf.settings.route("draft_insight")
-        if system == "retelling":
-            ctx = self._ctx(pair, event)
+        if system == "retelling":  # a plain prompt, but the same tagged event as every other system
+            ctx = self._ctx(pair, self.classified(event, pair.language))
             res = rf.llm.chat_json(
                 r.model,
                 jp.baseline_messages(ctx.render(), pair.language),

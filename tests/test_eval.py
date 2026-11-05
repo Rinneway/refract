@@ -274,3 +274,23 @@ def test_pairs_sample_is_reproducible(tmp_path, capsys) -> None:
         )
     assert load_pairs(a) == load_pairs(b) and len(load_pairs(a)) == 5
     assert "5 pairs of " in capsys.readouterr().out
+
+
+def test_feed_relevance_against_human_labels(store, settings, tmp_path) -> None:
+    llm = ScriptedLLM({"eval_retelling": [BASELINE]}, settings)
+    pairs = [
+        Pair("demo_london_studio", "ev_dollar_en", "cfo", "en", gold_relevant=True),  # strong: code says yes
+        Pair("demo_london_studio", "ev_rate_hold_ru", "cfo", "en", gold_relevant=False),  # none: code says no
+        Pair("demo_london_studio", "ev_housing_en", "cfo", "en", gold_relevant=True),  # weak: code says no
+        Pair("demo_coffee_ip", "ev_usn_vat_ru", "entrepreneur", "ru"),  # no label: not counted
+    ]
+    exp = Experiment(
+        Refract(store, llm=llm, settings=settings), tmp_path, pairs, workers=1, log=lambda _: None
+    )
+    exp.run(["retelling"])
+    S = write_report(tmp_path, pairs, [], "full")
+    rel = S["relevance"]
+    assert rel["n"] == 3 and rel["precision"] == 1.0 and rel["recall"] == 0.5
+    assert rel["by_strength"] == {0: {"n": 1, "relevant_share": 0.0}, 1: {"n": 1, "relevant_share": 1.0},
+                                  3: {"n": 1, "relevant_share": 1.0}}  # fmt: skip
+    assert "## Relevance against human labels (n = 3)" in (tmp_path / "report.md").read_text(encoding="utf-8")

@@ -58,6 +58,8 @@ An event without factors is tagged once and the tags are shared by all systems (
 
 **Against human labels** (if `gold_impact` is filled): accuracy and quadratic-weighted κ of the stated impact level.
 
+**Relevance** (if `gold_relevant` is filled): the feed's verdict — relevant when the strongest subject–event link computed by code is at least moderate — against people: precision, recall, F1, accuracy, κ, and the share of pairs people found relevant at each link strength (none, weak, moderate, strong), which shows whether the strengths are calibrated. Every run record keeps `link_strength`, the same for all systems.
+
 ## Statistics
 
 - 95% percentile-bootstrap confidence intervals of means (2 000 resamples, fixed seed).
