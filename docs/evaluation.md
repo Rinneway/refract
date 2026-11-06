@@ -94,36 +94,76 @@ The sheet shows the subject's description and the news item, never the code's ve
 
 ## Rerunning with local models
 
-The demo recordings (`examples/demo/recordings/`) are real answers of qwen3.5:9b and gemma4:12b on eight demo pairs (`examples/demo/pairs_smoke.jsonl`). After a prompt or model change, rerun them and compare. This takes 12–16 GB of VRAM for these two models; the comments in `examples/config/ollama-local.toml` give smaller ones.
+The demo recordings (`examples/demo/recordings/`) are real answers of qwen3.5:9b (author) and gemma4:12b (reviewer) on eight demo pairs (`examples/demo/pairs_smoke.jsonl`). After a prompt or model change, rerun them and compare. These two models need 12–16 GB of VRAM; the comments in `examples/config/ollama-local.toml` give smaller ones. Nothing in the repository has to be edited: the settings below live in the current terminal session only.
+
+**0. Once: Ollama and the models** (Windows; `ollama` from [ollama.com/download](https://ollama.com/download)):
 
 ```powershell
-# once: Ollama with a 16k context and the models
-setx OLLAMA_CONTEXT_LENGTH 16384          # then restart Ollama
-ollama pull qwen3.5:9b
-ollama pull gemma4:12b
+setx OLLAMA_CONTEXT_LENGTH 16384          # agent prompts are 6–12k tokens; quit and restart Ollama afterwards
+ollama pull qwen3.5:9b                    # author
+ollama pull gemma4:12b                    # reviewer
 ollama pull ministral-3:14b               # judge: neither the author's nor the reviewer's family
-Copy-Item examples\config\ollama-local.toml refract.toml
-# in refract.toml: [models.verifier] id = "gemma4:12b"; .env: LLM_API_KEY=ollama
-refract check                             # structured output, context window, reasoning
-
-# 1. new recordings of the same eight pairs, and a replay of them without the model
-refract demo --record runs\smoke\recordings.json
-$env:REFRACT_RECORDINGS = "runs\smoke\recordings.json"; refract shell --demo; Remove-Item Env:REFRACT_RECORDINGS
-
-# 2. the agent against the simpler systems on the same pairs, judged by a third family
-refract eval run    --pairs examples\demo\pairs_smoke.jsonl --out runs\smoke --systems full,single_call,retelling --workers 1
-refract eval judge  --out runs\smoke --judges judge --workers 1
-refract eval report --out runs\smoke --reference full
-
-# 3. your own scores for the same answers, blind to the system
-refract eval label export --out runs\smoke --lang ru
-refract eval label import --out runs\smoke   # after filling runs\smoke\labels\human\sheet.csv
-refract eval report --out runs\smoke --reference full
 ```
 
-On macOS and Linux, use `/` in paths, `export OLLAMA_CONTEXT_LENGTH=16384` instead of `setx`, `cp` instead of `Copy-Item`, and `REFRACT_RECORDINGS=runs/smoke/recordings.json refract shell --demo`.
+**1. Settings for this terminal session**, in the repository folder:
 
-`refract demo --record` prints `ok` or the failure reason for each pair, and exits with 1 if any pair failed. The new file has the same format as the packaged one; to make it the demo, replace `examples/demo/recordings/qwen9b_gemma12b.json` with it (or rename it and update `RECORDED` in `demo.py`). On a GPU, one pair takes 2–5 minutes with these models.
+```powershell
+$env:REFRACT_CONFIG = "examples\config\ollama-local.toml"
+$env:LLM_BASE_URL = "http://localhost:11434/v1"
+$env:LLM_API_KEY = "ollama"               # any non-empty value
+$env:REFRACT_MODEL = "qwen3.5:9b"
+$env:REFRACT_VERIFIER_MODEL = "gemma4:12b"
+uv run refract check                      # every model: answers, structured output, context window, reasoning
+```
+
+`check` must show `OK` for `main` and `verifier`. The variables win over `.env` and `refract.toml`, so whatever those hold does not matter for this run; `eval` prints a note that they override the config — that is expected.
+
+**2. New recordings** (15–40 minutes: 2–5 per pair on a GPU):
+
+```powershell
+uv run refract demo --record runs\smoke\recordings.json
+```
+
+It prints `ok` or the failure reason for each of the eight pairs. To look at the new answers without the model:
+
+```powershell
+$env:REFRACT_RECORDINGS = "runs\smoke\recordings.json"
+uv run refract shell --demo               # profiles, use 2, feed, analyze 1, sources, trace, exit
+Remove-Item Env:REFRACT_RECORDINGS
+```
+
+**3. The agent against simpler systems, judged by a third family** (about 20 minutes; `full` mostly reuses the cached answers of step 2):
+
+```powershell
+uv run refract eval run    --pairs examples\demo\pairs_smoke.jsonl --out runs\smoke --systems full,single_call,retelling --workers 1
+uv run refract eval judge  --out runs\smoke --judges judge --workers 1
+uv run refract eval report --out runs\smoke --reference full
+```
+
+The report is `runs\smoke\report.md` (numbers also in `summary.json`).
+
+**4. Optional: your own scores of the same 24 answers**, blind to the system:
+
+```powershell
+uv run refract eval label export --out runs\smoke --lang ru
+# open runs\smoke\labels\human\README.md, read items\*.md, fill sheet.csv in Excel and save it as CSV
+uv run refract eval label import --out runs\smoke
+uv run refract eval report --out runs\smoke --reference full
+```
+
+**5. Optional, no model needed: is the feed right about relevance** (48 subject × news rows):
+
+```powershell
+uv run refract eval relevance export --out runs\rel
+# fill the `relevant` column of runs\rel\relevance\sheet.csv with 1 / 0, save as CSV
+uv run refract eval relevance import --out runs\rel     # → runs\rel\relevance\report.md
+```
+
+On macOS and Linux: `export OLLAMA_CONTEXT_LENGTH=16384` (or set it for the Ollama service), `export VAR=value` instead of `$env:VAR = "value"`, `unset REFRACT_RECORDINGS`, and `/` in paths. Without uv, drop `uv run` and use the environment where Refract is installed.
+
+What to keep or share: `runs/smoke/report.md`, `summary.json`, `recordings.json`, and `runs/rel/relevance/report.md`. All of it is synthetic demo data. To make the new recordings the demo, replace `examples/demo/recordings/qwen9b_gemma12b.json` with `recordings.json`; the models' names are stored in the file and shown in the trace.
+
+If a step fails: `refract check` names the usual causes (Ollama not running, a model not pulled, a context window under 16k, thinking left on). A pair that times out on a slow GPU can be given more time with `$env:REFRACT_TIMEOUT_SCALE = "8"`. `eval run` and `eval judge` skip what is done, so rerunning the same command continues where it stopped.
 
 ## Checking the English prompts
 

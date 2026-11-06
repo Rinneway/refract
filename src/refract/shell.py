@@ -15,7 +15,6 @@ from __future__ import annotations
 import cmd
 import os
 import re
-import shlex
 import sys
 from pathlib import Path
 from typing import IO, Any
@@ -193,6 +192,15 @@ class Style:
             line = re.sub(r"`([^`]+)`", lambda m: self(m.group(1), "cyan"), line)
             out.append(line)
         return "\n".join(out)
+
+
+def path_arg(arg: str) -> str:
+    """A path typed after a command: surrounding quotes removed, backslashes kept (`shlex` would eat the ones of a
+    Windows path such as C:\\runs\\x.json)."""
+    arg = arg.strip()
+    if len(arg) >= 2 and arg[0] == arg[-1] and arg[0] in "\"'":
+        arg = arg[1:-1]
+    return arg
 
 
 # ---------------------------------------------------------------------------------------------------- the console
@@ -509,10 +517,10 @@ class Shell(cmd.Cmd):
         if self.run is None:
             self.warn(self.ui("no_insight"))
             return
-        self.say(self.ui("saved", x=self.rf.save_run(self.run, arg.strip() or "runs")))
+        self.say(self.ui("saved", x=self.rf.save_run(self.run, path_arg(arg) or "runs")))
 
     def do_load(self, arg: str) -> None:
-        path = Path(shlex.split(arg)[0] if arg.strip() else "")
+        path = Path(path_arg(arg))
         if not path.is_file():
             self.warn(self.ui("no_file", x=str(path)))
             return

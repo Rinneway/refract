@@ -9,7 +9,7 @@ import pytest
 
 from refract.cli import main
 from refract.facade import Refract
-from refract.shell import Shell, Style
+from refract.shell import Shell, Style, path_arg
 
 SCRIPT = Path(__file__).parent / "fixtures" / "shell_script.txt"
 
@@ -87,6 +87,12 @@ def test_save_and_load_a_run(rf, tmp_path) -> None:
     saved = next(tmp_path.glob("*.json"))
     sh2, _ = session(rf, f"load {saved}\nsources\n")
     assert sh2.profile_id == "demo_grain_farm" and sh2.run.insight.insight_id == sh.run.insight.insight_id
+
+
+def test_windows_paths_keep_their_backslashes() -> None:
+    assert path_arg(r"C:\Users\riNN\runs\ins_1.json") == r"C:\Users\riNN\runs\ins_1.json"
+    assert path_arg(r'"C:\My Runs\ins_1.json"') == r"C:\My Runs\ins_1.json"
+    assert path_arg("  'runs/x.json' ") == "runs/x.json" and path_arg("") == ""
 
 
 def test_colours_only_when_asked(rf) -> None:

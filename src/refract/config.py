@@ -21,7 +21,7 @@ from .textutil import DataError, read_text
 if sys.version_info >= (3, 11):
     import tomllib
 else:  # pragma: no cover
-    import tomli as tomllib
+    import tomli as tomllib  # pyright: ignore[reportMissingImports] — installed only on Python 3.10
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
