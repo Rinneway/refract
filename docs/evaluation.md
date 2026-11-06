@@ -80,6 +80,51 @@ Answers of all systems are shuffled together and the pages carry no system names
 
 For the impact level alone, fill `gold_impact` (and optionally `gold_relevant`) in `pairs.jsonl` for a sample of pairs, ideally by two annotators with an adjudication pass; report their agreement (κ) before comparing systems to them. A simple guideline: *high* — a decision is needed within weeks; *medium* — specific decisions may need adjusting within a quarter; *low* — background information.
 
+### Relevance labels without a model
+
+The feed decides relevance by code: a news item is relevant to a subject when the strongest link from `agent/impact.py` is at least moderate. You can check that against people without running any model:
+
+```bash
+refract eval relevance export --out runs/rel            # runs/rel/relevance/sheet.csv: every subject × news item
+# fill the `relevant` column: 1 / 0 (also yes / no, да / нет); README.md next to it has the guideline
+refract eval relevance import --out runs/rel            # → runs/rel/relevance/report.md, summary.json
+```
+
+The sheet shows the subject's description and the news item, never the code's verdict. It is UTF-8 with BOM and `;`-separated, so Excel in a Russian locale opens it as is; with `--lang en` it is comma-separated. The report gives precision, recall, F1, accuracy and κ of the feed's verdict, the share of pairs judged relevant at each link strength (none, weak, moderate, strong), and a table of every disagreement with its strongest links. That table shows where the links need work. If several people label, export the sheet once, copy it per person, and import each copy with `--file`.
+
+## Rerunning with local models
+
+The demo recordings (`examples/demo/recordings/`) are real answers of qwen3.5:9b and gemma4:12b on eight demo pairs (`examples/demo/pairs_smoke.jsonl`). After a prompt or model change, rerun them and compare. This takes 12–16 GB of VRAM for these two models; the comments in `examples/config/ollama-local.toml` give smaller ones.
+
+```powershell
+# once: Ollama with a 16k context and the models
+setx OLLAMA_CONTEXT_LENGTH 16384          # then restart Ollama
+ollama pull qwen3.5:9b
+ollama pull gemma4:12b
+ollama pull ministral-3:14b               # judge: neither the author's nor the reviewer's family
+Copy-Item examples\config\ollama-local.toml refract.toml
+# in refract.toml: [models.verifier] id = "gemma4:12b"; .env: LLM_API_KEY=ollama
+refract check                             # structured output, context window, reasoning
+
+# 1. new recordings of the same eight pairs, and a replay of them without the model
+refract demo --record runs\smoke\recordings.json
+$env:REFRACT_RECORDINGS = "runs\smoke\recordings.json"; refract shell --demo; Remove-Item Env:REFRACT_RECORDINGS
+
+# 2. the agent against the simpler systems on the same pairs, judged by a third family
+refract eval run    --pairs examples\demo\pairs_smoke.jsonl --out runs\smoke --systems full,single_call,retelling --workers 1
+refract eval judge  --out runs\smoke --judges judge --workers 1
+refract eval report --out runs\smoke --reference full
+
+# 3. your own scores for the same answers, blind to the system
+refract eval label export --out runs\smoke --lang ru
+refract eval label import --out runs\smoke   # after filling runs\smoke\labels\human\sheet.csv
+refract eval report --out runs\smoke --reference full
+```
+
+On macOS and Linux, use `/` in paths, `export OLLAMA_CONTEXT_LENGTH=16384` instead of `setx`, `cp` instead of `Copy-Item`, and `REFRACT_RECORDINGS=runs/smoke/recordings.json refract shell --demo`.
+
+`refract demo --record` prints `ok` or the failure reason for each pair, and exits with 1 if any pair failed. The new file has the same format as the packaged one; to make it the demo, replace `examples/demo/recordings/qwen9b_gemma12b.json` with it (or rename it and update `RECORDED` in `demo.py`). On a GPU, one pair takes 2–5 minutes with these models.
+
 ## Checking the English prompts
 
 The English prompts are translations of prompts tuned on Russian news. Before reporting English results, check that they behave like the Russian ones. `examples/demo/pairs_parity.jsonl` has seven subject × event × role triples — each in Russian and in English — covering a company, a sole proprietor, a self-employed person, a household, Russian and English news, and a prompt injection.

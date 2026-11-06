@@ -1,5 +1,7 @@
+import json
 import math
 import re
+from pathlib import Path
 
 import pytest
 
@@ -294,3 +296,30 @@ def test_feed_relevance_against_human_labels(store, settings, tmp_path) -> None:
     assert rel["by_strength"] == {0: {"n": 1, "relevant_share": 0.0}, 1: {"n": 1, "relevant_share": 1.0},
                                   3: {"n": 1, "relevant_share": 1.0}}  # fmt: skip
     assert "## Relevance against human labels (n = 3)" in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+
+def test_relevance_labels_round_trip_without_a_model(tmp_path, capsys) -> None:
+    import csv
+
+    from refract.cli import main
+
+    data = str(Path(__file__).parents[1] / "examples" / "demo")
+    assert main(["eval", "relevance", "export", "--out", str(tmp_path), "--data", data]) == 0
+    sheet = tmp_path / "relevance" / "sheet.csv"
+    assert (
+        main(["eval", "relevance", "export", "--out", str(tmp_path), "--data", data]) == 2
+    )  # never overwritten
+    rows = list(csv.reader(sheet.read_text(encoding="utf-8-sig").splitlines(), delimiter=";"))
+    assert rows[0][4] == "relevant" and len(rows) == 1 + 6 * 8
+    # an annotator who thinks every tax and rate item matters to everyone, and nothing else does
+    for r in rows[1:]:
+        r[4] = "да" if r[1] in ("ev_usn_vat_ru", "ev_rate_hold_ru") else "0"
+    rows[1][4] = "maybe"
+    with sheet.open("w", encoding="utf-8-sig", newline="") as f:
+        csv.writer(f, delimiter=";").writerows(rows)
+    capsys.readouterr()
+    assert main(["eval", "relevance", "import", "--out", str(tmp_path), "--data", data]) == 1  # one bad row
+    out = capsys.readouterr().out
+    assert "skipped row 2" in out and "Labelled pairs: 47" in out and "## Disagreements" in out
+    summary = json.loads((tmp_path / "relevance" / "summary.json").read_text(encoding="utf-8"))
+    assert summary["stats"]["n"] == 47 and summary["disagreements"]

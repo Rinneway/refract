@@ -1,5 +1,9 @@
 {
  "_note": "Real answers of qwen3.5:9b (main) and gemma4:12b (verifier) via local Ollama on 8 demo pairs (refract eval run --systems full), in call order. Demo data only. Keys: profile__event__role__language. The __rerun entry is a second run of the same pair after the country scope change (its revision dropped most of the insight).",
+ "_models": {
+  "main": "qwen3.5:9b",
+  "verifier": "gemma4:12b"
+ },
  "demo_family_saver__ev_rate_hold_ru__individual__ru": {
   "plan": {
    "rationale": "Событие — сохранение ключевой ставки на уровне 14% — напрямую влияет на плавающую ипотеку семьи (увеличивает платеж) и доходность депозита, а также определяет стоимость будущего льготного кредита для пекарни.",

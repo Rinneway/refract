@@ -18,6 +18,7 @@ from typing import Any
 from .harness import Pair, _read, _safe
 from .judge import CRITERIA
 from .labels import is_human
+from .relevance import relevance_stats
 from .stats import bootstrap_ci, mean, paired_bootstrap_diff, percentile, sign_test, spearman, weighted_kappa
 
 LEVELS = ["low", "medium", "high"]
@@ -184,28 +185,7 @@ def _relevance(out: Path, pairs: list[Pair], systems: list[str]) -> dict[str, An
                 strength[p.id] = s
                 break
     rows = [(bool(p.gold_relevant), strength[p.id]) for p in pairs if p.id in strength]
-    if not rows:
-        return None
-    tp = sum(g and s >= 2 for g, s in rows)
-    fp = sum(not g and s >= 2 for g, s in rows)
-    fn = sum(g and s < 2 for g, s in rows)
-    precision = tp / (tp + fp) if tp + fp else None
-    recall = tp / (tp + fn) if tp + fn else None
-    f1 = 2 * precision * recall / (precision + recall) if precision and recall else None
-    by_strength = {
-        level: {"n": len(xs), "relevant_share": mean([float(g) for g in xs])}
-        for level in range(4)
-        if (xs := [g for g, s in rows if s == level])
-    }
-    return {
-        "n": len(rows),
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-        "accuracy": mean([float(g == (s >= 2)) for g, s in rows]),
-        "kappa": weighted_kappa([int(g) for g, _ in rows], [int(s >= 2) for _, s in rows], [0, 1]),
-        "by_strength": by_strength,
-    }
+    return relevance_stats(rows)
 
 
 def _agreement(out: Path, systems: list[str], pairs: list[Pair], j1: str, j2: str) -> dict[str, Any]:

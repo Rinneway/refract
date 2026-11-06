@@ -49,6 +49,8 @@ def cmd_demo(args) -> int:
     from .demo import run_demo
     from .render import insight_markdown, trace_markdown
 
+    if args.record:
+        return _record(args)
     if args.list:
         from .demo import Replay
 
@@ -130,6 +132,32 @@ def cmd_analyze(args) -> int:
             _out(insight_markdown(run.insight, rf.settings.institution))
         _out("\n" + trace_markdown(run.trace))
     return 0 if run.ok else 1
+
+
+def _record(args) -> int:
+    from .demo import record
+    from .textutil import read_text
+
+    rf = _rf(args)
+    if not rf.settings.api_key:
+        return _fail(
+            "--record needs a model: set LLM_API_KEY (any value for local Ollama) and check with `refract check`"
+        )
+    pairs = None
+    if args.pairs:
+        if not Path(args.pairs).is_file():
+            return _fail(f"no such pairs file: {args.pairs}")
+        rows = [json.loads(line) for line in read_text(args.pairs).splitlines() if line.strip()]
+        pairs = [
+            (r["profile_id"], r["event_id"], r.get("role") or "cfo", r.get("language") or "ru") for r in rows
+        ]
+    status = record(rf, Path(args.record), pairs, on_pair=lambda key: sys.stderr.write(f"… {key}\n"))
+    for key, verdict in status.items():
+        _out(f"{verdict:4}  {key}" if verdict == "ok" else f"FAIL  {key}: {verdict}")
+    sys.stderr.write(
+        f"saved: {args.record} — replay it with REFRACT_RECORDINGS={args.record} refract analyze --demo …\n"
+    )
+    return 0 if all(v == "ok" for v in status.values()) else 1
 
 
 def _replay_note(run, role: str | None, lang: str | None) -> str:
@@ -268,6 +296,36 @@ def cmd_news(args) -> int:
     return 0
 
 
+def _eval_relevance(args) -> int:
+    """Human relevance labels for the feed; no model is called."""
+    from .eval.relevance import export_relevance, read_sheet, score_relevance, write_relevance
+
+    out = Path(args.out)
+    rf = _rf(args)
+    lang = args.lang or rf.settings.language
+    if args.action == "export":
+        try:
+            sheet = export_relevance(rf, out, lang=lang, force=args.force)
+        except FileExistsError as e:
+            return _fail(str(e))
+        n = len(rf.store.profiles) * len(rf.store.events)
+        _out(f"{n} subject × news pairs to label → {sheet} (read {sheet.parent / 'README.md'})")
+        return 0
+    if args.action == "import":
+        sheet = Path(args.file) if args.file else out / "relevance" / "sheet.csv"
+        if not sheet.is_file():
+            return _fail(f"no sheet {sheet}: run `refract eval relevance export --out {out}` first")
+        labels, problems = read_sheet(sheet)
+        for p in problems:
+            _out(f"skipped {p}")
+        if not labels:
+            return _fail(f"{sheet} has no filled `relevant` cells")
+        report = write_relevance(out, score_relevance(rf, labels, lang))
+        _out(report.read_text(encoding="utf-8"))
+        return 0 if not problems else 1
+    return _fail("`eval relevance` needs `export` or `import`")
+
+
 def cmd_eval(args) -> int:
     import random
 
@@ -287,6 +345,8 @@ def cmd_eval(args) -> int:
             + f" → {args.out}"
         )
         return 0
+    if args.step == "relevance":
+        return _eval_relevance(args)
     out = Path(args.out)
     pairs_path = Path(args.pairs) if args.pairs else out / "pairs.jsonl"
     if not pairs_path.is_file():
@@ -446,6 +506,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("scenario", nargs="?", default="rate", choices=["rate", "injection", "dollar"])
     sp.add_argument("--json", action="store_true")
     sp.add_argument("--list", action="store_true", help="the pairs `--demo` can replay, and exit")
+    sp.add_argument(
+        "--record",
+        metavar="FILE",
+        help="run the configured models on the recorded pairs (or --pairs) and write a new recordings file",
+    )
+    sp.add_argument(
+        "--pairs", help="for --record: a pairs file (profile_id, event_id, role, language per line)"
+    )
+    sp.add_argument("--data", help="for --record: data folder (default examples/demo)")
     sp.set_defaults(fn=cmd_demo)
 
     sp = sub.add_parser("analyze", help="run the agent for one subject × event")
@@ -530,8 +599,8 @@ def build_parser() -> argparse.ArgumentParser:
     nf.set_defaults(fn=cmd_news)
 
     sp = sub.add_parser("eval", help="experiments: pairs → run → judge → (label) → report")
-    sp.add_argument("step", choices=["pairs", "run", "judge", "label", "report"])
-    sp.add_argument("action", nargs="?", choices=["export", "import"], help="for `label`")
+    sp.add_argument("step", choices=["pairs", "run", "judge", "label", "relevance", "report"])
+    sp.add_argument("action", nargs="?", choices=["export", "import"], help="for `label` and `relevance`")
     data_arg(sp, demo=False)
     sp.add_argument("--out", required=True, help="experiment folder (for `pairs`: the pairs file)")
     sp.add_argument("--pairs", help="pairs file (default <out>/pairs.jsonl)")
@@ -550,7 +619,10 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--sample", type=int, help="for `pairs` and `label export`: a random sample of this size")
     sp.add_argument("--seed", type=int, default=0, help="seed of the sample")
     sp.add_argument("--name", help="for `label`: the judge name of the labels (default human)")
-    sp.add_argument("--file", help="for `label import`: the filled sheet (default labels/<name>/sheet.csv)")
+    sp.add_argument(
+        "--file",
+        help="for `label import` / `relevance import`: the filled sheet (default labels/<name>/ or relevance/sheet.csv)",
+    )
     sp.set_defaults(fn=cmd_eval)
 
     sp = sub.add_parser(

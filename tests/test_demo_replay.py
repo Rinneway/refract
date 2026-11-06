@@ -89,3 +89,35 @@ def test_cyrillic_survives_a_windows_pipe() -> None:
     finally:
         sys.stdout = old
     assert raw.getvalue().decode("utf-8") == "Ставка 14%"
+
+
+def test_record_writes_what_replay_reads(tmp_path, monkeypatch) -> None:
+    """`refract demo --record` with a model: here the model is itself a replay, so the new file must replay the same."""
+    from refract.demo import record, recordings
+
+    source = Refract.demo()
+    key = "demo_grain_farm__ev_wheat_en__cfo__en"
+    original = next(r for r in recordings() if r.key == key)
+
+    class Live(Refract):  # the configured model is a replay of the original recording
+        @property
+        def llm(self):
+            return source.replay.llm(original)
+
+    rf = Live(source.store, settings=source.settings)
+    out = tmp_path / "rec.json"
+    assert record(rf, out, [("demo_grain_farm", "ev_wheat_en", "cfo", "en")]) == {key: "ok"}
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert set(data) == {"_note", "_models", key} and isinstance(data[key]["plan"], dict)
+    monkeypatch.setenv("REFRACT_RECORDINGS", str(out))
+    again = Refract.demo().analyze("demo_grain_farm", "ev_wheat_en")
+    first = source.analyze("demo_grain_farm", "ev_wheat_en")
+    assert again.insight.headline == first.insight.headline
+
+
+def test_record_without_a_model_is_a_message(tmp_path, monkeypatch, capsys) -> None:
+    for var in ("LLM_API_KEY", "OPENAI_API_KEY", "REFRACT_CONFIG"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.chdir(tmp_path)  # no refract.toml, no .env
+    assert main(["demo", "--record", str(tmp_path / "rec.json")]) == 2
+    assert "needs a model" in capsys.readouterr().err

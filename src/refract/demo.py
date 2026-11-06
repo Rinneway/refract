@@ -16,10 +16,11 @@ mistakes:
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import ClassVar
+from typing import Any
 
 from .agent import Agent, AgentRun
 from .config import DEFAULT_ROUTES, ModelSpec, Settings
@@ -401,6 +402,7 @@ class Recording:
     language: str
     source: str  # "recorded" — real model answers; "scripted" — written by hand to show a check at work
     answers: dict
+    models: tuple[str, str] = ("scripted", "scripted")  # (main, verifier) as the trace names them
 
 
 def _scripted_recordings() -> list[Recording]:
@@ -413,17 +415,20 @@ def _scripted_recordings() -> list[Recording]:
 
 
 def recordings(path: Path | None = None) -> list[Recording]:
-    """Recorded real answers first (`recordings/*.json`, keys `profile__event__role__language`), then the scripted
-    scenarios for pairs that have no recording. Reruns (a fifth key part) are skipped."""
-    path = path or RECORDED
+    """Recorded real answers first (`recordings/qwen9b_gemma12b.json`, or the file in `REFRACT_RECORDINGS`; keys
+    `profile__event__role__language`), then the scripted scenarios for pairs that have no recording. Reruns (a fifth
+    key part) are skipped."""
+    path = path or Path(os.getenv("REFRACT_RECORDINGS") or RECORDED)
     out: list[Recording] = []
     data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    models = data.get("_models") or {"main": "qwen3.5:9b", "verifier": "gemma4:12b"}
+    names = (f"recorded:{models['main']}", f"recorded:{models['verifier']}")
     for key, answers in data.items():
         parts = key.split("__")
         if key.startswith("_") or len(parts) != 4:
             continue
         steps = {k: v if isinstance(v, list) else [v] for k, v in answers.items()}
-        out.append(Recording(key, *parts, source="recorded", answers=steps))
+        out.append(Recording(key, *parts, source="recorded", answers=steps, models=names))
     have = {(r.profile_id, r.event_id) for r in out}
     return out + [r for r in _scripted_recordings() if (r.profile_id, r.event_id) not in have]
 
@@ -433,11 +438,6 @@ class Replay:
     (qwen3.5:9b drafting, gemma4:12b verifying, via local Ollama) or from a scripted scenario. Tools, retrieval, the
     rule checks, the impact ceiling and the action policy run with the current code, so a code change shows up in the
     replayed insight. The trace names the models as `recorded:…` or `scripted`, never as live ones."""
-
-    MODELS: ClassVar[dict[str, tuple[str, str]]] = {
-        "recorded": ("recorded:qwen3.5:9b", "recorded:gemma4:12b"),
-        "scripted": ("scripted", "scripted"),
-    }
 
     def __init__(self, items: list[Recording] | None = None) -> None:
         self.items = recordings() if items is None else items
@@ -460,7 +460,7 @@ class Replay:
         return max(found, key=lambda r: (r.role == role, r.language == language, r.source == "recorded"))
 
     def llm(self, rec: Recording, settings: Settings | None = None) -> ScriptedLLM:
-        main, verifier = self.MODELS[rec.source]
+        main, verifier = rec.models
         settings = replace(
             settings or Settings(),
             api_key="replay",
@@ -471,3 +471,55 @@ class Replay:
         )
         # a replay costs nothing and takes no model time; the recorded runs' usage is not part of the recording
         return ScriptedLLM({k: list(v) for k, v in rec.answers.items()}, settings, usage=(0, 0, 0.0, 0))
+
+
+# ---------------------------------------------------------------------------------------------------- recording
+
+
+class Recorder:
+    """Wraps a real model client and keeps every parsed answer by step, in call order — the format `recordings`
+    reads. What the client's salvage changed is kept as changed: a replay starts from the valid answer."""
+
+    def __init__(self, llm: Any) -> None:
+        self.llm = llm
+        self.answers: dict[str, list] = {}
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.llm, name)
+
+    def chat_json(self, model, messages, schema, *, step=None, **kw):
+        res = self.llm.chat_json(model, messages, schema, step=step, **kw)
+        value = res.value.model_dump(mode="json") if res.value is not None else None
+        self.answers.setdefault((step or "json").split(":")[0], []).append(value)
+        return res
+
+
+def record(rf: Any, out: Path, pairs: list[tuple[str, str, str, str]] | None = None, on_pair=None) -> dict:
+    """Run the full agent with the configured models on `pairs` (default: the pairs of the packaged recordings) and
+    write their answers to `out` in the recordings format. Returns {key: "ok" | the failure reason}."""
+    pairs = pairs or [
+        (r.profile_id, r.event_id, r.role, r.language) for r in recordings() if r.source == "recorded"
+    ]
+    settings = rf.settings
+    data: dict[str, Any] = {
+        "_note": (
+            f"Real answers of {settings.model_id('main')} (main) and {settings.model_id('verifier')} (verifier) on "
+            f"{len(pairs)} demo pairs, in call order, recorded {datetime.now(timezone.utc):%Y-%m-%d} with "
+            "`refract demo --record`. Demo data only. Keys: profile__event__role__language."
+        ),
+        "_models": {"main": settings.model_id("main"), "verifier": settings.model_id("verifier")},
+    }
+    status: dict[str, str] = {}
+    for profile_id, event_id, role, lang in pairs:
+        key = f"{profile_id}__{event_id}__{role}__{lang}"
+        if on_pair:
+            on_pair(key)
+        rec = Recorder(rf.llm)
+        run = rf.agent(replace(rf.config, language=lang), llm=rec).run(
+            profile_id, event_id, role=role, language=lang
+        )
+        data[key] = {k: v[0] if k == "plan" and len(v) == 1 else v for k, v in rec.answers.items()}
+        status[key] = "ok" if run.ok else run.trace.failure_reason()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return status
