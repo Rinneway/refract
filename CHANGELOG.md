@@ -66,9 +66,8 @@ Found by running qwen3.5:9b with gemma4:e4b as the reviewer through local Ollama
 - `Refract.feed`, `refract feed`, `GET /profiles/{id}/feed`, MCP `news_feed`: the stored news ranked for one subject by code — direct, background or unrelated — with the links as reasons; untagged news is tagged once; `--analyze K` explains the strongest items.
 - Evaluation: the feed's verdict against `gold_relevant` (precision, recall, F1, κ, and the share judged relevant at each link strength).
 
-### Data, search and a web page
+### Data and search
 
-- A web page at `/` of `refract serve`: the subject's feed, the agent's steps as it works, the insight with the origin of every statement and a bar of their shares, numbered sources, follow-up questions and the trace. One self-contained file on the public API; it asks for the token when the API is closed.
 - Data folders saved on Windows: files with a byte-order mark load, research texts may be in Windows-1251; a file or object that does not load is skipped with a note naming it (CLI, `GET /health` → `data_problems`), repeated ids are reported, a broken `refract.toml` is a message.
 - Research: a long paragraph is cut at sentence ends instead of becoming one chunk of any size.
 - Search: light stemming, so «ставка» finds «ставку» and «rate» finds «rates».

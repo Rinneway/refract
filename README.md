@@ -43,7 +43,7 @@ ev_rate_hold_ru  ×  demo_building_materials (wholesaler with loans, a developer
 - **Bilingual.** Insights in Russian or English, whatever the language of the news.
 - **Provider-agnostic.** Any OpenAI-compatible endpoint: OpenAI, OpenRouter, LiteLLM, vLLM, Ollama, LM Studio — with per-step model routing, failover, cost accounting and a disk cache.
 - **A personal feed.** Of a hundred news items, code picks the few that concern this subject and says why, before any model is asked.
-- **Ready to integrate.** A web page, Python API, CLI, REST API with live progress (SSE), MCP server, RSS collector.
+- **Ready to integrate.** Python API, CLI, REST API with live progress (SSE), MCP server, RSS collector.
 - **Ready to study.** Built-in ablations, baselines, multiple LLM judges, inter-judge agreement and bootstrap confidence intervals.
 
 ## How it works
@@ -124,10 +124,6 @@ for claim in run.insight.why_it_matters:
     print(claim.origin.value, claim.text, claim.source_ids, claim.features)
 answer = rf.chat(run.insight.insight_id, "Should we hedge?").response
 ```
-
-**Web page** — `uv run refract serve` and open http://127.0.0.1:8000/: pick a subject, see which news concern it, click one and watch the agent work; every statement is marked with where it comes from, with its sources, follow-up questions and the trace of how it was produced. One self-contained page on the REST API, no build step.
-
-![The web page: a subject's news feed on the left, an explained news item with the origin of every statement on the right](docs/img/web.png)
 
 **REST API** — `uv run refract serve`, OpenAPI docs at `/docs`:
 
