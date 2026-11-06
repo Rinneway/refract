@@ -513,3 +513,28 @@ def test_counterparty_codes_never_reach_the_reader(store) -> None:
     )
     assert ru.headline == "Платёж контрагенту (покупатель, 31% входящих платежей)"
     assert checks.name_counterparties(named, profile, "en") == (named, [])
+
+
+def test_a_rule_from_the_sources_is_applied_with_the_right_arithmetic() -> None:
+    """Found in a local run: “every 10% of freight → 1.5 pp of margin” became “a 15% jump cuts it by 1.5 pp”."""
+    from refract.agent.checks.arithmetic import misapplied, rules_in
+
+    rules = rules_in(
+        "every 10% rise in freight cuts the exporter's margin by about 1.5 percentage points. "
+        "Каждые 10% роста фрахта снижают маржу экспортёра на 1,5 п.п."
+    )
+    assert {(r.change, r.effect) for r in rules} == {(10.0, 1.5)}
+    wrong = "A 15% jump in freight rates cuts your margin by approximately 1.5 percentage points."
+    assert misapplied(wrong, rules)[1:] == (15.0, 1.5, 2.25)
+    assert misapplied("Рост фрахта на 15% снизит маржу примерно на 1,5 п.п.", rules) is not None
+    for fine in (
+        "A 15% jump in freight rates cuts your margin by about 2.2 pp.",  # right, within rounding
+        "Every 10% rise in freight cuts the margin by about 1.5 percentage points.",  # the rule itself
+        "Inflation of 6.8% is 2.8 pp above the target.",  # another topic
+        "Prices rose 6% and freight 15%, so the margin fell by 2 pp.",  # two changes: not the plain case
+    ):
+        assert misapplied(fine, rules) is None, fine
+    run = Refract.demo().analyze("demo_grain_farm", "ev_wheat_en")
+    rules_found = [i for s in run.trace.steps if s.name == "rule_check" for i in s.issues]
+    assert any("2.25 pp, not 1.5" in i for i in rules_found)
+    assert "w2" not in {c.claim_id for c in run.insight.why_it_matters}

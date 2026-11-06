@@ -6,6 +6,7 @@
 
 - The demo recordings are now the answers of the current prompts (qwen3.5:9b and gemma4:12b, November 2026); the October recordings stay in `tests/fixtures` for the regression cases found in them. Results and the faults found: [docs/results/smoke-2026-11.md](docs/results/smoke-2026-11.md).
 - Impact links: tax news that names a tax regime (the simplified system, professional income, the patent…) is a weak link for a subject on another regime.
+- Rule check `arithmetic`: a rule of thumb from the sources (“every 10% rise in freight cuts the margin by about 1.5 pp”) applied to the news is recomputed; a wrong result (“a 15% jump cuts it by 1.5 pp”) is an error with the right value in the message.
 - Rule check `off_topic`: a house view that cites only theses on other topics than the event is an error and is cut; the fallback that restores a removed house view skips such theses too.
 - Internal counterparty codes (`cp_import_309`) never reach the reader: they are replaced by what is known — “the supplier with 14% of outgoing payments”.
 - `.env` is read from the current folder, not from the folder the package was installed from.

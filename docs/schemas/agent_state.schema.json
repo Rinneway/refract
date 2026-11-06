@@ -764,7 +764,8 @@
         "duplicate_id",
         "wrong_language",
         "schema_error",
-        "off_topic"
+        "off_topic",
+        "arithmetic"
       ],
       "title": "IssueCode",
       "type": "string"

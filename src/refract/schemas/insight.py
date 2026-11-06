@@ -208,6 +208,7 @@ class IssueCode(str, Enum):
     WRONG_LANGUAGE = "wrong_language"
     SCHEMA_ERROR = "schema_error"
     OFF_TOPIC = "off_topic"  # a house view about something else than the event
+    ARITHMETIC = "arithmetic"  # a rule from the sources applied with wrong arithmetic
 
 
 class VerificationIssue(Contract):

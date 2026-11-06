@@ -40,6 +40,14 @@ FINDINGS = {
     "of_supplier": {"ru": "поставщика", "en": "supplier"},
     "of_customer": {"ru": "покупателя", "en": "customer"},
     "features": {"ru": "неизвестные признаки субъекта: {bad}", "en": "unknown subject features: {bad}"},
+    "arithmetic": {
+        "ru": "{cid}: по правилу из источника ({x}% → {y} п.п.) изменение на {p}% даёт около {e} п.п., а не {v}",
+        "en": "{cid}: by the rule in the source ({x}% → {y} pp), a change of {p}% gives about {e} pp, not {v}",
+    },
+    "arithmetic_hint": {
+        "ru": "пересчитай пропорционально или убери расчёт и приведи правило как есть",
+        "en": "recompute proportionally, or drop the calculation and quote the rule as it is",
+    },
     "off_topic": {
         "ru": "{cid}: позиция института не о том, о чём новость (тема позиции: {topics}; новость: {event})",
         "en": "{cid}: the house view is about something else than the news (view: {topics}; news: {event})",

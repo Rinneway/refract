@@ -13,6 +13,7 @@ from ...schemas import Insight, InsightContent, IssueCode, Origin, VerificationI
 from ...textutil import first_percent, invented_numbers, normalize, script_share
 from ..context import InsightContext, known_feature
 from ..impact import above, thesis_fits
+from .arithmetic import arithmetic_issues
 from .messages import finding
 
 HEADLINE = "headline"
@@ -243,6 +244,7 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
     issues += off_topic_house_view(content, ctx)
 
     context = ctx.render()
+    issues += arithmetic_issues(content, context, lang)
     if extra := invented_numbers([content.headline], context):
         issues.append(
             VerificationIssue(
