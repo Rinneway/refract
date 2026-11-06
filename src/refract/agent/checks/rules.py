@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from ...schemas import Insight, InsightContent, IssueCode, Origin, VerificationIssue, violations
 from ...textutil import first_percent, invented_numbers, normalize, script_share
 from ..context import InsightContext, known_feature
-from ..impact import above
+from ..impact import above, thesis_fits
 from .messages import finding
 
 HEADLINE = "headline"
@@ -148,6 +148,38 @@ def unfit_actions(content: InsightContent, ctx: InsightContext) -> list[Verifica
     return out
 
 
+def off_topic_house_view(content: InsightContent, ctx: InsightContext) -> list[VerificationIssue]:
+    """A house view that cites only theses about other topics than the event (found in a local run: the bank's view
+    on the VAT threshold attached to news about coffee shops closing). Research excerpts carry no topic tags and are
+    not judged."""
+    theses = {f"src_{th.thesis_id}": th for th in ctx.theses}
+    out = []
+    for c in content.house_view:
+        cited = [theses[s] for s in c.source_ids if s in theses]
+        if not cited or len(cited) < len(c.source_ids):
+            continue
+        fits = [thesis_fits(th, ctx.event) for th in cited]
+        if any(f is None or f for f in fits):
+            continue
+        topics = sorted({th.topic for th in cited})
+        out.append(
+            VerificationIssue(
+                code=IssueCode.OFF_TOPIC,
+                severity="error",
+                claim_id=c.claim_id,
+                message=finding(
+                    "off_topic",
+                    ctx.lang,
+                    cid=c.claim_id,
+                    topics=", ".join(topics),
+                    event=", ".join(ctx.event.macro_factors),
+                ),
+                fix_hint=finding("off_topic_hint", ctx.lang),
+            )
+        )
+    return out
+
+
 def as_insight(content: InsightContent, ctx: InsightContext) -> Insight:
     """An insight built without validation, to list every violation instead of failing on the first."""
     return Insight.model_construct(
@@ -208,6 +240,7 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
     for cid, text in texts:
         issues += counterparty_superlatives(text, cid, ctx)
     issues += unfit_actions(content, ctx)
+    issues += off_topic_house_view(content, ctx)
 
     context = ctx.render()
     if extra := invented_numbers([content.headline], context):

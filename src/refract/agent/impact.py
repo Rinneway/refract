@@ -242,6 +242,18 @@ def event_divisions(e: NewsEvent) -> set[str]:
     return out
 
 
+def thesis_fits(thesis, e: NewsEvent) -> bool | None:
+    """Is the institution's thesis about what the event is about? By its macro factors (a sector alone is too broad:
+    a VAT threshold thesis tagged “catering” is not about coffee shops closing for lack of demand); by sector only
+    for a thesis that has no other factor. None — cannot tell: the event or the thesis is untagged."""
+    if not e.macro_factors or not thesis.factors:
+        return None
+    factors = {canonical_factor(f) for f in e.macro_factors}
+    divisions = event_divisions(e)
+    own = [f for f in thesis.factors if not f.startswith("sector:")] or list(thesis.factors)
+    return any(_factor_hit(f, factors, divisions) for f in own)
+
+
 def canonical_factor(factor: str) -> str:
     """country:<name> → country:<ISO code>; fx codes upper-cased; other factors unchanged."""
     if factor.startswith("country:"):

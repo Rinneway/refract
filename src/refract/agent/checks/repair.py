@@ -12,7 +12,7 @@ from ...i18n import norm_lang, t
 from ...schemas import Claim, ImpactLevel, InsightContent, Origin, SubjectClaim
 from ...textutil import lexical_support, trim_sentence
 from ..context import InsightContext, known_feature
-from ..impact import above, event_links
+from ..impact import above, event_links, thesis_fits
 from .messages import NOTES
 
 
@@ -55,6 +55,7 @@ def house_view_from_theses(ctx: InsightContext, removed: list[Claim]) -> list[Cl
         th
         for th in ctx.theses
         if f"src_{th.thesis_id}" in cited
+        and thesis_fits(th, ctx.event) is not False
         and not th.is_stale
         and norm_lang(th.language) == norm_lang(ctx.lang)
     ]

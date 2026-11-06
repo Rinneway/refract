@@ -40,6 +40,14 @@ FINDINGS = {
     "of_supplier": {"ru": "поставщика", "en": "supplier"},
     "of_customer": {"ru": "покупателя", "en": "customer"},
     "features": {"ru": "неизвестные признаки субъекта: {bad}", "en": "unknown subject features: {bad}"},
+    "off_topic": {
+        "ru": "{cid}: позиция института не о том, о чём новость (тема позиции: {topics}; новость: {event})",
+        "en": "{cid}: the house view is about something else than the news (view: {topics}; news: {event})",
+    },
+    "off_topic_hint": {
+        "ru": "оставь только позиции института по теме этой новости; если таких нет, блок можно оставить пустым",
+        "en": "keep only house views on the topic of this news; if there are none, the block may stay empty",
+    },
     "features_hint": {
         "ru": "используй ключи из списка «Признаки»",
         "en": "use keys from the “Features” list",

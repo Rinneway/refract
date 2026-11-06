@@ -15,6 +15,7 @@ from pathlib import Path
 from refract.agent import Agent, ablation, checks
 from refract.agent.context import profile_features
 from refract.config import Settings
+from refract.facade import Refract
 from refract.llm import ScriptedLLM
 from refract.schemas import (
     Action,
@@ -348,8 +349,9 @@ def test_uk_subject_gets_no_russian_rate_forecast(store) -> None:
 def test_house_view_gets_its_thesis_back_across_languages(store) -> None:
     run = smoke(store, "demo_building_materials__ev_yuan_ru__cfo__en")
     house = {c.claim_id: c.source_ids for c in run.insight.house_view}
-    # English statements, Russian theses: matched by 11.5–12.5 and 6.5 / 4.5; the news' 11.35 does not block it.
-    assert house == {"b1": ["src_demo_macro_2026q4_t5"], "b2": ["src_demo_macro_2026q4_t4"]}
+    # English statement, Russian thesis: matched by 11.5–12.5; the news' 11.35 does not block it. b2, the inflation
+    # forecast, is cut: a thesis on inflation is not about the yuan (off_topic).
+    assert house == {"b1": ["src_demo_macro_2026q4_t5"]}
     # w2 “your largest supplier (14%)” — the 22% one is cement: a wrong fact about the subject, cut with the action
     # that rested on it alone (the relabelling of such actions is tested in test_actions.py)
     assert "w2" not in {c.claim_id for c in run.insight.why_it_matters}
@@ -371,10 +373,28 @@ def test_revision_is_a_patch_not_a_rewrite(store) -> None:
     revise = next(s for s in run.trace.steps if s.name == "revise")
     assert any("kept as they were" in i for i in revise.issues)
     ins = run.insight
-    assert {r.claim_id for r in ins.risks} == {"r1", "r2"} and ins.opportunities and len(ins.house_view) == 2
+    assert {r.claim_id for r in ins.risks} == {"r1", "r2"} and ins.opportunities and len(ins.house_view) == 1
     assert {a.action_id for a in ins.actions} == {"a1", "a2"}
     t = run.trace.totals
-    assert t.restored >= 8 and t.pruned >= 1 and t.reviewer_errors >= 1
+    assert t.restored >= 7 and t.pruned >= 1 and t.reviewer_errors >= 1  # b2 is off-topic: cut, not restored
+
+
+def test_house_view_off_the_topic_of_the_news_is_cut(store) -> None:
+    """Found in a local run: the bank's views on the VAT threshold and on soft loans attached to news about coffee
+    shops closing for lack of demand. Only the view on spending in cafés stays."""
+    from refract.agent.impact import thesis_fits
+
+    theses = {th.thesis_id: th for th in store.theses}
+    event = store.events["ev_injection_ru"]
+    assert thesis_fits(theses["demo_sme_2026_t3"], event) is True  # consumer demand, catering
+    assert (
+        thesis_fits(theses["demo_sme_2026_t1"], event) is False
+    )  # VAT threshold, even though tagged catering
+    assert thesis_fits(theses["demo_sme_2026_t4"], event) is False  # soft loans
+    run = Refract.demo().analyze("demo_coffee_ip", "ev_injection_ru", role="entrepreneur")
+    assert [c.source_ids for c in run.insight.house_view] == [["src_demo_sme_2026_t3"]]
+    rules = [i for s in run.trace.steps if s.name == "rule_check" for i in s.issues]
+    assert any("b1:" in i and "taxes" in i for i in rules)
 
 
 def test_merge_revision_respects_flags_and_renames() -> None:

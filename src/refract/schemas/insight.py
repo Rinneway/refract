@@ -207,6 +207,7 @@ class IssueCode(str, Enum):
     DUPLICATE_ID = "duplicate_id"
     WRONG_LANGUAGE = "wrong_language"
     SCHEMA_ERROR = "schema_error"
+    OFF_TOPIC = "off_topic"  # a house view about something else than the event
 
 
 class VerificationIssue(Contract):

@@ -763,7 +763,8 @@
         "insufficient_data",
         "duplicate_id",
         "wrong_language",
-        "schema_error"
+        "schema_error",
+        "off_topic"
       ],
       "title": "IssueCode",
       "type": "string"
