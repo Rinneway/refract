@@ -13,7 +13,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 from .i18n import Language, norm_lang
 from .textutil import DataError, read_text
@@ -149,7 +149,9 @@ def _routes_from(raw: dict[str, Any]) -> dict[str, Route]:
 
 def load_settings(config_path: str | Path | None = None, *, env_file: str | Path | None = None) -> Settings:
     """Read `refract.toml` (or `REFRACT_CONFIG`) and environment variables (`.env` is loaded first)."""
-    load_dotenv(env_file) if env_file else load_dotenv()
+    # `.env` of the current folder (and its parents), as documented — not of the folder the package was installed
+    # from, which python-dotenv searches by default and which leaked a checkout's keys into runs started elsewhere
+    load_dotenv(env_file or find_dotenv(usecwd=True))
     path = Path(config_path or os.getenv("REFRACT_CONFIG", "refract.toml"))
     try:
         raw: dict[str, Any] = tomllib.loads(read_text(path)) if path.exists() else {}

@@ -48,3 +48,17 @@ def test_cloud_config_reads_its_own_key(monkeypatch, tmp_path) -> None:
     s = load_settings(cloud, env_file=env)
     assert s.api_key == "sk-cloud" and s.base_urls == ("https://ollama.com/v1",)
     assert any("REFRACT_VERIFIER_MODEL overrides" in n for n in s.notes)  # shown before `eval judge`
+
+
+def test_env_file_of_the_current_folder(monkeypatch, tmp_path) -> None:
+    """`.env` comes from where refract runs, not from the folder the package was installed from."""
+    for var in ("LLM_API_KEY", "OPENAI_API_KEY", "REFRACT_CONFIG"):
+        monkeypatch.delenv(var, raising=False)
+    project = tmp_path / "project"
+    (project / "sub").mkdir(parents=True)
+    (project / ".env").write_text("LLM_API_KEY=from-project\n", encoding="utf-8")
+    monkeypatch.chdir(project / "sub")  # a parent folder's .env counts, as with git
+    assert load_settings().api_key == "from-project"
+    monkeypatch.delenv("LLM_API_KEY")
+    monkeypatch.chdir(tmp_path)
+    assert load_settings().api_key is None
