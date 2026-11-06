@@ -314,3 +314,13 @@ def test_feed_tags_untagged_news_and_analyzes_the_top_item(server, capsys) -> No
     out = capsys.readouterr().out
     assert out.startswith("## Новости для demo_building_materials") and "Как получен вывод" not in out
     assert "InsightContent" in server.schemas()  # the strongest direct item went through the agent
+
+
+def test_brief_command(server, capsys, tmp_path) -> None:
+    assert (
+        main(["brief", "--profile", "demo_family_saver", "--top", "1", "--out", str(tmp_path / "runs")]) == 0
+    )
+    out = capsys.readouterr().out
+    assert (
+        out.startswith("## Бриф для demo_family_saver") and len(list((tmp_path / "runs").glob("*.json"))) == 1
+    )

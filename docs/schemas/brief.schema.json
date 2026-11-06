@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "BriefItem": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "relevance": {
+          "enum": [
+            "direct",
+            "background",
+            "none"
+          ],
+          "title": "Relevance",
+          "type": "string"
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The full insight; None if the agent produced none",
+          "title": "Insight Id"
+        },
+        "headline": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Headline"
+        },
+        "overall_impact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImpactLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "overall_direction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overall Direction"
+        },
+        "why": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first checked statement of “why it matters”",
+          "title": "Why"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first action",
+          "title": "Action"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why there is no insight",
+          "title": "Error"
+        }
+      },
+      "required": [
+        "event_id",
+        "title",
+        "relevance"
+      ],
+      "title": "BriefItem",
+      "type": "object"
+    },
+    "ImpactLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "ImpactLevel",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The strongest news of the subject's feed, each explained by the agent and cut down to one paragraph by code:\nno extra model call, so the brief says nothing the insights did not.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "profile_id": {
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "language": {
+      "title": "Language",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "items": {
+      "description": "Highest impact first",
+      "items": {
+        "$ref": "#/$defs/BriefItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "considered": {
+      "description": "Direct news in the feed before `top`",
+      "title": "Considered",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "profile_id",
+    "language",
+    "created_at",
+    "items",
+    "considered"
+  ],
+  "title": "Brief",
+  "type": "object"
+}

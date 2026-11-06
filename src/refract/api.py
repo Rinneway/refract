@@ -37,7 +37,7 @@ from .agent.progress import InsightProgress, ProgressTracker
 from .facade import Refract, news_from_text
 from .recent import Recent
 from .render import insight_markdown
-from .schemas import ChatResponse, ChatTurn, Feed, Insight, NewsEvent, Profile, Trace
+from .schemas import Brief, ChatResponse, ChatTurn, Feed, Insight, NewsEvent, Profile, Trace
 
 
 class NewsIn(BaseModel):
@@ -138,6 +138,21 @@ def create_app(rf: Refract | None = None) -> FastAPI:
         if profile_id not in r.store.profiles:
             raise HTTPException(404, "profile not found")
         return r.feed(profile_id, top=top, since=since, tag=tag, include_unrelated=all, language=language)
+
+    @app.post("/profiles/{profile_id}/brief", response_model=Brief, dependencies=[Depends(auth)])
+    def brief(
+        profile_id: str,
+        top: int = Query(3, ge=1, le=10),
+        since: datetime | None = None,
+        role: str | None = None,
+        language: Literal["ru", "en"] | None = None,
+    ) -> Brief:
+        """The strongest direct news for the subject, each explained by the agent, in one brief. Synchronous: one
+        agent run per item."""
+        r = get_rf()
+        if profile_id not in r.store.profiles:
+            raise HTTPException(404, "profile not found")
+        return r.brief(profile_id, top=top, since=since, role=role, language=language)
 
     @app.get("/events", dependencies=[Depends(auth)])
     def events(limit: int = Query(50, ge=1, le=500)) -> list[dict[str, Any]]:

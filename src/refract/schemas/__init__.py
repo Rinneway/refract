@@ -24,7 +24,7 @@ from .common import (
     SourceRef,
     SourceType,
 )
-from .feed import Feed, FeedItem
+from .feed import Brief, BriefItem, Feed, FeedItem
 from .insight import (
     Action,
     ActionKind,
@@ -64,6 +64,8 @@ __all__ = [
     "Affiliation",
     "AgentContext",
     "AgentState",
+    "Brief",
+    "BriefItem",
     "ChatAnswer",
     "ChatIntent",
     "ChatRequest",

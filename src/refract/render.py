@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .config import Institution
 from .i18n import norm_lang, t
-from .schemas import ChatResponse, Feed, Insight, Trace
+from .schemas import Brief, ChatResponse, Feed, Insight, Trace
 
 _TITLES = {
     "ru": {
@@ -142,3 +142,42 @@ def feed_markdown(feed: Feed, links: int = 2) -> str:
     if feed.untagged:
         out.append(T["untagged"].format(ids=", ".join(feed.untagged)))
     return "\n".join(out)
+
+
+_BRIEF = {
+    "ru": {
+        "title": "Бриф для {profile}", "impact": "влияние", "why": "Почему важно", "do": "Что сделать",
+        "none": "Ни одна новость не касается субъекта напрямую.", "failed": "инсайт не получен",
+        "levels": {"low": "низкое", "medium": "среднее", "high": "высокое"},
+        "dir": {"negative": "негативно", "positive": "позитивно", "mixed": "неоднозначно", "unclear": "неясно"},
+        "more": "Подробно: refract analyze --profile {profile} --event {event}",
+    },
+    "en": {
+        "title": "Brief for {profile}", "impact": "impact", "why": "Why it matters", "do": "What to do",
+        "none": "No news concerns the subject directly.", "failed": "no insight",
+        "levels": {"low": "low", "medium": "medium", "high": "high"},
+        "dir": {"negative": "negative", "positive": "positive", "mixed": "mixed", "unclear": "unclear"},
+        "more": "In full: refract analyze --profile {profile} --event {event}",
+    },
+}  # fmt: skip
+
+
+def brief_markdown(brief: Brief) -> str:
+    T = _BRIEF[norm_lang(brief.language)]
+    out = [f"## {T['title'].format(profile=brief.profile_id)}", ""]
+    if not brief.items:
+        out.append(T["none"])
+    for i, it in enumerate(brief.items, 1):
+        if it.headline is None:
+            out += [f"{i}. **{it.title}** — {T['failed']}: {it.error}", ""]
+            continue
+        level = T["levels"][it.overall_impact.value] if it.overall_impact else "—"
+        direction = T["dir"].get(it.overall_direction or "", "")
+        out.append(f"{i}. **{it.headline}** ({T['impact']}: {level}, {direction})")
+        out.append(f"   {it.title}")
+        if it.why:
+            out.append(f"   - {T['why']}: {it.why}")
+        if it.action:
+            out.append(f"   - {T['do']}: {it.action}")
+        out += [f"   - {T['more'].format(profile=brief.profile_id, event=it.event_id)}", ""]
+    return "\n".join(out).rstrip()

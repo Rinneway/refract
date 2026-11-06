@@ -37,6 +37,9 @@ feed = rf.feed("demo_grain_farm", top=5, since=datetime(2026, 10, 1))
 for item in feed.items:
     print(item.relevance, item.impact_ceiling.value, item.title, item.links[0])
 
+# the strongest news, each explained by the agent and cut to a paragraph by code (one agent run per item)
+brief = rf.brief("demo_grain_farm", top=3)
+
 # components off, e.g. for a quick draft without the review
 quick = rf.analyze("demo_grain_farm", "ev_wheat_en", config=ablation("no_verifier"))
 
@@ -55,6 +58,8 @@ refract profiles | events [--data DIR]
 refract analyze --profile ID (--event ID | --title T --text X | --text-file F)
                 [--role R] [--lang ru|en] [--ablation NAME] [--iterations N] [--out DIR] [--json]
 refract chat --run FILE --q "…" [--q "…"]
+refract brief --profile ID [--top 3] [--since YYYY-MM-DD] [--out DIR] [--json]
+                                               the strongest news explained, in one short brief
 refract feed --profile ID [--top N] [--since YYYY-MM-DD] [--all] [--no-tag] [--analyze K [--out DIR]] [--json]
                                                stored news ranked for the subject; --analyze runs the agent on the K strongest
 refract theses --docs DIR --out FILE           extract verified theses from research
@@ -76,6 +81,7 @@ Open `/docs` for the OpenAPI UI.
 | GET | `/health` | `{status, version, language, llm_configured, data_problems}` |
 | GET | `/profiles` · `/profiles/{id}` | list · `Profile` |
 | GET | `/profiles/{id}/feed?top=10&since=…&tag=true&all=false&language=…` | `Feed`: stored news ranked for the subject |
+| POST | `/profiles/{id}/brief?top=3&since=…&role=…&language=…` | `Brief`: the strongest news explained (synchronous, one agent run per item) |
 | GET | `/events?limit=50` · `/events/{id}` | list · `NewsEvent` |
 | POST | `/events` | `{title, text, publisher?, url?, published_at?, language?}` → `NewsEvent` |
 | POST | `/insights` | `{profile_id, event_id | news, role?, language?, ablation?}` → `{job_id}`; with `?wait=true` → `Insight` |
@@ -124,6 +130,7 @@ With uv instead of a global install: `"command": "uv", "args": ["--directory", "
 | `list_profiles` | — | ids, kinds and summaries |
 | `get_profile` | `profile_id` | the profile as JSON |
 | `news_feed` | `profile_id`, `top`, `since` | the news that concern the subject, strongest links first, with the reasons |
+| `news_brief` | `profile_id`, `top` | the strongest news explained by the agent, a paragraph each |
 | `list_events` | `limit` | latest events |
 | `analyze_news` | `profile_id`, `event_id` or `title` + `text`, `role`, `language`, `publisher`, `url` | the insight in Markdown with its `insight_id` |
 | `ask_followup` | `insight_id`, `question` | the answer with origins and sources |

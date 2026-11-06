@@ -42,3 +42,30 @@ class Feed(Contract):
     )
     considered: int = Field(description="Events that passed the filters, before `top`")
     untagged: list[str] = Field(default_factory=list, description="Events the model could not tag")
+
+
+class BriefItem(Contract):
+    event_id: str
+    title: str
+    relevance: Relevance
+    insight_id: str | None = Field(
+        default=None, description="The full insight; None if the agent produced none"
+    )
+    headline: str | None = None
+    overall_impact: ImpactLevel | None = None
+    overall_direction: str | None = None
+    why: str | None = Field(default=None, description="The first checked statement of “why it matters”")
+    action: str | None = Field(default=None, description="The first action")
+    error: str | None = Field(default=None, description="Why there is no insight")
+
+
+class Brief(Contract):
+    """The strongest news of the subject's feed, each explained by the agent and cut down to one paragraph by code:
+    no extra model call, so the brief says nothing the insights did not."""
+
+    schema_version: str = SCHEMA_VERSION
+    profile_id: str
+    language: str
+    created_at: datetime
+    items: list[BriefItem] = Field(description="Highest impact first")
+    considered: int = Field(description="Direct news in the feed before `top`")

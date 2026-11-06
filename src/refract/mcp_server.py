@@ -5,7 +5,7 @@ Install with `pip install 'refract-agent[mcp]'` and register the command `refrac
     {"mcpServers": {"refract": {"command": "refract", "args": ["mcp", "--data", "/path/to/data"],
                                 "env": {"LLM_API_KEY": "…", "LLM_BASE_URL": "…", "REFRACT_MODEL": "…"}}}}
 
-Tools: list_profiles, get_profile, news_feed, list_events, analyze_news, ask_followup, get_trace, search_research.
+Tools: list_profiles, get_profile, news_feed, news_brief, list_events, analyze_news, ask_followup, get_trace, search_research.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .facade import Refract
-from .render import chat_markdown, feed_markdown, insight_markdown, trace_markdown
+from .render import brief_markdown, chat_markdown, feed_markdown, insight_markdown, trace_markdown
 
 
 def build_server(rf: Refract):
@@ -60,6 +60,14 @@ def build_server(rf: Refract):
         except ValueError:
             return "since must be YYYY-MM-DD."
         return feed_markdown(rf.feed(profile_id, top=max(1, min(top, 50)), since=start))
+
+    @server.tool()
+    def news_brief(profile_id: str, top: int = 3) -> str:
+        """The strongest news for the subject, each explained by the agent and cut to a paragraph, highest impact
+        first. Slower than news_feed: one agent run per item (top ≤ 5)."""
+        if profile_id not in rf.store.profiles:
+            return f"Unknown profile {profile_id}; call list_profiles."
+        return brief_markdown(rf.brief(profile_id, top=max(1, min(top, 5))))
 
     @server.tool()
     def list_events(limit: int = 20) -> str:

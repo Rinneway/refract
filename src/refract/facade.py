@@ -26,7 +26,18 @@ from .i18n import norm_lang
 from .knowledge.store import DataStore
 from .llm.client import LLM, LLMClient
 from .recent import Recent
-from .schemas import AgentState, ChatTurn, Feed, Insight, NewsArticle, NewsEvent, Profile, Trace
+from .schemas import (
+    AgentState,
+    Brief,
+    BriefItem,
+    ChatTurn,
+    Feed,
+    Insight,
+    NewsArticle,
+    NewsEvent,
+    Profile,
+    Trace,
+)
 from .textutil import read_json
 
 
@@ -204,6 +215,52 @@ class Refract:
             since=since,
             include_unrelated=include_unrelated,
             untagged=untagged,
+        )
+
+    def brief(
+        self,
+        profile_id: str,
+        *,
+        top: int = 3,
+        since: datetime | None = None,
+        role: str | None = None,
+        language: str | None = None,
+    ) -> Brief:
+        """The `top` strongest direct news of the feed, each explained by the agent, cut down to a paragraph by
+        code (headline, impact, the first “why it matters” statement, the first action), highest impact first."""
+        from .eval.harness import DEFAULT_ROLE
+
+        lang = norm_lang(language or self.settings.language)
+        profile = self.store.profiles[profile_id]
+        feed = self.feed(profile_id, top=None, since=since, language=lang)
+        direct = [it for it in feed.items if it.relevance == "direct"]
+        role = role or DEFAULT_ROLE.get(profile.kind.value, "other")
+        items = []
+        for it in direct[:top]:
+            run = self.analyze(profile_id, it.event_id, role=role, language=lang)
+            ins = run.insight
+            items.append(
+                BriefItem(
+                    event_id=it.event_id,
+                    title=it.title,
+                    relevance=it.relevance,
+                    insight_id=ins.insight_id if ins else None,
+                    headline=ins.headline if ins else None,
+                    overall_impact=ins.overall_impact if ins else None,
+                    overall_direction=ins.overall_direction.value if ins else None,
+                    why=ins.why_it_matters[0].text if ins and ins.why_it_matters else None,
+                    action=ins.actions[0].text if ins and ins.actions else None,
+                    error=None if ins else run.trace.failure_reason(),
+                )
+            )
+        order = {"high": 0, "medium": 1, "low": 2}
+        items.sort(key=lambda b: order.get(b.overall_impact.value, 3) if b.overall_impact else 4)
+        return Brief(
+            profile_id=profile_id,
+            language=lang,
+            created_at=datetime.now(timezone.utc),
+            items=items,
+            considered=len(direct),
         )
 
     def _can_tag(self) -> bool:

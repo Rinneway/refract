@@ -115,3 +115,54 @@ def test_rest_and_mcp(store, settings) -> None:
     server = build_server(rf)
     out = text_of(asyncio.run(server.call_tool("news_feed", {"profile_id": "demo_london_studio", "top": 1})))
     assert "ev_dollar_en" in out and "ev_rate_hold_ru" not in out
+
+
+def test_brief_explains_the_strongest_news(store, settings, capsys) -> None:
+    from refract.demo import OK, RATE_PLAN, _rate_draft
+    from refract.render import brief_markdown
+
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    rf = Refract(store, llm=llm, settings=settings)
+    family = rf.brief("demo_family_saver", top=3)
+    assert family.considered == 1 and [i.event_id for i in family.items] == ["ev_rate_hold_ru"]
+    item = family.items[0]
+    assert item.insight_id in rf.runs and item.headline and item.why and item.action and item.error is None
+    builder = rf.brief("demo_building_materials", top=2)
+    assert builder.considered == 3 and len(builder.items) == 2  # one agent run per item, no more
+    text = brief_markdown(family)
+    assert text.startswith("## Бриф для demo_family_saver") and "--event ev_rate_hold_ru" in text
+
+    broken = Refract(
+        store, llm=ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [None]}, settings), settings=settings
+    )
+    failed = broken.brief("demo_family_saver").items[0]  # the model gave no draft: the brief says so
+    assert (
+        failed.insight_id is None
+        and failed.error
+        and "инсайт не получен" in brief_markdown(broken.brief("demo_family_saver"))
+    )
+
+
+def test_brief_over_rest_and_mcp(store, settings) -> None:
+    from refract.demo import OK, RATE_PLAN, _rate_draft
+
+    llm = ScriptedLLM({"plan": [RATE_PLAN], "draft_insight": [_rate_draft(False)], "verify": [OK]}, settings)
+    rf = Refract(store, llm=llm, settings=settings)
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from refract.api import create_app
+
+    api = TestClient(create_app(rf))
+    body = api.post("/profiles/demo_family_saver/brief?top=1").json()
+    assert (
+        body["items"][0]["event_id"] == "ev_rate_hold_ru" and api.post("/profiles/x/brief").status_code == 404
+    )
+    pytest.importorskip("mcp")
+    import asyncio
+
+    from refract.mcp_server import build_server
+    from tests.test_mcp import text_of
+
+    out = text_of(asyncio.run(build_server(rf).call_tool("news_brief", {"profile_id": "demo_family_saver"})))
+    assert "Ставка 14%" in out

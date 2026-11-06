@@ -181,6 +181,27 @@ def cmd_feed(args) -> int:
     return 0
 
 
+def cmd_brief(args) -> int:
+    from datetime import datetime
+
+    from .render import brief_markdown
+
+    rf = _rf(args)
+    if args.profile not in rf.store.profiles:
+        return _fail(f"unknown profile {args.profile!r}; `refract profiles` lists them")
+    try:
+        since = datetime.fromisoformat(args.since) if args.since else None
+    except ValueError:
+        return _fail(f"--since {args.since!r}: use YYYY-MM-DD")
+    brief = rf.brief(args.profile, top=args.top, since=since, role=args.role)
+    if args.out:
+        for item in brief.items:
+            if item.insight_id:
+                sys.stderr.write(f"saved: {rf.save_run(rf.runs[item.insight_id], args.out)}\n")
+    _out(brief.model_dump_json(indent=1) if args.json else brief_markdown(brief))
+    return 0
+
+
 def cmd_theses(args) -> int:
     from .config import load_settings
     from .knowledge.theses import extract_theses
@@ -361,6 +382,7 @@ def cmd_schemas(args) -> int:
         S.ChatRequest,
         S.ChatResponse,
         S.Feed,
+        S.Brief,
         InsightProgress,
     ]
     for m in models:
@@ -439,6 +461,19 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--lang", choices=["ru", "en"])
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(fn=cmd_feed)
+
+    sp = sub.add_parser(
+        "brief", help="the strongest news for one subject, each explained, in one short brief"
+    )
+    data_arg(sp)
+    sp.add_argument("--profile", required=True)
+    sp.add_argument("--top", type=int, default=3, help="how many news to explain (each is one agent run)")
+    sp.add_argument("--since", help="only news published on or after this date, YYYY-MM-DD")
+    sp.add_argument("--role", help="reader role (default: by the subject's kind)")
+    sp.add_argument("--out", help="folder to save the full runs")
+    sp.add_argument("--lang", choices=["ru", "en"])
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(fn=cmd_brief)
 
     sp = sub.add_parser("theses", help="extract the institution's theses from documents (uses the LLM)")
     sp.add_argument("--docs", required=True)
