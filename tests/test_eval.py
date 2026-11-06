@@ -7,6 +7,7 @@ import pytest
 
 from refract.demo import OK, RATE_PLAN, _rate_draft
 from refract.eval import Experiment, Pair, write_report
+from refract.eval.harness import ExperimentMismatch
 from refract.eval.stats import bootstrap_ci, sign_test, spearman, weighted_kappa
 from refract.facade import Refract
 from refract.llm import ScriptedLLM
@@ -163,9 +164,39 @@ def test_experiment_warns_when_models_change(store, settings, tmp_path) -> None:
     manifest["models"]["verifier"] = "gemma4:12b"  # the experiment was started with another reviewer
     (tmp_path / "manifest.json").write_text(_json.dumps(manifest), encoding="utf-8")
     assert any("verifier was gemma4:12b" in w for w in exp.check_manifest())
+    with pytest.raises(
+        ExperimentMismatch, match="nothing was run"
+    ):  # old answers are not mixed with new ones
+        exp.run(["full"])
+    exp.run(["full"], force=True)  # every answer redone: the folder now belongs to the current settings
+    assert exp.check_manifest() == []
     S = write_report(tmp_path, pairs, [], "full")
     assert "verify" in S["systems"]["full"]["models"]
-    assert "## Models" in (tmp_path / "report.md").read_text(encoding="utf-8")
+    report = (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert "## Models" in report and "Models of the experiment: main = " in report
+
+
+def test_one_judge_under_two_names_is_counted_once(tmp_path) -> None:
+    """An alias folder (`judge`, older runs) and a model folder (`ministral-3_14b`) are the same judge."""
+    from refract.eval.report import distinct_judges
+
+    for name, judge, n in (
+        ("judge", "judge", 8),
+        ("ministral-3_14b", "ministral-3:14b", 16),
+        ("phi4_14b", "phi4:14b", 16),
+    ):
+        for i in range(n):
+            f = tmp_path / "judge" / name / "full" / f"p{i}.json"
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(json.dumps({"score": {"overall": 3}, "judge": judge}), encoding="utf-8")
+    aliases = {"judge": "ministral-3:14b", "judge2": "phi4:14b"}
+    keep, notes = distinct_judges(
+        tmp_path, ["judge", "ministral-3_14b", "phi4_14b"], lambda a: aliases.get(a, a)
+    )
+    assert keep == ["ministral-3_14b", "phi4_14b"]
+    assert notes == [
+        "judge `judge` is the same model as `ministral-3_14b`; counted once, as `ministral-3_14b`"
+    ]
 
 
 def test_manifest_of_an_older_folder_comes_from_its_traces(store, settings, tmp_path) -> None:

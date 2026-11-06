@@ -37,6 +37,29 @@ def _total(score: dict) -> int:
     return sum(score[c]["score"] for c in CRITERIA)
 
 
+def distinct_judges(out: str | Path, names: list[str], model_id=lambda x: x) -> tuple[list[str], list[str]]:
+    """Judge folders → one per model. Older folders were named by alias (`judge`), newer ones by model id
+    (`ministral-3_14b`); both in one experiment would count the same model twice and show it agreeing with itself.
+    The folder with more scores is kept. `model_id` resolves an alias with the current settings."""
+    out = Path(out)
+    groups: dict[str, list[tuple[int, str]]] = {}
+    for name in names:
+        files = list((out / "judge" / name).glob("*/*.json"))
+        recorded = next(((_read(f) or {}).get("judge") for f in files[:1]), None) or name
+        key = _safe(model_id(recorded))
+        scored = sum(1 for f in files if (_read(f) or {}).get("score") is not None)
+        groups.setdefault(key, []).append((scored, name))
+    keep, notes = [], []
+    for name in names:
+        group = next(g for g in groups.values() if any(n == name for _, n in g))
+        best = max(group)[1]
+        if name == best:
+            keep.append(name)
+        else:
+            notes.append(f"judge `{name}` is the same model as `{best}`; counted once, as `{best}`")
+    return keep, notes
+
+
 def summarize(
     out: str | Path, pairs: list[Pair], judges: list[str], reference: str = "full"
 ) -> dict[str, Any]:
@@ -271,6 +294,13 @@ def render(S: dict[str, Any]) -> str:
         f"Pairs: {S['pairs']}. Judges: {', '.join(S['judges']) or '—'}. Reference: `{S['reference']}`.",
         "",
     ]
+    models = (S.get("manifest") or {}).get("models") or {}
+    if models:
+        lines += [
+            "Models of the experiment: " + ", ".join(f"{k} = {v}" for k, v in sorted(models.items())) + ".",
+            "",
+        ]
+    lines += [f"Note: {n}." for n in S.get("notes") or []] + ([""] if S.get("notes") else [])
     lines += [
         "| System | Answered | Judge total /12 [95% CI] | Overall /5 | Unsupported / answer | Retelling | Impact calibrated (judge) | Above ceiling (code) | Rule errors (code) | Invented numbers | Language ok | Cost | p50 s |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
@@ -436,10 +466,16 @@ def render(S: dict[str, Any]) -> str:
 
 
 def write_report(
-    out: str | Path, pairs: list[Pair], judges: list[str], reference: str = "full"
+    out: str | Path,
+    pairs: list[Pair],
+    judges: list[str],
+    reference: str = "full",
+    notes: list[str] | None = None,
 ) -> dict[str, Any]:
     out = Path(out)
     S = summarize(out, pairs, judges, reference)
+    S["notes"] = list(notes or [])
+    S["manifest"] = _read(out / "manifest.json") or {}
     (out / "summary.json").write_text(
         json.dumps(S, ensure_ascii=False, indent=1, default=str), encoding="utf-8"
     )

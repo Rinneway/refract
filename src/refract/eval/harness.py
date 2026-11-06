@@ -137,8 +137,9 @@ class Experiment:
     def check_manifest(self) -> list[str]:
         """Compare with the manifest of the experiment's first run; write it if this is the first run.
 
-        Answers made with different models or prompts in one folder are not comparable: a mismatch is reported
-        (not refused — a deliberate change is fine, a forgotten environment variable is not).
+        Answers made with different models or prompts in one folder are not comparable: `run` stops on a mismatch
+        unless forced (a forgotten environment variable once mixed a gemma4:e4b reviewer into a gemma4:12b study,
+        and the answers already in the folder were kept as they were).
         """
         path = self.out / "manifest.json"
         now = self.manifest()
@@ -152,10 +153,7 @@ class Experiment:
             for key, value in now[kind].items():
                 was = old.get(kind, {}).get(key)
                 if was is not None and was != value:
-                    out.append(
-                        f"WARNING: {kind[:-1]} {key} was {was} when {self.out} was started, now {value} — answers "
-                        "made before and after are not comparable (restore the config, or use a new --out)"
-                    )
+                    out.append(f"{kind[:-1]} {key} was {was} when {self.out} was started, now {value}")
         return out
 
     # ------------------------------------------------------------------ helpers
@@ -235,8 +233,16 @@ class Experiment:
         tasks = [(s, p) for s in systems for p in self.pairs]
         models = self.manifest()["models"]
         self.log("models: " + ", ".join(f"{k}={v}" for k, v in models.items()))
-        for warning in self.check_manifest():
-            self.log(warning)
+        mismatch = self.check_manifest()
+        if mismatch and not force:
+            raise ExperimentMismatch(
+                "; ".join(mismatch)
+                + ". Answers made before and after would not be comparable, so nothing was run: "
+                "restore the settings, use a new --out, or add --force to redo every answer with the current ones"
+            )
+        if mismatch:  # forced: every answer is redone, so the folder now belongs to the current settings
+            self.log("redoing every answer: " + "; ".join(mismatch))
+            _write(self.out / "manifest.json", self.manifest())
 
         def one(task) -> str:
             system, pair = task
@@ -345,9 +351,11 @@ class Experiment:
         r = self.rf.settings.route("judge")
 
         def one(task) -> str:
-            judge, system, pair = task
+            alias, system, pair = task
             if stop:
                 return ""
+            # stored under the model, not the alias: `--judges judge` and `--judges ministral-3:14b` are one judge
+            judge = self.rf.settings.model_id(alias)
             path = self.out / "judge" / _safe(judge) / system / f"{pair.id}.json"
             if not force and (_read(path) or {}).get("score") is not None:
                 return f"{judge}/{system} {pair.id}: cached"
@@ -364,7 +372,7 @@ class Experiment:
             )
             try:
                 res = self.rf.llm.chat_json(
-                    judge,
+                    alias,
                     msgs,
                     jp.JudgeScore,
                     max_tokens=r.max_tokens,
@@ -396,6 +404,10 @@ class Experiment:
         self._parallel(one, tasks)
         if stop:
             self.log(f"judging stopped, nothing was saved for the remaining answers: {stop[0]}")
+
+
+class ExperimentMismatch(RuntimeError):
+    """The folder's answers were made with other models or prompts than the current settings."""
 
 
 def _fatal(error: str) -> bool:

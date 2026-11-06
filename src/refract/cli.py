@@ -388,8 +388,16 @@ def cmd_eval(args) -> int:
         found = sorted(p.name for p in (out / "judge").iterdir()) if (out / "judge").exists() else []
         # LLM judges first (the first one is primary), human labels after them
         found = [j for j in found if not is_human(out, j)] + [j for j in found if is_human(out, j)]
-        judges = args.judges.split(",") if args.judges else found
-        S = write_report(out, pairs, judges, args.reference)
+        notes: list[str] = []
+        if args.judges:
+            judges = args.judges.split(",")
+        else:
+            from .config import load_settings
+            from .eval.report import distinct_judges
+
+            settings = load_settings(getattr(args, "config", None))
+            judges, notes = distinct_judges(out, found, settings.model_id)
+        S = write_report(out, pairs, judges, args.reference, notes)
         _out((out / "report.md").read_text(encoding="utf-8"))
         return 0 if S["systems"] else 1
     rf = _rf(args)
@@ -400,7 +408,12 @@ def cmd_eval(args) -> int:
     if not (out / "pairs.jsonl").exists():
         save_pairs(pairs, out / "pairs.jsonl")
     if args.step == "run":
-        exp.run((args.systems or "full,single_call,retelling").split(","), force=args.force)
+        from .eval.harness import ExperimentMismatch
+
+        try:
+            exp.run((args.systems or "full,single_call,retelling").split(","), force=args.force)
+        except ExperimentMismatch as e:
+            return _fail(str(e))
     elif args.step == "judge":
         exp.judge(
             args.judges.split(",") if args.judges else ["verifier"],
