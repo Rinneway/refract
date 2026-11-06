@@ -1,6 +1,6 @@
 # Configuration
 
-Settings are read in this order, later sources win: built-in defaults → `refract.toml` (or the file in `REFRACT_CONFIG`) → environment variables (`.env` is loaded first). Start from [`refract.example.toml`](../refract.example.toml) and [`.env.example`](../.env.example).
+Settings are read in this order, later sources win: built-in defaults → `refract.toml` (or the file in `REFRACT_CONFIG`) → environment variables (`.env` is loaded first). Start from [`refract.example.toml`](../refract.example.toml) and [`.env.example`](../.env.example). Every environment variable is listed in [cli.md](cli.md#environment-variables).
 
 ## Providers
 

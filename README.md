@@ -77,7 +77,7 @@ flowchart TB
 | Chat | `agent/chat.py` | follow-up questions on the same context, with the same checks |
 | Prompts | `prompts/` | every step in Russian and English, versioned |
 
-Details: [docs/agent.md](docs/agent.md) · [docs/architecture.md](docs/architecture.md) · [docs/data-model.md](docs/data-model.md).
+Details: [docs/agent.md](docs/agent.md) · [docs/architecture.md](docs/architecture.md) · [docs/data-model.md](docs/data-model.md) · [docs/cli.md](docs/cli.md).
 
 ## Quick start
 
@@ -118,6 +118,8 @@ With Docker: `docker build -t refract . && docker run --rm -p 8000:8000 refract`
 
 ## Interfaces
 
+**Console** — `uv run refract shell` (add `--demo` to try it without a model) on Windows, macOS and Linux: choose a subject, read its feed, explain a news item with the agent's steps shown live, ask follow-up questions, read the sources and the trace. Every command is also a one-shot CLI command (`refract analyze`, `feed`, `brief`, `chat` …): [docs/cli.md](docs/cli.md).
+
 **Python**
 
 ```python
@@ -145,7 +147,7 @@ curl -s localhost:8000/insights -H 'content-type: application/json' \
 
 **Your own research** — put Markdown, text or PDF files into `knowledge/docs/`; `refract theses --docs … --out knowledge/theses.json` extracts the institution's theses and keeps only those whose quote is found verbatim on the page.
 
-All interfaces: [docs/integrations.md](docs/integrations.md).
+All interfaces: [docs/integrations.md](docs/integrations.md) · every command: [docs/cli.md](docs/cli.md).
 
 ## Configuration
 
@@ -196,10 +198,10 @@ src/refract/
   eval/         experiments, judges, statistics, report
   news/         RSS / Atom collector
   policies/     reader roles and action rules (JSON)
-  api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
-examples/demo/  synthetic profiles, news, research and evaluation pairs (ru + en)
-docs/           architecture, agent, data model, configuration, integrations, evaluation, paper outline, JSON Schemas
-tests/          159 tests on a scripted model and a fake OpenAI-compatible server — no network needed
+  api.py  mcp_server.py  cli.py  shell.py  facade.py  render.py  demo.py
+examples/demo/  synthetic profiles, news, research, evaluation pairs and recorded model answers (ru + en)
+docs/           architecture, agent, data model, configuration, CLI, integrations, deployment, evaluation, paper outline, JSON Schemas
+tests/          183 tests on a scripted model and a fake OpenAI-compatible server — no network needed
 ```
 
 ## Data and confidentiality

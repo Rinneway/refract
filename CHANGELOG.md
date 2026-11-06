@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Console, demo mode, packaging
+
+- `refract shell`: an interactive console on Windows, macOS and Linux — subjects, feed, analysis with live steps, pasted texts, follow-up questions, sources, trace, brief, save and load. It uses only the standard library: readline where Python has it, ANSI colours only on a terminal that shows them (VT mode on the Windows console, `NO_COLOR`), and Ctrl+C stops the analysis, not the session. `--script` runs a command file.
+- Demo mode without a model: `--demo` on `analyze`, `feed`, `brief`, `shell`, `serve`, `mcp`, and `Refract.demo()`, replays recorded answers of qwen3.5:9b and gemma4:12b on eight demo pairs, packaged in the wheel. Checks, the impact ceiling and the policy run as current code; the trace names the model as recorded. A pair without a recording, a pasted text or a follow-up question gives a message listing what can be replayed (409 in the API, `/health` → `demo`). `refract demo --list`.
+- `refract demo --record FILE` writes fresh recordings from the configured models; `REFRACT_RECORDINGS` replays them.
+- Docker: an image built from the wheel, running as a non-root user with a health check, which starts the API in demo mode; `docker-compose.yml` with Ollama, the models pulled on first start.
+- CI: lint with pyright; tests on Linux (3.10–3.13), Windows and macOS; the CLI and a console script without a model; the wheel installed alone on all three systems; the image answering in demo mode.
+- Russian output on a Windows pipe or file (`refract … > out.md`) no longer fails: stdout and stderr switch to UTF-8.
+- Docs: [docs/cli.md](docs/cli.md), a full reference of every command, and [docs/deployment.md](docs/deployment.md).
+- Removed: the web page from the previous unreleased change. The agent is used from the console, from Python, over REST and over MCP.
+
+### Feed, brief, search
+
+- `Refract.brief`, `refract brief`, `POST /profiles/{id}/brief`, MCP `news_brief`: the strongest direct news of the feed, each explained by the agent and cut down by code to a paragraph (headline, impact, the first reason, the first action), highest impact first.
+- Search by meaning: with `REFRACT_EMBEDDING_MODEL` (e.g. `bge-m3`), research, news and theses are ranked by BM25 and embeddings fused by reciprocal rank fusion, so a Russian query finds an English item. Vectors are cached per text and model. A failing embedding model leaves search lexical and is reported (`data_problems`, `refract check`).
+- Rule check: advice must fit the kind of subject — no business products (VAT, suppliers, payroll, a business account…) for a household, no staff, payroll or VAT for a self-employed person, no household steps (tax deductions, a personal budget, pension savings) for a company; such an action is an error and is cut.
+- `refract eval relevance export|import`: a blind sheet of every subject × news item, scored against the links computed by code — precision, recall, κ, the share judged relevant at each strength, and every disagreement with its links. No model is called.
+
 ### Local models
 
 - `refract check`: structured output, context window and hidden reasoning of every configured model, with hints for the usual mistakes (a placeholder key on a remote endpoint, a missing `ollama pull`, an environment variable overriding the config).

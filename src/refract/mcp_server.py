@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from .demo import DemoError
 from .facade import Refract
 from .render import brief_markdown, chat_markdown, feed_markdown, insight_markdown, trace_markdown
 
@@ -101,7 +102,10 @@ def build_server(rf: Refract):
             event = rf.news_from_text(title, text, publisher=publisher, url=url)
         else:
             return "Give an event_id, or both title and text."
-        run = rf.analyze(profile_id, event, role=role, language=language)
+        try:
+            run = rf.analyze(profile_id, event, role=role, language=language)
+        except DemoError as e:  # demo mode: the message lists what can be replayed
+            return str(e)
         if not run.insight:
             return "The agent produced no insight:\n\n" + trace_markdown(run.trace)
         return f"insight_id: `{run.insight.insight_id}`\n\n" + insight_markdown(
@@ -113,7 +117,10 @@ def build_server(rf: Refract):
         """A follow-up question about an insight produced in this session."""
         if insight_id not in rf.runs:
             return f"Unknown insight {insight_id}."
-        return chat_markdown(rf.chat(insight_id, question).response, rf.settings.institution)
+        try:
+            return chat_markdown(rf.chat(insight_id, question).response, rf.settings.institution)
+        except DemoError as e:
+            return str(e)
 
     @server.tool()
     def get_trace(insight_id: str) -> str:

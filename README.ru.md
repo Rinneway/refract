@@ -77,7 +77,7 @@ flowchart TB
 | Чат | `agent/chat.py` | уточняющие вопросы на том же контексте и с теми же проверками |
 | Промпты | `prompts/` | все шаги на русском и английском, с версиями |
 
-Подробнее: [docs/agent.md](docs/agent.md) · [docs/architecture.md](docs/architecture.md) · [docs/data-model.md](docs/data-model.md) (документация на английском).
+Подробнее: [docs/agent.md](docs/agent.md) · [docs/architecture.md](docs/architecture.md) · [docs/data-model.md](docs/data-model.md) · [docs/cli.md](docs/cli.md) (документация на английском).
 
 ## Быстрый старт
 
@@ -118,6 +118,8 @@ uv run refract chat --run runs/<insight_id>.json --q "Что это значит
 
 ## Интерфейсы
 
+**Консоль** — `uv run refract shell` (с `--demo` — без модели) в Windows, macOS и Linux: выберите субъекта, посмотрите его ленту, разберите новость, видя шаги агента по ходу, задайте уточняющие вопросы, посмотрите источники и трассу. Каждая команда есть и как разовая команда CLI (`refract analyze`, `feed`, `brief`, `chat` …): [docs/cli.md](docs/cli.md).
+
 **Python**
 
 ```python
@@ -145,7 +147,7 @@ curl -s localhost:8000/insights -H 'content-type: application/json' \
 
 **Своя аналитика** — положите Markdown, TXT или PDF в `knowledge/docs/`. Команда `refract theses --docs … --out knowledge/theses.json` извлечёт тезисы института и оставит только те, чья цитата дословно есть на странице.
 
-Все интерфейсы: [docs/integrations.md](docs/integrations.md).
+Все интерфейсы: [docs/integrations.md](docs/integrations.md) · все команды: [docs/cli.md](docs/cli.md).
 
 ## Настройка
 
@@ -203,10 +205,10 @@ src/refract/
   eval/         эксперименты, судьи, статистика, отчёт
   news/         сборщик RSS / Atom
   policies/     роли читателей и правила действий (JSON)
-  api.py  mcp_server.py  cli.py  facade.py  render.py  demo.py
-examples/demo/  синтетические субъекты, новости, аналитика и пары для оценки (ru + en)
-docs/           архитектура, агент, модель данных, настройка, интеграции, оценка, план статьи, JSON Schema
-tests/          159 тестов на модели по сценарию и поддельном OpenAI-совместимом сервере — сеть не нужна
+  api.py  mcp_server.py  cli.py  shell.py  facade.py  render.py  demo.py
+examples/demo/  синтетические субъекты, новости, аналитика, пары для оценки и записанные ответы моделей (ru + en)
+docs/           архитектура, агент, модель данных, настройка, CLI, интеграции, развёртывание, оценка, план статьи, JSON Schema
+tests/          183 теста на модели по сценарию и поддельном OpenAI-совместимом сервере — сеть не нужна
 ```
 
 ## Данные и конфиденциальность

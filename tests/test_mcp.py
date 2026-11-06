@@ -30,3 +30,21 @@ def test_mcp_tools(store, settings) -> None:
         )
     )
     assert "insight_id" in out and "Позиция Демо-банка" in out
+
+
+def test_mcp_in_demo_mode_says_what_needs_a_model() -> None:
+    server = build_server(Refract.demo())
+    ok = text_of(
+        asyncio.run(
+            server.call_tool("analyze_news", {"profile_id": "demo_grain_farm", "event_id": "ev_wheat_en"})
+        )
+    )
+    assert "insight_id" in ok
+    try:
+        res = asyncio.run(
+            server.call_tool("analyze_news", {"profile_id": "demo_grain_farm", "event_id": "ev_rate_hold_ru"})
+        )
+        msg = text_of(res)
+    except Exception as e:  # noqa: BLE001 — mcp 1.x raises a ToolError
+        msg = str(e)
+    assert "replayable pairs" in msg

@@ -54,29 +54,24 @@ Lower level: `Agent(llm, store, config=AgentConfig(...), settings=..., policy=..
 
 ## CLI
 
+The full reference — every command and option, the interactive console, environment variables, exit codes and notes for Windows, macOS and Linux — is in [cli.md](cli.md). In short:
+
 ```text
-refract demo [rate|injection|dollar] [--list]  scripted run without a key; --list: pairs --demo can replay
-refract shell [--demo] [--profile ID] [--lang ru|en] [--script FILE] [--no-color]
-                                               interactive console, see cli.md
-refract profiles | events [--data DIR]
---demo (on analyze, feed, brief, profiles, events, serve, mcp, chat)
-                                               no model: replay recorded answers on the demo data
-refract analyze --profile ID (--event ID | --title T --text X | --text-file F)
-                [--role R] [--lang ru|en] [--ablation NAME] [--iterations N] [--out DIR] [--json]
-refract chat --run FILE --q "…" [--q "…"]
-refract brief --profile ID [--top 3] [--since YYYY-MM-DD] [--out DIR] [--json]
-                                               the strongest news explained, in one short brief
-refract feed --profile ID [--top N] [--since YYYY-MM-DD] [--all] [--no-tag] [--analyze K [--out DIR]] [--json]
-                                               stored news ranked for the subject; --analyze runs the agent on the K strongest
-refract theses --docs DIR --out FILE           extract verified theses from research
-refract news fetch --feeds FILE --data DIR     RSS / Atom → events
-refract eval pairs|run|judge|report …          experiments, see evaluation.md
-refract serve [--host H] [--port P]            REST API
-refract mcp                                    MCP server over stdio
-refract check [--models main,verifier]         endpoint ready? structured output, context window, reasoning
-refract models                                 configured models and what the endpoints offer
-refract schemas --out DIR                      JSON Schemas of the contracts
+refract shell [--demo] [--profile ID] [--lang ru|en] [--script FILE]   interactive console
+refract demo [rate|injection|dollar] | --list | --record FILE         without a model / new recordings
+refract profiles | events                                             what is in the data folder
+refract analyze --profile ID (--event ID | --title T --text X) …       one insight
+refract chat --run FILE --q "…"                                       follow-up questions about a saved run
+refract feed --profile ID [--analyze K]                               news ranked for the subject
+refract brief --profile ID [--top 3]                                  the strongest news, a paragraph each
+refract news fetch --feeds FILE --data DIR                            RSS / Atom → events
+refract theses --docs DIR --out FILE                                  verified theses from research
+refract eval pairs|run|judge|label|relevance|report …                 experiments, see evaluation.md
+refract serve | mcp                                                   REST API · MCP server
+refract check | models | schemas                                      endpoint check · models · JSON Schemas
 ```
+
+`--demo` (on `analyze`, `feed`, `brief`, `shell`, `serve`, `mcp`) runs without a model; `--data DIR` points to your own data folder.
 
 ## REST API
 
@@ -84,7 +79,7 @@ Open `/docs` for the OpenAPI UI.
 
 | Method | Path | Body / result |
 | --- | --- | --- |
-| GET | `/health` | `{status, version, language, llm_configured, data_problems}` |
+| GET | `/health` | `{status, version, language, llm_configured, demo, data_problems}` |
 | GET | `/profiles` · `/profiles/{id}` | list · `Profile` |
 | GET | `/profiles/{id}/feed?top=10&since=…&tag=true&all=false&language=…` | `Feed`: stored news ranked for the subject |
 | POST | `/profiles/{id}/brief?top=3&since=…&role=…&language=…` | `Brief`: the strongest news explained (synchronous, one agent run per item) |
@@ -128,6 +123,8 @@ With `REFRACT_API_TOKEN` set, every endpoint except `/health` needs `Authorizati
   }
 }
 ```
+
+Without a model: `"args": ["mcp", "--demo"]` — `analyze_news` replays recorded answers for the demo pairs (`refract demo --list`); other pairs, pasted texts and `ask_followup` return a message saying what needs a model.
 
 With uv instead of a global install: `"command": "uv", "args": ["--directory", "/path/to/refract", "run", "refract", "mcp"]`.
 

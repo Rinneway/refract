@@ -19,7 +19,7 @@ flowchart LR
         LLM[LLMClient<br/>routing, failover, cache, cost log]
     end
     subgraph Interfaces
-        CLI[CLI]
+        CLI[CLI + console]
         PY[Python API: Refract]
         API[REST API + SSE]
         MCP[MCP server]
@@ -44,7 +44,8 @@ flowchart LR
 | Model access | `llm/` | one client for any OpenAI-compatible endpoint; structured-output fallback; cost from the provider or a price table; disk cache; JSONL call log; a scripted model for tests |
 | Agent | `agent/` | orchestration, context rendering, read-only tools bound to one subject, rule checks, impact ceiling, action policy, follow-up chat, progress tracking |
 | Prompts | `prompts/` | one module per step, each with a version and Russian and English text |
-| Interfaces | `facade.py`, `cli.py`, `api.py`, `mcp_server.py`, `news/` | entry points; none of them contains agent logic |
+| Interfaces | `facade.py`, `cli.py`, `shell.py`, `api.py`, `mcp_server.py`, `news/` | entry points; none of them contains agent logic |
+| Demo mode | `demo.py` | scripted scenarios and the replay of recorded model answers (`Replay`, `Recorder`), so every interface runs without a model |
 | Evaluation | `eval/` | systems × pairs runs, judges, statistics and the report |
 
 ## Design decisions
