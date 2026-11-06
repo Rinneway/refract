@@ -200,7 +200,9 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             ev = r.store.events[req.event_id]
         else:
             raise HTTPException(404, "give an existing event_id or a news item")
-        if r.is_demo:  # fail now, not inside the job: demo mode replays stored pairs with a recording only
+        if (
+            r.replay is not None
+        ):  # fail now, not inside the job: demo mode replays stored pairs with a recording only
             if req.news is not None:
                 raise DemoError("demo mode replays stored demo events only; a pasted news text needs a model")
             r.replay.find(req.profile_id, ev.event_id, req.role, req.language)

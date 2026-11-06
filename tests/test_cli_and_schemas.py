@@ -65,4 +65,4 @@ def test_no_confidential_material_in_repository() -> None:
         text = path.read_text(encoding="utf-8", errors="ignore")
         for rx in bad:
             assert not rx.search(text), f"{path.relative_to(ROOT)}: {rx.pattern}"
-    assert not (ROOT / ".env").exists() or ".env" in (ROOT / ".gitignore").read_text()
+    assert not (ROOT / ".env").exists() or ".env" in (ROOT / ".gitignore").read_text(encoding="utf-8")

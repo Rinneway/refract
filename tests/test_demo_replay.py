@@ -71,3 +71,21 @@ def test_api_in_demo_mode() -> None:
     assert ok.status_code == 200 and ok.json()["headline"]
     bad = c.post("/insights", json={"profile_id": "demo_grain_farm", "event_id": "ev_rate_hold_ru"})
     assert bad.status_code == 409 and "replayable" in bad.json()["detail"]
+
+
+def test_cyrillic_survives_a_windows_pipe() -> None:
+    import io
+    import sys
+
+    from refract.cli import utf8_streams
+
+    raw = io.BytesIO()
+    pipe = io.TextIOWrapper(raw, encoding="cp1252")
+    old, sys.stdout = sys.stdout, pipe
+    try:
+        utf8_streams()
+        sys.stdout.write("Ставка 14%")
+        sys.stdout.flush()
+    finally:
+        sys.stdout = old
+    assert raw.getvalue().decode("utf-8") == "Ставка 14%"

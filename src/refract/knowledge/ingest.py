@@ -89,7 +89,7 @@ def read_text_document(path: Path) -> Document:
 
 def read_pdf_document(path: Path) -> Document:
     try:
-        from pypdf import PdfReader
+        from pypdf import PdfReader  # pyright: ignore[reportMissingImports]
     except ImportError as e:  # pragma: no cover
         raise RuntimeError("PDF support needs: pip install 'refract-agent[pdf]'") from e
     reader = PdfReader(str(path))

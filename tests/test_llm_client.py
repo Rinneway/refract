@@ -100,7 +100,7 @@ def test_provider_cost_cache_and_log(tmp_path) -> None:
     second = c.chat_json("main", msgs, Answer, step="t")
     assert first.cost == pytest.approx(0.05) and second.cost == 0 and second.calls[0].cached
     assert len(fakes["http://a/v1"].calls) == 1
-    log = [json.loads(x) for x in (tmp_path / "log.jsonl").read_text().splitlines()]
+    log = [json.loads(x) for x in (tmp_path / "log.jsonl").read_text(encoding="utf-8").splitlines()]
     assert log[0]["cost"] == pytest.approx(0.05) and log[1]["cached"] is True
 
 

@@ -14,6 +14,7 @@ refract mcp                                    # MCP server over stdio (extra: m
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 from dataclasses import replace
@@ -567,10 +568,22 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def utf8_streams() -> None:
+    """Russian text on a Windows pipe or file (`refract … > out.md`, CI logs) — stdout there is cp1252/cp866 and
+    would fail on the first Cyrillic letter. A console already takes Unicode; elsewhere it is UTF-8 anyway."""
+    for stream in (sys.stdout, sys.stderr):
+        enc = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if enc != "utf8" and reconfigure is not None:
+            with contextlib.suppress(ValueError, OSError):  # a stream that cannot change stays as it is
+                reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
     from .demo import DemoError
     from .textutil import DataError
 
+    utf8_streams()
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)

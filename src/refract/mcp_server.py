@@ -22,7 +22,7 @@ def build_server(rf: Refract):
     try:  # mcp ≥ 2
         from mcp.server.mcpserver import MCPServer as Server
     except ImportError:  # mcp 1.x
-        from mcp.server.fastmcp import FastMCP as Server
+        from mcp.server.fastmcp import FastMCP as Server  # pyright: ignore[reportAttributeAccessIssue]
 
     server = Server(
         "refract",

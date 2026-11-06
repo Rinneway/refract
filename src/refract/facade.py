@@ -198,7 +198,7 @@ class Refract:
         if isinstance(event, dict):
             event = news_from_text(**event)
         lang = norm_lang(language or (config or self.config).language)
-        llm = None
+        llm, rec = None, None
         if self.replay is not None:
             from .demo import DemoError
 
@@ -210,7 +210,7 @@ class Refract:
             role, lang, llm = rec.role, rec.language, self.replay.llm(rec, self.settings)
         cfg = replace(config or self.config, language=lang)
         run = self.agent(cfg, on_progress, llm).run(profile, event, role=role, language=lang)
-        if self.replay is not None:
+        if rec is not None:
             run.trace.config["replay"] = rec.key
         if run.insight:
             self.runs[run.insight.insight_id] = run

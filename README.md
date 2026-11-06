@@ -113,6 +113,8 @@ Free: [Ollama](https://ollama.com) locally (Ollama Cloud now bills in credits be
 
 With pip: `pip install "refract-agent[api,mcp,pdf] @ git+https://github.com/Rinneway/refract"`.
 
+With Docker: `docker build -t refract . && docker run --rm -p 8000:8000 refract` starts the API in demo mode; `docker compose up` adds local models in Ollama. See [docs/deployment.md](docs/deployment.md).
+
 ## Interfaces
 
 **Python**

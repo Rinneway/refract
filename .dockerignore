@@ -1,7 +1,14 @@
 .git
+.github
 .venv
 .cache
+.pytest_cache
+.ruff_cache
 logs
 runs
+experiments
 .env
 **/__pycache__
+**/*.pyc
+docs
+tests

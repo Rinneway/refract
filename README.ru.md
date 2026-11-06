@@ -113,6 +113,8 @@ uv run refract chat --run runs/<insight_id>.json --q "Что это значит
 
 Через pip: `pip install "refract-agent[api,mcp,pdf] @ git+https://github.com/Rinneway/refract"`.
 
+Через Docker: `docker build -t refract . && docker run --rm -p 8000:8000 refract` запускает API в демо-режиме; `docker compose up` добавляет локальные модели в Ollama. Подробнее: [docs/deployment.md](docs/deployment.md).
+
 ## Интерфейсы
 
 **Python**

@@ -4,21 +4,98 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-extras
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      - run: uv run --with pyright pyright src
+
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - { os: windows-latest, python: "3.10" }
+          - { os: windows-latest, python: "3.13" }
+          - { os: macos-latest, python: "3.10" }
+          - { os: macos-latest, python: "3.13" }
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
       - run: uv sync --all-extras
-      - run: uv run ruff check src tests
-      - run: uv run ruff format --check src tests
       - run: uv run pytest
-      - run: uv run refract demo rate
+      - name: CLI without a model
+        shell: bash
+        run: |
+          uv run refract demo rate
+          uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en > insight.md
+          uv run refract brief --demo --profile demo_building_materials --json > brief.json
+
+  package:
+    # the wheel alone, outside the source tree: the demo data and recordings must be inside it
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv build
+      - name: Install the wheel in a clean environment and run it from elsewhere
+        shell: bash
+        run: |
+          uv venv "$RUNNER_TEMP/wheel-env"
+          wheel=$(ls dist/*.whl)
+          uv pip install --python "$RUNNER_TEMP/wheel-env" "$wheel"
+          cd "$RUNNER_TEMP"
+          if [ -x wheel-env/Scripts/refract.exe ]; then bin=wheel-env/Scripts; else bin=wheel-env/bin; fi
+          "$bin/refract" --version
+          "$bin/refract" demo injection > /dev/null
+          "$bin/refract" demo --list
+          "$bin/refract" analyze --demo --profile demo_london_studio --event ev_dollar_en --json > insight.json
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: dist
+          path: dist/
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t refract:ci .
+      - run: docker compose config -q
+      - name: API in demo mode answers
+        run: |
+          docker run -d --name refract -p 8000:8000 refract:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8000/health && break; sleep 1; done
+          curl -fsS localhost:8000/health | grep -q '"demo":true'
+          curl -fsS -X POST "localhost:8000/insights?wait=true" -H 'content-type: application/json' \
+            -d '{"profile_id":"demo_grain_farm","event_id":"ev_wheat_en"}' | grep -q headline
+      - if: always()
+        run: docker logs refract || true

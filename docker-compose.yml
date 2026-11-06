@@ -1,0 +1,58 @@
+# Refract with local models in Ollama. `docker compose up` — the first start pulls the models (≈ 9 GB).
+#
+#   docker compose up -d                       # API on http://localhost:8000 (OpenAPI UI: /docs)
+#   docker compose run --rm refract refract check
+#
+# A GPU: uncomment the `deploy` block of `ollama` (NVIDIA Container Toolkit). Other model tags: MAIN_MODEL and
+# VERIFIER_MODEL in .env or the shell, see examples/config/ollama-local.toml for sizes.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "16384"  # agent prompts are 6–12k tokens
+    volumes:
+      - ollama:/root/.ollama
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  pull:  # one-shot: downloads the models, then exits
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - "ollama pull ${MAIN_MODEL:-qwen3.5:9b} && ollama pull ${VERIFIER_MODEL:-gemma4:e4b}"
+    depends_on: [ollama]
+
+  refract:
+    build: .
+    image: refract:latest
+    command: ["refract", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      REFRACT_CONFIG: /config/refract.toml
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_API_KEY: ollama
+      REFRACT_MODEL: ${MAIN_MODEL:-qwen3.5:9b}
+      REFRACT_VERIFIER_MODEL: ${VERIFIER_MODEL:-gemma4:e4b}
+      REFRACT_LANGUAGE: ${REFRACT_LANGUAGE:-ru}
+      # REFRACT_DATA_DIR: /data            # with the volume below; default: the packaged demo data
+      # REFRACT_API_TOKEN: change-me       # require `Authorization: Bearer …`
+    volumes:
+      - ./examples/config/ollama-local.toml:/config/refract.toml:ro
+      - refract:/var/lib/refract
+      # - ./my_data:/data:ro
+    depends_on:
+      pull:
+        condition: service_completed_successfully
+
+volumes:
+  ollama:
+  refract:
