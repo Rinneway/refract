@@ -174,5 +174,15 @@ def run_check(client: LLMClient, aliases: list[str] | None = None) -> tuple[bool
         lines.append(f"\n[{alias}] {rep.model_id}")
         lines += [f"  {status:4} {text}" for status, text in rep.lines]
         ok &= rep.ok
+    if s.embedding_model:  # optional: a failure only makes search lexical, so it warns
+        lines.append(f"\n[embeddings] {s.embedding_model}")
+        try:
+            vectors = client.embed(["ключевая ставка", "policy rate"])
+            lines.append(
+                f"  OK   {len(vectors[0])} dimensions; research, news and theses are searched by meaning"
+            )
+        except Exception as e:  # noqa: BLE001
+            hint = f"ollama pull {s.embedding_model}" if _is_local(s.base_urls[0]) else "check the model id"
+            lines.append(f"  WARN embeddings fail ({str(e)[:120]}); search stays lexical — {hint}")
     lines.append("\nready" if ok else "\nnot ready: fix the FAIL lines above")
     return ok, "\n".join(lines)

@@ -1,5 +1,6 @@
 from refract.knowledge import BM25, HybridIndex
 from refract.knowledge.ingest import read_documents
+from refract.knowledge.store import DataStore
 from refract.textutil import quote_grounding
 from tests.conftest import DEMO
 
@@ -27,20 +28,61 @@ def test_search(store) -> None:
     assert theses[0].topic == "policy_rate"
 
 
+VECTORS = {
+    "ставка центробанка": [1, 0, 0],
+    "курс доллара": [0, 1, 0],
+    "урожай пшеницы": [0, 0, 1],
+    "зерно": [0, 0, 1],
+}
+
+
+def fake_embed(calls: list[int] | None = None):
+    def embed(texts):
+        if calls is not None:
+            calls.append(len(texts))
+        return [VECTORS.get(x, [0.3, 0.3, 0.3]) for x in texts]
+
+    return embed
+
+
 def test_hybrid_index_fuses_dense_scores(tmp_path) -> None:
+    from refract.knowledge.search import Embeddings
+
     docs = ["ставка центробанка", "курс доллара", "урожай пшеницы"]
-    vectors = {
-        "ставка центробанка": [1, 0, 0],
-        "курс доллара": [0, 1, 0],
-        "урожай пшеницы": [0, 0, 1],
-        "зерно": [0, 0, 1],
-    }
-    index = HybridIndex(
-        docs, embed=lambda xs: [vectors.get(x, [0.3, 0.3, 0.3]) for x in xs], cache_dir=tmp_path
-    )
+    calls: list[int] = []
+    index = HybridIndex(docs, Embeddings(fake_embed(calls), "m1", tmp_path))
     assert index.top("зерно", 1)[0][0] == 2  # no lexical overlap — found by embeddings
-    assert list(tmp_path.glob("emb_*.json"))
     assert BM25(docs).top("зерно") == []
+    again = HybridIndex([*docs, "новая новость"], Embeddings(fake_embed(calls), "m1", tmp_path))
+    assert again.top("зерно", 1)[0][0] == 2
+    assert calls == [3, 1, 1]  # only the new text; the repeated query is cached too
+    assert len(list(tmp_path.glob("emb_*.jsonl"))) == 1
+    HybridIndex(docs, Embeddings(fake_embed(calls), "m2", tmp_path))  # another model: its own vectors
+    assert len(list(tmp_path.glob("emb_*.jsonl"))) == 2 and calls[-1] == 3
+
+
+def test_a_failing_embedding_model_leaves_search_lexical(tmp_path) -> None:
+    from refract.knowledge.search import Embeddings
+
+    def broken(texts):
+        raise RuntimeError("model 'bge-m3' not found, try pulling it first")
+
+    store = DataStore.from_dir(DEMO, embed=broken, cache_dir=tmp_path, embed_model="bge-m3")
+    assert store.search_chunks("ставка", 2) and store.search_events("ставка", 1)  # BM25 still answers
+    assert any("embeddings unavailable (bge-m3)" in p and "BM25" in p for p in store.problems)
+    assert Embeddings(broken).vectors(["x"]) is None
+
+
+def test_news_are_found_across_languages_with_embeddings(store, tmp_path) -> None:
+    def embed(texts):  # a toy multilingual model: wheat and grain in either language are one direction
+        return [
+            [1.0, 0.0] if any(w in t.lower() for w in ("wheat", "зерн", "пшениц")) else [0.0, 1.0]
+            for t in texts
+        ]
+
+    store_e = DataStore(list(store.profiles.values()), list(store.events.values()), store.theses, embed=embed)
+    assert store.search_events("цены на зерно", 1) == []  # BM25 alone: no common words with the English news
+    assert store_e.search_events("цены на зерно", 1)[0].event_id == "ev_wheat_en"
 
 
 def test_research_is_scoped_to_the_subjects_country(store, tmp_path) -> None:

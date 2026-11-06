@@ -51,3 +51,8 @@ name_ru = "Демо-банк"
 name_gen = "Демо-банка"
 
 # One local server handles one request at a time well: run experiments with `--workers 1`.
+
+[retrieval]
+# Optional: search research, news and theses by meaning as well as by words — finds an English news item for a
+# Russian query. A multilingual embedding model, about 1.2 GB:  ollama pull bge-m3
+# embedding_model = "bge-m3"

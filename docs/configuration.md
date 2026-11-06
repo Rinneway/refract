@@ -99,7 +99,7 @@ The files have the format of `src/refract/policies/*.json`. Role keys must be va
 
 ## Retrieval
 
-`REFRACT_EMBEDDING_MODEL` (or `[retrieval].embedding_model`) turns research search into BM25 + dense retrieval fused by reciprocal rank fusion. Embeddings come from the same endpoint and are cached in `<cache_dir>/embeddings/`.
+`REFRACT_EMBEDDING_MODEL` (or `[retrieval].embedding_model`) adds search by meaning to search by words: research excerpts, news and the institution's theses are ranked by BM25 and embeddings fused by reciprocal rank fusion, so a Russian query finds an English news item. Embeddings come from the same endpoint (`/v1/embeddings`; with Ollama, `ollama pull bge-m3`, a multilingual model) and are cached per text and per model in `<cache_dir>/embeddings/emb_<model>.jsonl`: a growing corpus embeds only what is new, and changing the model never mixes vectors. If the embedding model is missing or fails, search stays lexical and the reason is listed in the data problems (CLI, `GET /health`); `refract check` tests it.
 
 ## Impact thresholds
 

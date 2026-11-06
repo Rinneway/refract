@@ -22,7 +22,7 @@ from ..schemas import KnowledgeChunk, NewsEvent, Profile, Thesis
 from ..schemas.knowledge import applies_to
 from ..textutil import DataError, read_json
 from .ingest import read_documents, split_chunks
-from .search import BM25, Embedder, HybridIndex
+from .search import BM25, Embedder, Embeddings, HybridIndex, cosine
 
 STALE_AFTER_DAYS = 365
 
@@ -82,7 +82,11 @@ class DataStore:
         embed: Embedder | None = None,
         cache_dir: Path | None = None,
         today: date | None = None,
+        embed_model: str = "",
     ) -> None:
+        """With `embed`, research, news and theses are searched by BM25 and embeddings together (vectors cached
+        per text and model in `cache_dir`); if the embedding model fails, search stays lexical and says so in
+        `problems`."""
         self.problems: list[
             str
         ] = []  # files and objects `from_dir` skipped, each naming the file and the reason
@@ -91,12 +95,15 @@ class DataStore:
         self.theses = list(theses)
         self.chunks = chunks or []
         self.today = today
+        self.embeddings = Embeddings(embed, embed_model, cache_dir) if embed else None
         self._chunk_index = (
-            HybridIndex([f"{c.doc_title}\n{c.text}" for c in self.chunks], embed, cache_dir)
+            HybridIndex([f"{c.doc_title}\n{c.text}" for c in self.chunks], self.embeddings)
             if self.chunks
             else None
         )
-        self._thesis_index = BM25([f"{t.statement} {t.quote}" for t in self.theses]) if self.theses else None
+        self._thesis_texts = [f"{t.statement} {t.quote}" for t in self.theses]
+        self._thesis_index = BM25(self._thesis_texts) if self.theses else None
+        self._note_embedding_error()
 
     @classmethod
     def from_dir(
@@ -106,6 +113,7 @@ class DataStore:
         *,
         embed: Embedder | None = None,
         cache_dir: Path | None = None,
+        embed_model: str = "",
     ) -> DataStore:
         root = Path(root)
         profile_dir = root / "profiles"
@@ -131,9 +139,15 @@ class DataStore:
             [c for d in docs for c in split_chunks(d)],
             embed=embed,
             cache_dir=cache_dir,
+            embed_model=embed_model,
         )
-        store.problems = problems
+        store.problems = problems + store.problems
         return store
+
+    def _note_embedding_error(self) -> None:
+        error = self.embeddings.error if self.embeddings else None
+        if error and error not in self.problems:
+            self.problems.append(error)
 
     # ---------- profiles and events
 
@@ -147,8 +161,10 @@ class DataStore:
         evs = [e for e in self.events.values() if e.event_id != exclude]
         if not evs:
             return []
-        index = BM25([f"{e.title} {e.summary}" for e in evs])
-        return [evs[i] for i, _ in index.top(query, k)]
+        index = HybridIndex([f"{e.title} {e.summary}" for e in evs], self.embeddings)
+        found = [evs[i] for i, _ in index.top(query, k)]
+        self._note_embedding_error()
+        return found
 
     # ---------- research
 
@@ -171,11 +187,18 @@ class DataStore:
         text_scores = (
             self._thesis_index.scores(query) if (self._thesis_index and query) else [0.0] * len(self.theses)
         )
+        # meaning, not just words: a thesis in Russian for an English query (embeddings, if configured)
+        dense = [0.0] * len(self.theses)
+        if self.embeddings and query and self.theses:
+            vectors, qv = self.embeddings.vectors(self._thesis_texts), self.embeddings.query(query)
+            if vectors and qv:
+                dense = [max(0.0, cosine(qv, v)) for v in vectors]
+            self._note_embedding_error()
         ranked = []
-        for t, ts in zip(self.theses, text_scores, strict=True):
+        for t, ts, ds in zip(self.theses, text_scores, dense, strict=True):
             if not applies_to(t.countries, country):
                 continue
-            score = 2.0 * len(set(t.factors) & set(factors)) + 1.5 * (t.topic in topics) + 0.5 * ts
+            score = 2.0 * len(set(t.factors) & set(factors)) + 1.5 * (t.topic in topics) + 0.5 * ts + 1.0 * ds
             if score > 0:
                 stale = t.is_stale or self.is_stale(t.doc_date)
                 ranked.append((stale, -score, -(t.doc_date.toordinal() if t.doc_date else 0), t))

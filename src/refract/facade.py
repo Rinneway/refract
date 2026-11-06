@@ -128,7 +128,12 @@ class Refract:
             client = LLMClient(settings)
             embed = client.embed
             kwargs.setdefault("llm", client)
-        store = DataStore.from_dir(root, embed=embed, cache_dir=Path(settings.cache_dir) / "embeddings")
+        store = DataStore.from_dir(
+            root,
+            embed=embed,
+            cache_dir=Path(settings.cache_dir) / "embeddings",
+            embed_model=settings.embedding_model or "",
+        )
         return cls(store, settings=settings, **kwargs)
 
     @property

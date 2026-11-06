@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import threading
 from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
@@ -413,45 +414,99 @@ class BM25:
 Embedder = Callable[[list[str]], list[list[float]]]
 
 
-def _cosine(a: list[float], b: list[float]) -> float:
-    num = sum(x * y for x, y in zip(a, b, strict=False))
+def cosine(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b):  # vectors of another model: no similarity rather than a wrong one
+        return 0.0
+    num = sum(x * y for x, y in zip(a, b, strict=True))
     den = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
     return num / den if den else 0.0
 
 
+class Embeddings:
+    """Vectors of texts, computed once per text and model: kept in memory and in
+    `<cache_dir>/emb_<model>.jsonl`, so a corpus that grows (RSS, pasted news) embeds only what is new, and
+    switching the model never mixes vectors of two models. Any failure of the embedding model switches search
+    back to BM25 and is kept in `error`."""
+
+    def __init__(self, embed: Embedder, model: str = "", cache_dir: Path | None = None) -> None:
+        self.embed, self.model = embed, model
+        tag = hashlib.sha256(model.encode("utf-8")).hexdigest()[:12]
+        self.path = cache_dir / f"emb_{tag}.jsonl" if cache_dir else None
+        self.memory: dict[str, list[float]] = {}
+        self.error: str | None = None
+        self._lock = threading.Lock()
+        if self.path and self.path.exists():
+            for line in self.path.read_text(encoding="utf-8").splitlines():
+                try:
+                    rec = json.loads(line)
+                    self.memory[rec["k"]] = rec["v"]
+                except (ValueError, KeyError, TypeError):
+                    continue  # a line cut by an interrupted write
+
+    @staticmethod
+    def _key(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
+
+    def vectors(self, texts: list[str]) -> list[list[float]] | None:
+        """One vector per text, or None if the model failed (then search stays lexical)."""
+        if self.error:
+            return None
+        keys = [self._key(t) for t in texts]
+        missing = [(k, t) for k, t in dict(zip(keys, texts, strict=True)).items() if k not in self.memory]
+        try:
+            for i in range(0, len(missing), 64):
+                batch = missing[i : i + 64]
+                got = self.embed([t for _, t in batch])
+                if len(got) != len(batch):
+                    raise ValueError(f"{len(got)} vectors for {len(batch)} texts")
+                with self._lock:
+                    for (k, _), v in zip(batch, got, strict=True):
+                        self.memory[k] = v
+                    if self.path:
+                        self.path.parent.mkdir(parents=True, exist_ok=True)
+                        with self.path.open("a", encoding="utf-8") as f:
+                            f.writelines(
+                                json.dumps({"k": k, "v": v}) + "\n"
+                                for (k, _), v in zip(batch, got, strict=True)
+                            )
+        except Exception as e:  # noqa: BLE001 — a missing or failing model must not stop the agent
+            self.error = (
+                f"embeddings unavailable ({self.model or 'model'}): {str(e)[:200]}; search is lexical (BM25)"
+            )
+            return None
+        return [self.memory[k] for k in keys]
+
+    def query(self, text: str) -> list[float] | None:
+        got = self.vectors([text])
+        return got[0] if got else None
+
+
+def fuse(lexical: list[tuple[int, float]], dense: list[tuple[int, float]], k: int, rrf_k: int = 60):
+    """Reciprocal rank fusion of two rankings."""
+    fused: dict[int, float] = {}
+    for ranking in (lexical, dense):
+        for rank, (i, _) in enumerate(ranking):
+            fused[i] = fused.get(i, 0.0) + 1.0 / (rrf_k + rank + 1)
+    return sorted(fused.items(), key=lambda x: -x[1])[:k]
+
+
 class HybridIndex:
-    """BM25 + embeddings fused by reciprocal rank fusion (k = 60). Without an embedder it is plain BM25."""
+    """BM25 + embeddings fused by reciprocal rank fusion (k = 60). Without embeddings, or when the embedding model
+    fails, it is plain BM25."""
 
-    def __init__(
-        self, docs: list[str], embed: Embedder | None = None, cache_dir: Path | None = None, rrf_k: int = 60
-    ):
-        self.docs, self.bm25, self.embed, self.rrf_k = docs, BM25(docs), embed, rrf_k
-        self.cache_dir = cache_dir
-        self.vectors: list[list[float]] | None = self._embed_docs() if embed else None
+    def __init__(self, docs: list[str], embeddings: Embeddings | None = None, rrf_k: int = 60):
+        self.docs, self.bm25, self.embeddings, self.rrf_k = docs, BM25(docs), embeddings, rrf_k
+        self.vectors = embeddings.vectors(docs) if embeddings and docs else None
 
-    def _embed_docs(self) -> list[list[float]]:
-        key = hashlib.sha256("\n\x00".join(self.docs).encode("utf-8")).hexdigest()[:24]
-        path = self.cache_dir / f"emb_{key}.json" if self.cache_dir else None
-        if path and path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
-        vectors: list[list[float]] = []
-        for i in range(0, len(self.docs), 64):
-            vectors += self.embed(self.docs[i : i + 64])  # type: ignore[misc]
-        if path:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(vectors), encoding="utf-8")
-        return vectors
+    def dense(self, query: str, n: int) -> list[tuple[int, float]]:
+        if not self.vectors or not self.embeddings:
+            return []
+        qv = self.embeddings.query(query)
+        if qv is None:
+            return []
+        return sorted(((i, cosine(qv, v)) for i, v in enumerate(self.vectors)), key=lambda x: -x[1])[:n]
 
     def top(self, query: str, k: int = 5) -> list[tuple[int, float]]:
         lexical = self.bm25.top(query, k=max(k * 4, 20))
-        if not self.vectors or not self.embed:
-            return lexical[:k]
-        qv = self.embed([query])[0]
-        dense = sorted(((i, _cosine(qv, v)) for i, v in enumerate(self.vectors)), key=lambda x: -x[1])[
-            : max(k * 4, 20)
-        ]
-        fused: dict[int, float] = {}
-        for ranking in (lexical, dense):
-            for rank, (i, _) in enumerate(ranking):
-                fused[i] = fused.get(i, 0.0) + 1.0 / (self.rrf_k + rank + 1)
-        return sorted(fused.items(), key=lambda x: -x[1])[:k]
+        dense = self.dense(query, max(k * 4, 20))
+        return fuse(lexical, dense, k, self.rrf_k) if dense else lexical[:k]

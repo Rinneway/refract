@@ -324,3 +324,9 @@ def test_brief_command(server, capsys, tmp_path) -> None:
     assert (
         out.startswith("## Бриф для demo_family_saver") and len(list((tmp_path / "runs").glob("*.json"))) == 1
     )
+
+
+def test_check_reports_embeddings(server, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("REFRACT_EMBEDDING_MODEL", "fake-embed")
+    assert main(["check"]) == 0
+    assert "[embeddings] fake-embed" in capsys.readouterr().out

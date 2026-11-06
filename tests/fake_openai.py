@@ -45,6 +45,26 @@ class FakeOpenAI:
 
             def do_POST(self) -> None:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                if self.path.endswith("/embeddings"):  # a toy model: letter counts of a few characters
+                    texts = body["input"] if isinstance(body["input"], list) else [body["input"]]
+                    data = [
+                        {
+                            "object": "embedding",
+                            "index": i,
+                            "embedding": [float(t.count(c)) + 0.1 for c in "аеиоaeio"],
+                        }
+                        for i, t in enumerate(texts)
+                    ]
+                    self._send(
+                        200,
+                        {
+                            "object": "list",
+                            "data": data,
+                            "model": body.get("model"),
+                            "usage": {"prompt_tokens": 1, "total_tokens": 1},
+                        },
+                    )
+                    return
                 server.requests.append(body)
                 name = ((body.get("response_format") or {}).get("json_schema") or {}).get("name", "")
                 answer = server.answers.get(name)
