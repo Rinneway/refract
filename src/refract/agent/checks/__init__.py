@@ -51,6 +51,7 @@ from .rules import (
     errors,
     merge,
     rule_check,
+    unfit_actions,
     visible_text,
 )
 
@@ -90,5 +91,6 @@ __all__ = [
     "rule_check",
     "short_headline",
     "soften",
+    "unfit_actions",
     "visible_text",
 ]

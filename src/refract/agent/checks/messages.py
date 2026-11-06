@@ -5,6 +5,22 @@ from __future__ import annotations
 from ...i18n import norm_lang
 
 FINDINGS = {
+    "kind_business": {
+        "ru": "{cid}: совет для бизнеса («{phrase}») частному лицу — субъект не ведёт бизнеса",
+        "en": "{cid}: business advice (“{phrase}”) for a private person — the subject runs no business",
+    },
+    "kind_staff": {
+        "ru": "{cid}: «{phrase}» не относится к самозанятому — у него нет сотрудников и НДС",
+        "en": "{cid}: “{phrase}” does not apply to the self-employed — no staff and no VAT",
+    },
+    "kind_household": {
+        "ru": "{cid}: совет для домохозяйства («{phrase}») компании",
+        "en": "{cid}: household advice (“{phrase}”) for a company",
+    },
+    "kind_hint": {
+        "ru": "предложите шаг, который этот субъект может сделать сам, исходя из его профиля",
+        "en": "suggest a step this subject can take itself, given its profile",
+    },
     "superlative": {
         "ru": "{cid}: «{phrase} … {pct}%» не сходится с профилем: {pct}% — доля {other}, а крупнейший {role} — "
         "{top} ({top_pct}%)",

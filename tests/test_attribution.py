@@ -441,3 +441,32 @@ def test_wrong_superlative_is_a_hard_error_of_the_rule_check(store) -> None:
     )
     found = [i for i in checks.rule_check(content, ctx) if "does not match the profile" in i.message]
     assert [(i.claim_id, i.severity) for i in found] == [(checks.HEADLINE, "error")]
+
+
+def test_advice_must_fit_the_kind_of_subject(store) -> None:
+    from refract.agent.context import InsightContext
+    from refract.schemas.insight import Action, ActionKind
+
+    def unfit(profile_id: str, *texts: str, lang: str = "ru") -> list[str]:
+        ctx = InsightContext(
+            profile=store.profiles[profile_id], event=store.events["ev_rate_hold_ru"], lang=lang
+        )
+        actions = [
+            Action(action_id=f"a{i}", text=t, kind=ActionKind.ANALYSIS, rationale="r", claim_ids=["c1"])
+            for i, t in enumerate(texts, 1)
+        ]
+        content = _content().model_copy(update={"actions": actions})
+        return [i.claim_id for i in checks.unfit_actions(content, ctx)]
+
+    # gemma4:12b suggested an SME loan to a household saver
+    assert unfit("demo_family_saver", "Оформить льготный кредит для МСБ", "Проверить условия ипотеки") == [
+        "a1"
+    ]
+    assert unfit("demo_designer_npd", "Нанять сотрудника на проект", "Отложить резерв на налог НПД") == ["a1"]
+    assert unfit(
+        "demo_building_materials", "Пересмотреть семейный бюджет", "Пересчитать график платежей"
+    ) == ["a1"]
+    assert unfit("demo_london_studio", "Review the household budget", lang="en") == ["a1"]
+    assert (
+        unfit("demo_coffee_ip", "Оформить кредит для бизнеса", "Сверить НДС с поставщиками") == []
+    )  # an ИП may

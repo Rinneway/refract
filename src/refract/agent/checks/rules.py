@@ -105,6 +105,49 @@ def counterparty_superlatives(text: str, cid: str, ctx: InsightContext) -> list[
     return out
 
 
+# Advice that does not fit the kind of subject: a business step for a private person (gemma4:12b suggested an SME
+# loan to a household saver), staff or VAT for the self-employed, a household step for a company.
+_BUSINESS = (
+    r"\bмсб\b|малого (?:и среднего )?бизнес|малому бизнесу|для бизнеса|\bип\b|юрлиц|юридическ\w* лиц|контрагент|"
+    r"поставщик|\bндс\b|\bусн\b|выручк|оборотн\w* (?:средств|капитал)|факторинг|эквайринг|зарплатн\w* проект|"
+    r"расч[её]тн\w* сч[её]т|сотрудник|\bsmes?\b|small business|for (?:your )?business|\bvat\b|revenue|"
+    r"working capital|supplier|counterpart|factoring|acquiring|payroll|employees|business account"
+)
+_STAFF_VAT = r"\bндс\b|сотрудник|зарплатн|юрлиц|\bvat\b|employees|payroll|staff"
+_HOUSEHOLD = (
+    r"налогов\w* вычет|семейн\w* бюджет|личн\w* бюджет|пенсионн\w* (?:накоплен|сч[её]т)|\bиис\b|"
+    r"household budget|personal budget|family budget|tax deduction|pension savings"
+)
+_NOT_FOR = {
+    "individual": (re.compile(_BUSINESS), "kind_business"),
+    "self_employed": (re.compile(_STAFF_VAT), "kind_staff"),
+    "company": (re.compile(_HOUSEHOLD), "kind_household"),
+}
+
+
+def unfit_actions(content: InsightContent, ctx: InsightContext) -> list[VerificationIssue]:
+    """An action whose own text gives advice this kind of subject cannot follow (rationales may explain, so only
+    the step itself is checked)."""
+    rule = _NOT_FOR.get(ctx.profile.kind.value)
+    if rule is None:
+        return []
+    pattern, key = rule
+    out = []
+    for a in content.actions:
+        m = pattern.search(normalize(a.text))
+        if m:
+            out.append(
+                VerificationIssue(
+                    code=IssueCode.CONTRADICTION,
+                    severity="error",
+                    claim_id=a.action_id,
+                    message=finding(key, ctx.lang, cid=a.action_id, phrase=m.group(0)),
+                    fix_hint=finding("kind_hint", ctx.lang),
+                )
+            )
+    return out
+
+
 def as_insight(content: InsightContent, ctx: InsightContext) -> Insight:
     """An insight built without validation, to list every violation instead of failing on the first."""
     return Insight.model_construct(
@@ -164,6 +207,7 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
     texts += [(a.action_id, f"{a.text} {a.rationale or ''}") for a in content.actions]
     for cid, text in texts:
         issues += counterparty_superlatives(text, cid, ctx)
+    issues += unfit_actions(content, ctx)
 
     context = ctx.render()
     if extra := invented_numbers([content.headline], context):
