@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### After the first local run
+
+- The demo recordings are now the answers of the current prompts (qwen3.5:9b and gemma4:12b, November 2026); the October recordings stay in `tests/fixtures` for the regression cases found in them. Results and the faults found: [docs/results/smoke-2026-11.md](docs/results/smoke-2026-11.md).
+- Impact links: tax news that names a tax regime (the simplified system, professional income, the patent…) is a weak link for a subject on another regime.
+- Internal counterparty codes (`cp_import_309`) never reach the reader: they are replaced by what is known — “the supplier with 14% of outgoing payments”.
+- `.env` is read from the current folder, not from the folder the package was installed from.
+- Fixed: Windows paths in `shell load/save`; pyright without `tomli`.
+
 ### Console, demo mode, packaging
 
 - `refract shell`: an interactive console on Windows, macOS and Linux — subjects, feed, analysis with live steps, pasted texts, follow-up questions, sources, trace, brief, save and load. It uses only the standard library: readline where Python has it, ANSI colours only on a terminal that shows them (VT mode on the Windows console, `NO_COLOR`), and Ctrl+C stops the analysis, not the session. `--script` runs a command file.

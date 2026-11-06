@@ -132,7 +132,7 @@ uv run refract shell --demo               # profiles, use 2, feed, analyze 1, so
 Remove-Item Env:REFRACT_RECORDINGS
 ```
 
-**3. The agent against simpler systems, judged by a third family** (about 20 minutes; `full` mostly reuses the cached answers of step 2):
+**3. The agent against simpler systems, judged by a third family** (35–45 minutes on a 12–16 GB GPU: `full` takes about 3 minutes a pair, the two baselines under a minute; `full` runs afresh, it does not reuse the recordings of step 2):
 
 ```powershell
 uv run refract eval run    --pairs examples\demo\pairs_smoke.jsonl --out runs\smoke --systems full,single_call,retelling --workers 1
