@@ -90,6 +90,7 @@ class DataStore:
         self.problems: list[
             str
         ] = []  # files and objects `from_dir` skipped, each naming the file and the reason
+        self.root: Path | None = None  # the data folder, when loaded with `from_dir`
         self.profiles = {p.profile_id: p for p in profiles}
         self.events = {e.event_id: e for e in events}
         self.theses = list(theses)
@@ -142,6 +143,7 @@ class DataStore:
             embed_model=embed_model,
         )
         store.problems = problems + store.problems
+        store.root = root
         return store
 
     def _note_embedding_error(self) -> None:

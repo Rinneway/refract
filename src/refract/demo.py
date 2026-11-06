@@ -469,4 +469,5 @@ class Replay:
             routes=dict(DEFAULT_ROUTES),
             embedding_model=None,
         )
-        return ScriptedLLM({k: list(v) for k, v in rec.answers.items()}, settings)
+        # a replay costs nothing and takes no model time; the recorded runs' usage is not part of the recording
+        return ScriptedLLM({k: list(v) for k, v in rec.answers.items()}, settings, usage=(0, 0, 0.0, 0))

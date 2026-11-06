@@ -91,6 +91,7 @@ uv run refract demo            # прогон по сценарию, ключ н
 uv run refract demo injection  # новость с prompt injection
 uv run refract demo dollar     # прогон на английском: чужая «позиция банка» и отклонённый заголовок
 uv run refract demo --list     # пары, для которых записаны ответы настоящих моделей
+uv run refract shell --demo    # интерактивная консоль: субъекты, лента, анализ, трасса
 uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en
 uv run refract brief --demo --profile demo_building_materials
 ```

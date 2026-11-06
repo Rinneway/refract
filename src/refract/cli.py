@@ -1,6 +1,7 @@
 """Command line: `refract --help`.
 
 refract demo                                   # scripted run, no API key needed
+refract shell [--demo]                         # interactive console
 refract analyze --profile demo_coffee_ip --event ev_usn_vat_ru --role entrepreneur --lang en
 refract analyze --profile demo_family_saver --title "…" --text "…"
 refract chat --run runs/ins_x.json --q "What about my mortgage?"
@@ -349,6 +350,15 @@ def cmd_eval(args) -> int:
     return 0
 
 
+def cmd_shell(args) -> int:
+    from .shell import run_shell
+
+    rf = _rf(args)
+    if args.profile and args.profile not in rf.store.profiles:
+        return _fail(f"unknown profile {args.profile!r}; `refract profiles` lists them")
+    return run_shell(rf, script=args.script, color=False if args.no_color else None, profile=args.profile)
+
+
 def cmd_serve(args) -> int:  # pragma: no cover
     from .api import serve
 
@@ -542,6 +552,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--name", help="for `label`: the judge name of the labels (default human)")
     sp.add_argument("--file", help="for `label import`: the filled sheet (default labels/<name>/sheet.csv)")
     sp.set_defaults(fn=cmd_eval)
+
+    sp = sub.add_parser(
+        "shell", help="interactive console: subjects, feed, analysis, follow-up questions, trace"
+    )
+    data_arg(sp)
+    sp.add_argument("--profile", help="start with this subject chosen")
+    sp.add_argument("--lang", choices=["ru", "en"], help="language of the insights and of the console")
+    sp.add_argument("--script", help="run the commands of this file (one per line, `-` for stdin) and exit")
+    sp.add_argument("--no-color", action="store_true", help="no ANSI colours (also: NO_COLOR=1)")
+    sp.set_defaults(fn=cmd_shell)
 
     sp = sub.add_parser("serve", help="REST API (pip install 'refract-agent[api]')")
     data_arg(sp)

@@ -52,6 +52,7 @@ jobs:
           uv run refract demo rate
           uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en > insight.md
           uv run refract brief --demo --profile demo_building_materials --json > brief.json
+          uv run refract shell --demo --script tests/fixtures/shell_script.txt
 
   package:
     # the wheel alone, outside the source tree: the demo data and recordings must be inside it

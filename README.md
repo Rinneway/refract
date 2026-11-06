@@ -91,6 +91,7 @@ uv run refract demo            # scripted run — no API key needed
 uv run refract demo injection  # a news item with a prompt injection
 uv run refract demo dollar     # an English run: a misattributed house view and a rejected headline
 uv run refract demo --list     # the pairs with recorded answers of real models
+uv run refract shell --demo    # the interactive console: subjects, feed, analysis, trace
 uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en
 uv run refract brief --demo --profile demo_building_materials
 ```

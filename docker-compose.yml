@@ -1,6 +1,7 @@
 # Refract with local models in Ollama. `docker compose up` — the first start pulls the models (≈ 9 GB).
 #
 #   docker compose up -d                       # API on http://localhost:8000 (OpenAPI UI: /docs)
+#   docker compose run --rm refract refract shell
 #   docker compose run --rm refract refract check
 #
 # A GPU: uncomment the `deploy` block of `ollama` (NVIDIA Container Toolkit). Other model tags: MAIN_MODEL and

@@ -1,0 +1,15 @@
+# `refract shell --demo --script tests/fixtures/shell_script.txt` — run in CI on Windows, macOS and Linux
+help
+profiles
+use demo_coffee_ip
+feed 5
+news
+analyze ev_sme_loans_ru
+sources
+trace
+role cfo
+lang en
+use demo_london_studio
+analyze ev_dollar_en
+brief 1
+status

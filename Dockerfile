@@ -3,6 +3,7 @@
 #   docker build -t refract .
 #   docker run --rm -p 8000:8000 refract                                   # demo mode: no model, recorded answers
 #   docker run --rm -p 8000:8000 --env-file .env refract refract serve --host 0.0.0.0
+#   docker run --rm -it --env-file .env refract refract shell              # the interactive console
 #   docker run --rm -i refract refract mcp --demo                          # MCP over stdio
 #
 # With your own data: -v "$PWD/my_data:/data" -e REFRACT_DATA_DIR=/data. With local models: docker-compose.yml.

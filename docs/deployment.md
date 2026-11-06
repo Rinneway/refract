@@ -23,6 +23,7 @@ docker run --rm -p 8000:8000 --env-file .env -v "$PWD/refract.toml:/config/refra
   -e REFRACT_CONFIG=/config/refract.toml refract refract serve --host 0.0.0.0
 
 # any other command: the interactive console, one analysis, the MCP server over stdio
+docker run --rm -it --env-file .env refract refract shell
 docker run --rm --env-file .env refract refract analyze --profile demo_coffee_ip --event ev_usn_vat_ru
 docker run --rm -i refract refract mcp --demo
 ```
@@ -42,6 +43,7 @@ Set `REFRACT_API_TOKEN` to require `Authorization: Bearer <token>` on every endp
 ```bash
 docker compose up -d                              # the first start downloads ≈ 9 GB of models
 docker compose run --rm refract refract check     # structured output, context window, reasoning
+docker compose run --rm refract refract shell
 MAIN_MODEL=qwen3.5:4b VERIFIER_MODEL=gemma4:e4b docker compose up -d   # smaller models
 ```
 
@@ -54,7 +56,7 @@ For an NVIDIA GPU, uncomment the `deploy` block of `ollama` (this needs the NVID
 | Job | What it checks |
 | --- | --- |
 | `lint` | `ruff check`, `ruff format --check`, `pyright src` |
-| `test` | `pytest` on Linux (Python 3.10–3.13), Windows and macOS (3.10, 3.13); then the CLI without a model: `refract demo`, `analyze --demo`, `brief --demo` |
+| `test` | `pytest` on Linux (Python 3.10–3.13), Windows and macOS (3.10, 3.13); then the CLI without a model: `refract demo`, `analyze --demo`, `brief --demo`, a scripted `refract shell` session |
 | `package` | `uv build`; the wheel installed alone in a clean environment on Linux, Windows and macOS, run from outside the source tree, so the packaged demo data and recordings are checked |
 | `docker` | the image builds, `docker compose config` is valid, the API in demo mode answers `/health` and `POST /insights` |
 

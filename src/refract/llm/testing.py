@@ -19,8 +19,15 @@ Answer = BaseModel | dict | None | Callable[[list[dict[str, str]], type[BaseMode
 
 
 class ScriptedLLM:
-    def __init__(self, responses: dict[str, list[Answer]], settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        responses: dict[str, list[Answer]],
+        settings: Settings | None = None,
+        usage: tuple[int, int, float, int] = (100, 40, 0.001, 5),
+    ) -> None:
+        """`usage` — (prompt tokens, completion tokens, cost, latency ms) reported for every call."""
         self.settings = settings or Settings(api_key="scripted")
+        self.usage = usage
         self.responses = {k: list(v) for k, v in responses.items()}
         self.steps: list[str] = []
         self.messages: dict[str, list[dict[str, str]]] = {}
@@ -39,10 +46,10 @@ class ScriptedLLM:
             text="{}",
             model=self.settings.spec(model).id,
             base_url="scripted",
-            prompt_tokens=100,
-            completion_tokens=40,
-            cost=0.001,
-            latency_ms=5,
+            prompt_tokens=self.usage[0],
+            completion_tokens=self.usage[1],
+            cost=self.usage[2],
+            latency_ms=self.usage[3],
         )
         return JsonResult(
             value=answer, error=None if answer is not None else "no scripted answer", calls=[call]

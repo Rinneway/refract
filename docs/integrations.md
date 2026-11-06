@@ -56,6 +56,8 @@ Lower level: `Agent(llm, store, config=AgentConfig(...), settings=..., policy=..
 
 ```text
 refract demo [rate|injection|dollar] [--list]  scripted run without a key; --list: pairs --demo can replay
+refract shell [--demo] [--profile ID] [--lang ru|en] [--script FILE] [--no-color]
+                                               interactive console, see cli.md
 refract profiles | events [--data DIR]
 --demo (on analyze, feed, brief, profiles, events, serve, mcp, chat)
                                                no model: replay recorded answers on the demo data
