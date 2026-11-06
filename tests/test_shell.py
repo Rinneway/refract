@@ -39,6 +39,8 @@ def test_numbers_refer_to_the_last_list(rf) -> None:
     n = sh.last.index("ev_sme_loans_ru") + 1
     sh, out = session(rf, f"use demo_coffee_ip\nfeed 10\nanalyze {n}\n")
     assert sh.run is not None and sh.run.insight is not None and not sh.failed
+    _, out = session(rf, "use demo_coffee_ip\nnews\n")
+    assert "ev_sme_loans_ru ▶ demo" in out and "ev_yuan_ru ▶" not in out
     sh, out = session(rf, "use demo_coffee_ip\nanalyze 1\n")  # no list shown yet
     assert sh.failed and ("номер" in out or "number" in out)
 

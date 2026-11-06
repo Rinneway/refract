@@ -391,6 +391,7 @@ class Shell(cmd.Cmd):
         for i, e in enumerate(events, 1):
             self.say(
                 f"{i:4}  {e.published_at:%Y-%m-%d} [{e.language}] {e.title}  {self.style(e.event_id, 'dim')}"
+                + self._replayable(e.event_id)
             )
 
     do_events = do_news
