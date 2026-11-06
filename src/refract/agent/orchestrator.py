@@ -520,7 +520,8 @@ class Agent:
             notes += fallback_notes
             draft, softened = checks.soften(draft, self._softened, lang)
             draft, deduped = checks.dedupe_house_view(draft, lang)
-            notes += softened + deduped
+            draft, named = checks.name_counterparties(draft, ctx.profile, lang)
+            notes += softened + deduped + named
             fallback = (
                 checks.house_view_from_theses(ctx, removed_house)
                 if cfg.prune and not draft.house_view and removed_house

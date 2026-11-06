@@ -118,3 +118,18 @@ def test_activity_groups() -> None:
     assert (
         group("46.73") == "46.7" and group("46.2") == "46.2" and group("46") is None and group("x.1") is None
     )
+
+
+def test_tax_news_about_another_regime_is_background(store) -> None:
+    """The VAT threshold of the simplified system: news for the coffee shop on УСН, background for the self-employed."""
+    from refract.agent.impact import tax_regimes
+
+    assert tax_regimes("Порог НДС на упрощёнке") == {"usn"}
+    assert tax_regimes("НПД (налог на профессиональный доход)") == {"npd"}
+    assert tax_regimes("self-employed on the professional income tax") == {"npd"}
+    assert tax_regimes("Ключевая ставка сохранена") == set()
+    event = store.events["ev_usn_vat_ru"]
+    npd = impact_cap(store.profiles["demo_designer_npd"], event, lang="ru")
+    usn = impact_cap(store.profiles["demo_coffee_ip"], event, lang="ru")
+    assert npd.level is ImpactLevel.LOW and "режиме УСН, а субъект на НПД" in npd.reason
+    assert usn.level is ImpactLevel.HIGH

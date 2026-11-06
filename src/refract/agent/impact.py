@@ -15,6 +15,9 @@ In trade (divisions 45–47) the division says only “wholesale” or “retail
 There an activity matches only the same group (46.21 grain and 46.2 in the news); news that names the division
 alone is a weak link, and news about another group (grain for a building-materials wholesaler) is no division link.
 
+Tax news that names a tax regime (the simplified system, professional income, the patent…) is a weak link for a
+subject on another regime: a VAT threshold of the simplified system does not apply to the self-employed.
+
 National factors (the policy rate, inflation, taxes, the budget, demand, credit, construction…) link the event to
 the subject only when the event concerns the subject's country: a UK company's sensitivity to the policy rate is to
 the Bank of England's rate, not another central bank's. Currencies, commodities, sanctions, duties and logistics
@@ -30,6 +33,7 @@ an amount the profile does not hold. On a secondary factor of the event it is we
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from ..i18n import norm_lang
@@ -51,6 +55,10 @@ _TEXT = {
         "en": "{label}{note}: {reason}; effect {direction}, strength {strength} ({factor})",
     },
     "secondary": {"ru": " (второстепенный фактор события)", "en": " (secondary factor of the event)"},
+    "other_regime": {
+        "ru": " (новость о режиме {event}, а субъект на {own})",
+        "en": " (the news concerns {event}, the subject is on {own})",
+    },
     "own_division": {
         "ru": "событие касается основного вида деятельности (NACE/ОКВЭД {code})",
         "en": "the event concerns the subject's main activity (NACE division {code})",
@@ -127,6 +135,40 @@ _PRODUCT = {
         "deposits": "deposits",
     },
 }
+
+
+# Tax regimes named in a news item and in a profile's free-text `tax_regime`. A tax news item about one regime
+# (the VAT threshold of the simplified system) is background for a subject on another one (professional income).
+TAX_REGIMES: dict[str, tuple[str, dict[str, str]]] = {
+    "usn": (
+        r"упрощ[её]н\w*|упрощёнк\w*|упрощенк\w*|\bУСН\b|simplified tax",
+        {"ru": "УСН", "en": "the simplified tax system"},
+    ),
+    "npd": (
+        r"\bНПД\b|самозанят\w*|налог\w* на профессиональн\w* доход|professional income tax|self-employ\w*",
+        {"ru": "НПД", "en": "the professional income tax"},
+    ),
+    "osno": (
+        r"\bОСНО?\b|общ(?:ая|ей|ую) систем\w* налогообложения|general tax(?:ation)? (?:system|regime)",
+        {"ru": "ОСНО", "en": "the general tax system"},
+    ),
+    "psn": (r"\bПСН\b|патентн\w* систем\w*|patent tax", {"ru": "ПСН", "en": "the patent tax system"}),
+    "eshn": (
+        r"\bЕСХН\b|сельскохозяйственн\w* налог|unified agricultural tax",
+        {"ru": "ЕСХН", "en": "the agricultural tax"},
+    ),
+}
+
+
+def tax_regimes(text: str | None) -> set[str]:
+    """The tax regimes a text names."""
+    if not text:
+        return set()
+    return {k for k, (rx, _) in TAX_REGIMES.items() if re.search(rx, text, re.IGNORECASE)}
+
+
+def _regime_names(keys: set[str], lang: str) -> str:
+    return ", ".join(TAX_REGIMES[k][1][norm_lang(lang)] for k in sorted(keys))
 
 
 def _num(x: float, lang: str) -> str:
@@ -256,6 +298,9 @@ def event_links(
     # mention the labour market, but for a subject with a payroll that is background, not a strong link.
     primary = canonical_factor(e.macro_factors[0]) if e.macro_factors else None
     foreign = abroad(p, e)
+    news_regimes = tax_regimes(" ".join([e.title, e.summary, *(f.text for f in e.key_facts)]))
+    own_regimes = tax_regimes(p.tax_regime)
+    other_regime = bool(news_regimes and own_regimes and not news_regimes & own_regimes)
     for x in sorted(p.exposures, key=lambda x: -x.strength):
         if not _factor_hit(x.factor, factors, divisions):
             continue
@@ -266,6 +311,9 @@ def event_links(
             level = max(WEAK, level - 1)
         if len(e.macro_factors) > 1 and canonical_factor(x.factor) != primary:
             level, note = max(WEAK, level - 1), _t("secondary", lang)
+        if other_regime and canonical_factor(x.factor) == "taxes":
+            own, news = _regime_names(own_regimes, lang), _regime_names(news_regimes, lang)
+            level, note = WEAK, _t("other_regime", lang, event=news, own=own)
         text = _t(
             "exposure",
             lang,

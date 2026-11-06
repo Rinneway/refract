@@ -31,6 +31,7 @@ from .repair import (
     house_view_from_theses,
     keep_required,
     merge_revision,
+    name_counterparties,
     short_headline,
     soften,
 )
@@ -85,6 +86,7 @@ __all__ = [
     "keep_required",
     "merge",
     "merge_revision",
+    "name_counterparties",
     "overrule_structural",
     "reconcile",
     "resolve_feature",

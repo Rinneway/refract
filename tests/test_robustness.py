@@ -21,7 +21,6 @@ from pydantic import BaseModel, ValidationError
 from refract.agent import ABLATIONS, Agent, ablation
 from refract.agent.impact import ORDER, impact_cap
 from refract.config import Settings
-from refract.demo import RECORDED
 from refract.llm.client import ChatResult, JsonResult, salvage_answers
 from refract.llm.salvage import salvage
 from refract.schemas import Insight, InsightContent
@@ -84,7 +83,10 @@ def test_repeated_ids_are_renumbered(store) -> None:
 
 # ---------------------------------------------------------------------------------------------------- fuzz
 
-SMOKE = json.loads(RECORDED.read_text(encoding="utf-8"))
+# real answers recorded in October 2026; the regression cases below were found in them
+SMOKE = json.loads(
+    (Path(__file__).parent / "fixtures" / "smoke_2026-10_qwen9b_gemma12b.json").read_text(encoding="utf-8")
+)
 USN = json.loads((FIXTURES / "qwen_usn_run.json").read_text(encoding="utf-8"))
 CASES = {k: v for k, v in SMOKE.items() if not k.startswith("_")} | {
     f"demo_coffee_ip__ev_usn_vat_ru__entrepreneur__ru__{k}": v

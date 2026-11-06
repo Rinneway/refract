@@ -15,7 +15,6 @@ from pathlib import Path
 from refract.agent import Agent, ablation, checks
 from refract.agent.context import profile_features
 from refract.config import Settings
-from refract.demo import RECORDED
 from refract.llm import ScriptedLLM
 from refract.schemas import (
     Action,
@@ -326,7 +325,10 @@ def test_number_findings_need_the_number_check() -> None:
     assert [i.severity for i in out] == ["warning", "error"]
 
 
-SMOKE = json.loads(RECORDED.read_text(encoding="utf-8"))
+# real answers recorded in October 2026; the regression cases below were found in them
+SMOKE = json.loads(
+    (Path(__file__).parent / "fixtures" / "smoke_2026-10_qwen9b_gemma12b.json").read_text(encoding="utf-8")
+)
 
 
 def smoke(store, key: str):
@@ -471,3 +473,23 @@ def test_advice_must_fit_the_kind_of_subject(store) -> None:
     assert (
         unfit("demo_coffee_ip", "Оформить кредит для бизнеса", "Сверить НДС с поставщиками") == []
     )  # an ИП may
+
+
+def test_counterparty_codes_never_reach_the_reader(store) -> None:
+    """Payment data have no names; a code like cp_import_309 is replaced by what is known about the counterparty."""
+    from refract.agent import checks
+
+    profile = store.profiles["demo_building_materials"]
+    run = smoke(store, "demo_building_materials__ev_yuan_ru__cfo__en")
+    content = InsightContent.model_validate(
+        {k: getattr(run.insight, k) for k in InsightContent.model_fields}
+        | {"headline": "Imports from counterparty cp_import_309 get cheaper"}
+    )
+    named, notes = checks.name_counterparties(content, profile, "en")
+    assert named.headline == "Imports from the supplier with 14% of outgoing payments get cheaper"
+    assert notes and "cp_import_309" in notes[0]
+    ru, _ = checks.name_counterparties(
+        content.model_copy(update={"headline": "Платёж контрагенту cp_dev_101"}), profile, "ru"
+    )
+    assert ru.headline == "Платёж контрагенту (покупатель, 31% входящих платежей)"
+    assert checks.name_counterparties(named, profile, "en") == (named, [])

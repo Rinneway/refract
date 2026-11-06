@@ -173,6 +173,26 @@ STRINGS: dict[str, dict[Language, str]] = {
         "ru": "добавлены оговорки по замечаниям о формулировке: {ids}",
         "en": "caveats added after remarks on wording: {ids}",
     },
+    "note.counterparty_named": {
+        "ru": "внутренние коды контрагентов заменены описанием: {ids}",
+        "en": "internal counterparty codes replaced by a description: {ids}",
+    },
+    "cp.customer": {
+        "ru": "покупатель с долей {share} входящих платежей",
+        "en": "the customer with {share} of incoming payments",
+    },
+    "cp.customer.short": {
+        "ru": "покупатель, {share} входящих платежей",
+        "en": "a customer, {share} of incoming payments",
+    },
+    "cp.supplier.short": {
+        "ru": "поставщик, {share} исходящих платежей",
+        "en": "a supplier, {share} of outgoing payments",
+    },
+    "cp.supplier": {
+        "ru": "поставщик с долей {share} исходящих платежей",
+        "en": "the supplier with {share} of outgoing payments",
+    },
     "note.duplicate": {
         "ru": "из «почему важно» убран повтор позиции института: {ids}",
         "en": "removed from “why it matters” as a repeat of the house view: {ids}",

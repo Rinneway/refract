@@ -4,6 +4,10 @@ a finding, required blocks, softening, de-duplication, the impact ceiling and th
 
 from __future__ import annotations
 
+import re
+
+from pydantic import ValidationError
+
 from ...i18n import norm_lang, t
 from ...schemas import Claim, ImpactLevel, InsightContent, Origin, SubjectClaim
 from ...textutil import lexical_support, trim_sentence
@@ -223,6 +227,58 @@ def dedupe_house_view(content: InsightContent, lang: str = "ru") -> tuple[Insigh
     if not dup or len(dup) >= len(content.why_it_matters):
         return content, []
     return drop_claims(content, set(dup)), [t("note.duplicate", lang, ids=dup)]
+
+
+def name_counterparties(
+    content: InsightContent, profile, lang: str = "ru"
+) -> tuple[InsightContent, list[str]]:
+    """Payment data are anonymised, so a counterparty has only a code (`cp_import_309`). A code means nothing to the
+    reader: it is replaced by what is known — “the supplier with 14% of outgoing payments”. In Russian a word before
+    the code keeps its case and the description goes in brackets: «контрагенту (поставщик, 14% исходящих платежей)»."""
+    lang = norm_lang(lang)
+    names: dict[str, tuple[str, str]] = {}  # code → (as a noun phrase, in brackets after a noun)
+    for cp in getattr(profile, "counterparties", None) or []:
+        role = "customer" if cp.role == "customer" else "supplier"
+        share = f"{cp.share_of_flow:.0%}"
+        names[cp.counterparty_id] = (
+            t(f"cp.{role}", lang, share=share),
+            t(f"cp.{role}.short", lang, share=share),
+        )
+    if not names:
+        return content, []
+    ids = "|".join(re.escape(i) for i in sorted(names, key=len, reverse=True))
+    pattern = re.compile(
+        rf"(?:\b(?P<en>(?:the\s+)?counterpart(?:y|ies))\s+|\b(?P<ru>контрагент\w*)\s+)?\b(?P<id>{ids})\b",
+        re.IGNORECASE,
+    )
+    found: set[str] = set()
+
+    def name(m: re.Match) -> str:
+        code = m.group("id")
+        found.add(code)
+        full, short = names[code]
+        if m.group("ru"):
+            return f"{m.group('ru')} ({short})"
+        return full
+
+    def fix(value):
+        if isinstance(value, str):
+            return pattern.sub(name, value)
+        if isinstance(value, list):
+            return [fix(v) for v in value]
+        if isinstance(value, dict):
+            return {
+                k: v if k == "features" or k.endswith(("_id", "_ids")) else fix(v) for k, v in value.items()
+            }
+        return value
+
+    data = fix(content.model_dump())
+    if not found:
+        return content, []
+    try:
+        return InsightContent.model_validate(data), [t("note.counterparty_named", lang, ids=sorted(found))]
+    except ValidationError:  # a replacement made a text too long: keep the draft as it was
+        return content, []
 
 
 def clamp_impact(content: InsightContent, cap: ImpactLevel) -> tuple[InsightContent, list[str]]:
