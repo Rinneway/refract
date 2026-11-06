@@ -97,6 +97,7 @@ class Refract:
         policy: Policy | None = None,
         impact_policy: ImpactPolicy | None = None,
         keep_runs: int = 500,
+        replay=None,
     ) -> None:
         """`keep_runs` — how many recent runs stay in memory for chat and the API; older ones are forgotten, so a
         long-running server does not grow without bound (save runs with `save_run` to keep them)."""
@@ -112,6 +113,23 @@ class Refract:
         self._llm = llm
         self._lock = threading.Lock()
         self.runs: Recent[str, AgentRun] = Recent(keep_runs)
+        self.replay = replay  # demo mode (`Refract.demo()`): model answers come from recordings
+
+    @classmethod
+    def demo(cls, settings: Settings | None = None, **kwargs: Any) -> Refract:
+        """The agent without a model: the packaged demo data, and every model call answered from a recording of a
+        real run or a scripted scenario (`demo.Replay`). Checks, the impact ceiling and the policy are live code.
+        Pairs without a recording, pasted texts and follow-up questions raise `DemoError`."""
+        from .demo import DEMO_DIR, DEMO_NOW, Replay
+
+        store = DataStore.from_dir(DEMO_DIR)
+        store.today = DEMO_NOW.date()
+        settings = replace(settings or load_settings(), api_key=None, embedding_model=None)
+        return cls(store, settings=settings, replay=Replay(), **kwargs)
+
+    @property
+    def is_demo(self) -> bool:
+        return self.replay is not None
 
     @classmethod
     def from_dir(cls, path: str | Path | None = None, **kwargs: Any) -> Refract:
@@ -145,10 +163,16 @@ class Refract:
 
     # ------------------------------------------------------------------ agent
 
-    def agent(self, config: AgentConfig | None = None, on_progress=None) -> Agent:
+    def agent(self, config: AgentConfig | None = None, on_progress=None, llm: LLM | None = None) -> Agent:
+        extra = {}
+        if self.replay is not None:
+            from .demo import DEMO_NOW
+
+            extra["now"] = lambda: DEMO_NOW
         return Agent(
-            self.llm,
+            llm or self.llm,
             self.store,
+            **extra,
             config=config or self.config,
             settings=self.settings,
             policy=self.policy,
@@ -174,8 +198,20 @@ class Refract:
         if isinstance(event, dict):
             event = news_from_text(**event)
         lang = norm_lang(language or (config or self.config).language)
+        llm = None
+        if self.replay is not None:
+            from .demo import DemoError
+
+            if isinstance(event, NewsEvent) and self.store.events.get(event.event_id) == event:
+                event = event.event_id
+            if not isinstance(event, str):
+                raise DemoError("demo mode replays stored demo events only; a pasted news text needs a model")
+            rec = self.replay.find(profile, event, role, lang)
+            role, lang, llm = rec.role, rec.language, self.replay.llm(rec, self.settings)
         cfg = replace(config or self.config, language=lang)
-        run = self.agent(cfg, on_progress).run(profile, event, role=role, language=lang)
+        run = self.agent(cfg, on_progress, llm).run(profile, event, role=role, language=lang)
+        if self.replay is not None:
+            run.trace.config["replay"] = rec.key
         if run.insight:
             self.runs[run.insight.insight_id] = run
         return run
@@ -183,6 +219,10 @@ class Refract:
     def chat(
         self, insight_id: str, question: str, history: list[ChatTurn] | None = None, on_progress=None
     ) -> ChatRun:
+        if self.replay is not None:
+            from .demo import DemoError
+
+            raise DemoError("demo mode has no recorded answers to follow-up questions; chat needs a model")
         run = self.runs[insight_id]
         agent = self.agent(on_progress=on_progress)
         return ChatAgent(self.llm, self.store, agent=agent).answer(run.state, run.insight, question, history)
@@ -241,6 +281,9 @@ class Refract:
         direct = [it for it in feed.items if it.relevance == "direct"]
         role = role or DEFAULT_ROLE.get(profile.kind.value, "other")
         items = []
+        if self.replay is not None:  # demo mode: only the news that has a recording for this subject
+            recorded = {e for p, e, *_ in self.replay.pairs() if p == profile_id}
+            direct = [it for it in direct if it.event_id in recorded]
         for it in direct[:top]:
             run = self.analyze(profile_id, it.event_id, role=role, language=lang)
             ins = run.insight
@@ -269,6 +312,8 @@ class Refract:
         )
 
     def _can_tag(self) -> bool:
+        if self.replay is not None:
+            return False
         return self._llm is not None or bool(self.settings.api_key)
 
     news_from_text = staticmethod(news_from_text)

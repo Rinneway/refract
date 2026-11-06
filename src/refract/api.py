@@ -28,12 +28,13 @@ from datetime import datetime
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
 from .agent import ABLATIONS, ablation
 from .agent.progress import InsightProgress, ProgressTracker
+from .demo import DemoError
 from .facade import Refract, news_from_text
 from .recent import Recent
 from .render import insight_markdown
@@ -95,6 +96,10 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             state["rf"] = Refract.from_dir()
         return state["rf"]
 
+    @app.exception_handler(DemoError)
+    def demo_error(_request, exc: DemoError) -> JSONResponse:  # demo mode cannot do it: say what it can
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
     def auth(authorization: str | None = Header(default=None)) -> None:
         if token and authorization != f"Bearer {token}":
             raise HTTPException(401, "invalid or missing token")
@@ -107,6 +112,7 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             "version": __version__,
             "language": r.settings.language,
             "llm_configured": bool(r.settings.api_key),
+            "demo": r.is_demo,  # model answers replayed from recordings
             "data_problems": r.store.problems,
         }
 
@@ -194,6 +200,10 @@ def create_app(rf: Refract | None = None) -> FastAPI:
             ev = r.store.events[req.event_id]
         else:
             raise HTTPException(404, "give an existing event_id or a news item")
+        if r.is_demo:  # fail now, not inside the job: demo mode replays stored pairs with a recording only
+            if req.news is not None:
+                raise DemoError("demo mode replays stored demo events only; a pasted news text needs a model")
+            r.replay.find(req.profile_id, ev.event_id, req.role, req.language)
         cfg = ablation(req.ablation, r.config)
         job_id = uuid.uuid4().hex[:12]
         lang = req.language or r.settings.language

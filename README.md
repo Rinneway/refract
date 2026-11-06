@@ -90,9 +90,12 @@ uv sync --all-extras
 uv run refract demo            # scripted run — no API key needed
 uv run refract demo injection  # a news item with a prompt injection
 uv run refract demo dollar     # an English run: a misattributed house view and a rejected headline
+uv run refract demo --list     # the pairs with recorded answers of real models
+uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en
+uv run refract brief --demo --profile demo_building_materials
 ```
 
-The demo scripts the model's answers; tools, retrieval, rule checks, the impact ceiling, the action policy and the trace are real.
+`refract demo` scripts the model's answers to show a check at work. `--demo` on `analyze`, `feed`, `brief`, `serve` and `mcp` replays recorded answers of real models (qwen3.5:9b drafting, gemma4:12b verifying) on the demo data. Either way the tools, retrieval, rule checks, the impact ceiling, the action policy and the trace are the current code; the trace names the model as `recorded:…` or `scripted`.
 
 With a model:
 

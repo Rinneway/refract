@@ -90,9 +90,12 @@ uv sync --all-extras
 uv run refract demo            # прогон по сценарию, ключ не нужен
 uv run refract demo injection  # новость с prompt injection
 uv run refract demo dollar     # прогон на английском: чужая «позиция банка» и отклонённый заголовок
+uv run refract demo --list     # пары, для которых записаны ответы настоящих моделей
+uv run refract analyze --demo --profile demo_grain_farm --event ev_wheat_en
+uv run refract brief --demo --profile demo_building_materials
 ```
 
-В демо ответы модели заданы сценарием, остальное работает по-настоящему: инструменты, поиск, правила, предел влияния, политика действий и трасса.
+`refract demo` задаёт ответы модели сценарием, чтобы показать работу проверки. Флаг `--demo` у `analyze`, `feed`, `brief`, `serve` и `mcp` воспроизводит записанные ответы настоящих моделей (qwen3.5:9b пишет, gemma4:12b проверяет) на демо-данных. В обоих случаях инструменты, поиск, правила, предел влияния, политика действий и трасса — текущий код; в трассе модель названа `recorded:…` или `scripted`.
 
 С моделью:
 

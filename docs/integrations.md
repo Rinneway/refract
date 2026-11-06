@@ -48,13 +48,17 @@ path = rf.save_run(run, "runs/")
 again = rf.load_run(path)
 ```
 
+Without a model: `Refract.demo()` replays recorded answers of real models (`refract.demo.Replay`); a pair without a recording, a pasted text or `chat` raises `DemoError`, which the REST API returns as 409 and `/health` reports `"demo": true`.
+
 Lower level: `Agent(llm, store, config=AgentConfig(...), settings=..., policy=..., impact_policy=..., on_progress=fn)`, `ChatAgent`, `DataStore`, `LLMClient`, `ScriptedLLM`.
 
 ## CLI
 
 ```text
-refract demo [rate|injection|dollar]           scripted run without a key
+refract demo [rate|injection|dollar] [--list]  scripted run without a key; --list: pairs --demo can replay
 refract profiles | events [--data DIR]
+--demo (on analyze, feed, brief, profiles, events, serve, mcp, chat)
+                                               no model: replay recorded answers on the demo data
 refract analyze --profile ID (--event ID | --title T --text X | --text-file F)
                 [--role R] [--lang ru|en] [--ablation NAME] [--iterations N] [--out DIR] [--json]
 refract chat --run FILE --q "…" [--q "…"]

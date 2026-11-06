@@ -15,6 +15,7 @@ from pathlib import Path
 from refract.agent import Agent, ablation, checks
 from refract.agent.context import profile_features
 from refract.config import Settings
+from refract.demo import RECORDED
 from refract.llm import ScriptedLLM
 from refract.schemas import (
     Action,
@@ -325,7 +326,7 @@ def test_number_findings_need_the_number_check() -> None:
     assert [i.severity for i in out] == ["warning", "error"]
 
 
-SMOKE = json.loads((Path(__file__).parent / "fixtures" / "smoke_gemma12b.json").read_text(encoding="utf-8"))
+SMOKE = json.loads(RECORDED.read_text(encoding="utf-8"))
 
 
 def smoke(store, key: str):

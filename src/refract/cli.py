@@ -33,6 +33,10 @@ def _rf(args):
     settings = load_settings(getattr(args, "config", None))
     if getattr(args, "lang", None):
         settings = settings.with_language(args.lang)
+    if getattr(args, "demo", False):  # no model: recorded answers, the packaged demo data
+        if getattr(args, "data", None):
+            sys.stderr.write("refract: --demo uses the packaged demo data; --data is ignored\n")
+        return Refract.demo(settings=settings)
     rf = Refract.from_dir(getattr(args, "data", None), settings=settings)
     for problem in rf.store.problems:  # skipped files: say so instead of silently working with less data
         sys.stderr.write(f"refract: {problem}\n")
@@ -43,6 +47,12 @@ def cmd_demo(args) -> int:
     from .demo import run_demo
     from .render import insight_markdown, trace_markdown
 
+    if args.list:
+        from .demo import Replay
+
+        for rec in Replay().items:
+            _out(f"{rec.profile_id}\t{rec.event_id}\t{rec.role}\t{rec.language}\t{rec.source}")
+        return 0
     run = run_demo(args.scenario)
     if args.json:
         _out(
@@ -104,6 +114,8 @@ def cmd_analyze(args) -> int:
     run = rf.analyze(
         args.profile, event, role=args.role, language=args.lang, config=cfg, on_progress=progress
     )
+    if run.trace.config.get("replay"):
+        sys.stderr.write(_replay_note(run, args.role, args.lang))
     if args.out:
         path = rf.save_run(run, args.out)
         sys.stderr.write(f"saved: {path}\n")
@@ -116,6 +128,16 @@ def cmd_analyze(args) -> int:
             _out(insight_markdown(run.insight, rf.settings.institution))
         _out("\n" + trace_markdown(run.trace))
     return 0 if run.ok else 1
+
+
+def _replay_note(run, role: str | None, lang: str | None) -> str:
+    """What demo mode replayed, and in which role and language if not the asked ones."""
+    t = run.trace
+    got = (t.role.value if t.role else None, t.language)
+    note = f"demo: model answers replayed from {t.config['replay']} — not a live model\n"
+    if (role and role != got[0]) or (lang and lang != got[1]):
+        note += f"demo: the recording is for role {got[0]}, language {got[1]}; shown as recorded\n"
+    return note
 
 
 def cmd_chat(args) -> int:
@@ -400,12 +422,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", help="path to refract.toml (default: ./refract.toml or $REFRACT_CONFIG)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    def data_arg(sp):
+    def data_arg(sp, demo: bool = True):
         sp.add_argument("--data", help="data folder (profiles/, events/, knowledge/); default examples/demo")
+        if demo:
+            sp.add_argument(
+                "--demo",
+                action="store_true",
+                help="no model: replay recorded answers of a real run on the demo data (checks are live code)",
+            )
 
     sp = sub.add_parser("demo", help="scripted end-to-end run without an API key")
     sp.add_argument("scenario", nargs="?", default="rate", choices=["rate", "injection", "dollar"])
     sp.add_argument("--json", action="store_true")
+    sp.add_argument("--list", action="store_true", help="the pairs `--demo` can replay, and exit")
     sp.set_defaults(fn=cmd_demo)
 
     sp = sub.add_parser("analyze", help="run the agent for one subject × event")
@@ -492,7 +521,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("eval", help="experiments: pairs → run → judge → (label) → report")
     sp.add_argument("step", choices=["pairs", "run", "judge", "label", "report"])
     sp.add_argument("action", nargs="?", choices=["export", "import"], help="for `label`")
-    data_arg(sp)
+    data_arg(sp, demo=False)
     sp.add_argument("--out", required=True, help="experiment folder (for `pairs`: the pairs file)")
     sp.add_argument("--pairs", help="pairs file (default <out>/pairs.jsonl)")
     sp.add_argument("--languages", default="ru", help="for `pairs`: ru,en")
@@ -539,6 +568,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .demo import DemoError
     from .textutil import DataError
 
     args = build_parser().parse_args(argv)
@@ -547,6 +577,8 @@ def main(argv: list[str] | None = None) -> int:
     except BrokenPipeError:  # `refract … | head`
         return 0
     except DataError as e:  # a broken config or data file: the message names it
+        return _fail(str(e))
+    except DemoError as e:  # demo mode cannot do it: the message lists what it can
         return _fail(str(e))
 
 

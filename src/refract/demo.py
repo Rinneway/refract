@@ -15,17 +15,22 @@ mistakes:
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import ClassVar
 
 from .agent import Agent, AgentRun
-from .config import Settings
+from .config import DEFAULT_ROUTES, ModelSpec, Settings
 from .knowledge.store import DataStore
 from .llm.testing import ScriptedLLM
 
 _PACKAGED = Path(__file__).resolve().parent / "demo_data"  # inside an installed wheel
 _REPO = Path(__file__).resolve().parents[2] / "examples" / "demo"  # in a source checkout
 DEMO_DIR = _PACKAGED if _PACKAGED.exists() else _REPO
+RECORDED = DEMO_DIR / "recordings" / "qwen9b_gemma12b.json"
+DEMO_NOW = datetime(2026, 10, 31, 9, 0, tzinfo=timezone.utc)  # the demo data's "today"
 
 RATE_PLAN = {
     "rationale": "У компании кредиты и лизинг, а крупнейший покупатель — застройщик: ставка влияет и на долг, и на спрос.",
@@ -378,3 +383,90 @@ def run_demo(name: str = "rate", data_dir: Path | None = None) -> AgentRun:
         llm, store, settings=llm.settings, now=lambda: datetime(2026, 10, 31, 9, 0, tzinfo=timezone.utc)
     )
     return agent.run(profile_id, event_id, role=role)
+
+
+# ---------------------------------------------------------------------------------------------------- replay
+
+
+class DemoError(ValueError):
+    """Something demo mode cannot do: a pair without a recording, a pasted text, a follow-up question."""
+
+
+@dataclass(frozen=True)
+class Recording:
+    key: str
+    profile_id: str
+    event_id: str
+    role: str
+    language: str
+    source: str  # "recorded" — real model answers; "scripted" — written by hand to show a check at work
+    answers: dict
+
+
+def _scripted_recordings() -> list[Recording]:
+    out = []
+    for name in ("rate", "injection", "dollar"):
+        llm, profile_id, event_id, role = scenario(name)
+        lang = "en" if name == "dollar" else "ru"
+        out.append(Recording(f"scripted:{name}", profile_id, event_id, role, lang, "scripted", llm.responses))
+    return out
+
+
+def recordings(path: Path | None = None) -> list[Recording]:
+    """Recorded real answers first (`recordings/*.json`, keys `profile__event__role__language`), then the scripted
+    scenarios for pairs that have no recording. Reruns (a fifth key part) are skipped."""
+    path = path or RECORDED
+    out: list[Recording] = []
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    for key, answers in data.items():
+        parts = key.split("__")
+        if key.startswith("_") or len(parts) != 4:
+            continue
+        steps = {k: v if isinstance(v, list) else [v] for k, v in answers.items()}
+        out.append(Recording(key, *parts, source="recorded", answers=steps))
+    have = {(r.profile_id, r.event_id) for r in out}
+    return out + [r for r in _scripted_recordings() if (r.profile_id, r.event_id) not in have]
+
+
+class Replay:
+    """Demo mode: the agent runs as usual, but each model call is answered from a recording of a real run
+    (qwen3.5:9b drafting, gemma4:12b verifying, via local Ollama) or from a scripted scenario. Tools, retrieval, the
+    rule checks, the impact ceiling and the action policy run with the current code, so a code change shows up in the
+    replayed insight. The trace names the models as `recorded:…` or `scripted`, never as live ones."""
+
+    MODELS: ClassVar[dict[str, tuple[str, str]]] = {
+        "recorded": ("recorded:qwen3.5:9b", "recorded:gemma4:12b"),
+        "scripted": ("scripted", "scripted"),
+    }
+
+    def __init__(self, items: list[Recording] | None = None) -> None:
+        self.items = recordings() if items is None else items
+
+    def pairs(self) -> list[tuple[str, str, str, str]]:
+        """(profile_id, event_id, role, language) of every replayable run."""
+        return [(r.profile_id, r.event_id, r.role, r.language) for r in self.items]
+
+    def find(
+        self, profile_id: str, event_id: str, role: str | None = None, language: str | None = None
+    ) -> Recording:
+        """The recording of the pair; same role and language preferred. A run replays in the recorded role and
+        language — another one would make the recorded text wrong for the reader."""
+        found = [r for r in self.items if (r.profile_id, r.event_id) == (profile_id, event_id)]
+        if not found:
+            listed = "\n".join(f"  {p} × {e} ({r}, {lang})" for p, e, r, lang in self.pairs())
+            raise DemoError(
+                f"demo mode has no recording for {profile_id} × {event_id}; replayable pairs:\n{listed}"
+            )
+        return max(found, key=lambda r: (r.role == role, r.language == language, r.source == "recorded"))
+
+    def llm(self, rec: Recording, settings: Settings | None = None) -> ScriptedLLM:
+        main, verifier = self.MODELS[rec.source]
+        settings = replace(
+            settings or Settings(),
+            api_key="replay",
+            language=rec.language,
+            models={"main": ModelSpec(id=main), "verifier": ModelSpec(id=verifier)},
+            routes=dict(DEFAULT_ROUTES),
+            embedding_model=None,
+        )
+        return ScriptedLLM({k: list(v) for k, v in rec.answers.items()}, settings)
