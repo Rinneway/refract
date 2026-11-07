@@ -532,9 +532,74 @@ def test_a_rule_from_the_sources_is_applied_with_the_right_arithmetic() -> None:
         "Every 10% rise in freight cuts the margin by about 1.5 percentage points.",  # the rule itself
         "Inflation of 6.8% is 2.8 pp above the target.",  # another topic
         "Prices rose 6% and freight 15%, so the margin fell by 2 pp.",  # two changes: not the plain case
+        # the rule quoted beside the news' number, not applied to it
+        "The 15% jump in freight erodes your margin; every 10% rise in freight cuts it by about 1.5 pp.",
     ):
         assert misapplied(fine, rules) is None, fine
     run = Refract.demo().analyze("demo_grain_farm", "ev_wheat_en")
     rules_found = [i for s in run.trace.steps if s.name == "rule_check" for i in s.issues]
     assert any("2.25 pp, not 1.5" in i for i in rules_found)
     assert "w2" not in {c.claim_id for c in run.insight.why_it_matters}
+
+
+def test_headline_does_not_keep_a_statement_that_was_cut() -> None:
+    """A local run: the soft-loan statement was cut as unsupported, the headline still promised the loan."""
+    from refract.agent import checks
+    from refract.schemas import Claim, Origin, SubjectClaim
+
+    fact = Claim(
+        claim_id="c1",
+        text="Центробанк сохранил ключевую ставку на уровне 14%.",
+        origin=Origin.FACT,
+        source_ids=["s"],
+        confidence=1,
+    )
+    why = SubjectClaim(
+        claim_id="w1",
+        text="Платёж по ипотеке с плавающей ставкой не снизится.",
+        origin=Origin.AI,
+        features=["kind"],
+        confidence=0.8,
+    )
+    cut = SubjectClaim(
+        claim_id="o1",
+        text="Вы можете получить льготный кредит для пекарни под 9%.",
+        origin=Origin.AI,
+        features=["kind"],
+        confidence=0.8,
+    )
+    kept = InsightContent(
+        headline="x",
+        what_happened=[fact],
+        why_it_matters=[why],
+        overall_impact="medium",
+        overall_direction="mixed",
+    )
+    head = "Ставка сохранена: платежи по ипотеке высокие, но льготный кредит для пекарни стал доступнее"
+    assert checks.headline_leans_on(head, [cut], kept) == ["o1"]
+    assert (
+        checks.headline_leans_on("Ставка сохранена: платежи по ипотеке останутся высокими", [cut], kept) == []
+    )
+
+
+def test_a_rule_applied_without_scaling_to_the_news_is_caught() -> None:
+    """The second local run: “higher freight rates reduce your margin by ~1.5pp” — the rule's own 1.5 for the news'
+    15% jump, with the 15% left out, so the plain check had nothing to recompute."""
+    from refract.agent.checks.arithmetic import rules_in, unscaled
+
+    rules = rules_in("every 10% rise in freight cuts the exporter's margin by about 1.5 percentage points.")
+    news = "Shipments slowed because of a 15% jump in freight rates for Handysize vessels. Prices rose 6%."
+    assert unscaled("Higher freight rates reduce your export margin by ~1.5pp.", rules, news)[1:] == (
+        15.0,
+        1.5,
+        2.25,
+    )
+    assert unscaled("Higher freight rates reduce your export margin by about 2.2 pp.", rules, news) is None
+    assert unscaled("Inflation is 2.8 pp above the target.", rules, news) is None
+    assert (
+        unscaled("Higher freight reduces the margin by ~1.5pp.", rules, "Prices rose 6%.") is None
+    )  # no freight move
+    ru = rules_in("Каждые 10% роста фрахта снижают маржу экспортёра на 1,5 п.п.")
+    assert unscaled(
+        "Рост фрахта снизит маржу на 1,5 п.п.", ru, "Ставки фрахта выросли на 15%. Цены выросли на 6%."
+    )

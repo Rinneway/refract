@@ -173,6 +173,10 @@ STRINGS: dict[str, dict[Language, str]] = {
         "ru": "добавлены оговорки по замечаниям о формулировке: {ids}",
         "en": "caveats added after remarks on wording: {ids}",
     },
+    "note.headline_leans": {
+        "ru": "заголовок опирался на удалённые утверждения {ids} — переписан",
+        "en": "the headline relied on removed statements {ids} — rewritten",
+    },
     "note.counterparty_named": {
         "ru": "внутренние коды контрагентов заменены описанием: {ids}",
         "en": "internal counterparty codes replaced by a description: {ids}",

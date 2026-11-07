@@ -6,6 +6,8 @@
 
 - The demo recordings are now the answers of the current prompts (qwen3.5:9b and gemma4:12b, November 2026); the October recordings stay in `tests/fixtures` for the regression cases found in them. Results and the faults found: [docs/results/smoke-2026-11.md](docs/results/smoke-2026-11.md).
 - Impact links: tax news that names a tax regime (the simplified system, professional income, the patent…) is a weak link for a subject on another regime.
+- Rule check `arithmetic` also catches a rule applied without scaling — “higher freight cuts your margin by ~1.5 pp” when the news reports a 15% jump and the rule is per 10% — and no longer flags the rule quoted beside the news' number.
+- A headline that still states something cut from the text (“…but a soft loan for the bakery became more accessible” after the loan statement was cut as unsupported) is rewritten.
 - Actions: fewer than two after the checks are topped up from fired policy rules that code can decide alone, skipping what a kept action already says. In the second local run the checks often left one generic step, and both judges scored actions lowest for the agent.
 - `eval run` stops when the folder's answers were made with other models or prompts (a forgotten `REFRACT_VERIFIER_MODEL` once mixed a gemma4:e4b reviewer into a gemma4:12b study, and the old answers were silently kept); `--force` redoes every answer. The report's header names the experiment's models.
 - Judges are saved under the model, not the alias; a judge found under both names is counted once, so it no longer shows perfect agreement with itself.

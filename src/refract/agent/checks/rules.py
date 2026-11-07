@@ -244,7 +244,16 @@ def rule_check(content: InsightContent, ctx: InsightContext) -> list[Verificatio
     issues += off_topic_house_view(content, ctx)
 
     context = ctx.render()
-    issues += arithmetic_issues(content, context, lang)
+    event = ctx.event
+    event_text = " ".join(
+        [
+            event.title,
+            event.summary,
+            *(f.text for f in event.key_facts),
+            *(a.text or "" for a in event.articles),
+        ]
+    )
+    issues += arithmetic_issues(content, context, lang, event_text)
     if extra := invented_numbers([content.headline], context):
         issues.append(
             VerificationIssue(

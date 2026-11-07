@@ -502,6 +502,7 @@ class Agent:
             errs = {i.claim_id for i in checks.errors(issues) if i.claim_id}
             bad = errs - {checks.HEADLINE}
             removed_house = [c for c in draft.house_view if c.claim_id in bad]
+            before = draft
             if bad and cfg.prune:
                 hard = (
                     {i.claim_id for i in checks.errors(checks.rule_check(draft, ctx)) if i.claim_id}
@@ -530,8 +531,14 @@ class Agent:
             if fallback:
                 draft = draft.model_copy(update={"house_view": fallback})
                 notes.append(t("note.house_view_restored", lang))
-            if cfg.prune and (checks.HEADLINE in errs or checks.HEADLINE in self._softened):
+            kept_ids = {c.claim_id for c in draft.all_claims()}
+            removed = [c for c in before.all_claims() if c.claim_id not in kept_ids]
+            leans = checks.headline_leans_on(draft.headline, removed, draft) if cfg.prune else []
+            if leans:
+                notes.append(t("note.headline_leans", lang, ids=leans))
+            if cfg.prune and (checks.HEADLINE in errs or checks.HEADLINE in self._softened or leans):
                 reasons = [i.message for i in issues if i.claim_id == checks.HEADLINE]
+                reasons += [t("note.headline_leans", lang, ids=leans)] if leans else []
                 headline, note = self._rewrite_headline(trace, ctx, draft, reasons)
                 draft = draft.model_copy(update={"headline": headline})
                 verdict = "issues"

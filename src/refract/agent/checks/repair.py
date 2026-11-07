@@ -230,6 +230,22 @@ def dedupe_house_view(content: InsightContent, lang: str = "ru") -> tuple[Insigh
     return drop_claims(content, set(dup)), [t("note.duplicate", lang, ids=dup)]
 
 
+_WORD = re.compile(r"[^\W\d_]{5,}")
+
+
+def _stems(text: str) -> set[str]:
+    return {w.lower().replace("ё", "е")[:4] for w in _WORD.findall(text or "")}
+
+
+def headline_leans_on(headline: str, removed: list, kept: InsightContent) -> list[str]:
+    """Statements cut from the draft that the headline still states (found in a local run: “…but a soft loan for
+    the bakery became more accessible” after the statement about the loan was cut as unsupported). A cut statement
+    counts when the headline shares two content words with it that nothing kept says."""
+    head = _stems(headline)
+    body = _stems(" ".join(c.text for c in kept.all_claims()))
+    return [c.claim_id for c in removed if len((head & _stems(c.text)) - body) >= 2]
+
+
 def name_counterparties(
     content: InsightContent, profile, lang: str = "ru"
 ) -> tuple[InsightContent, list[str]]:
