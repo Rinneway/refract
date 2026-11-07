@@ -66,7 +66,7 @@ Rules live in `policies/actions.json`. Code decides which rules fire from the su
 - no products for tax events, and none at all if `offer_products = false`;
 - the text is checked too (`product_patterns` in the policy): an action that names a product the fired rules do not offer is removed, one that names an offered product gets it in `product`;
 - `contact_manager` without a product and without a manager, bank or callback in the text becomes the reader's own `analysis` or `operational` step;
-- at most three actions; if none remain, the fallback action.
+- at most three actions; fewer than two are topped up from fired rules that need no judgement (direction known, no condition left for the model, product allowed, not already said by a kept action), under ids `p1`, `p2`; if none remain and none can be added, the fallback action.
 
 ## Reader roles
 

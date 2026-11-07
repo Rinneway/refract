@@ -164,7 +164,8 @@ def test_products_named_in_the_text_follow_the_policy(store) -> None:
         rationale="r",
     )
     out, notes = enforce_actions(content([hidden, offered]), cands, e, lang="ru")
-    assert [(a.action_id, a.product) for a in out.actions] == [("a2", "Депозит или неснижаемый остаток")]
+    assert (out.actions[0].action_id, out.actions[0].product) == ("a2", "Депозит или неснижаемый остаток")
+    assert {a.action_id for a in out.actions} <= {"a2", "p1"}  # p1: topped up from a fired rule
     assert any("a1" in n and "factoring" in n for n in notes)
     tax = e.model_copy(update={"event_type": EventType.TAX})
     out, _ = enforce_actions(content([offered]), cands, tax, lang="ru")
@@ -184,3 +185,27 @@ def test_contact_manager_must_involve_the_manager(store) -> None:
         ("a1", ActionKind.ANALYSIS),
         ("a2", ActionKind.CONTACT_MANAGER),
     ]
+
+
+def test_too_few_actions_are_topped_up_from_fired_rules(store) -> None:
+    """A local run: checks cut the model's actions down to one generic step, and both judges scored actions lowest."""
+    p, e = store.profiles["demo_family_saver"], store.events["ev_rate_hold_ru"]
+    own = Action(
+        action_id="a2",
+        text="Пересмотрите личный бюджет: хватает ли дохода на платежи",
+        kind=ActionKind.ANALYSIS,
+        rationale="r",
+    )
+    out, notes = enforce_actions(content([own], ImpactLevel.MEDIUM), candidate_actions(p, e), e)
+    # the budget rule is already said by the model's own action; the mortgage check is added, under a new id
+    assert [(a.action_id, a.text) for a in out.actions] == [
+        ("a2", own.text),
+        ("p1", "Проверить, фиксированная или плавающая ставка по ипотеке"),
+    ]
+    assert any("p1" in n and "mortgage_check" in n for n in notes)
+    # nothing left and nothing fired: the fallback, as before
+    coffee, news = store.profiles["demo_coffee_ip"], store.events["ev_injection_ru"]
+    out, notes = enforce_actions(content([], ImpactLevel.LOW), candidate_actions(coffee, news), news)
+    assert [a.action_id for a in out.actions] == ["a1"] and any(
+        "fallback" in n or "запасное" in n for n in notes
+    )

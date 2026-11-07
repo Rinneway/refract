@@ -2,7 +2,8 @@
 
 Principles: a product only by a fired rule and only if the subject does not hold it; at most one `apply_product`
 per insight; with high negative impact `contact_manager` comes first; no products for tax events; an empty list
-is replaced by the fallback action from the policy.
+is topped up from the fired rules that need no judgement (no condition only the model can check), and an empty
+list without such rules is replaced by the fallback action from the policy.
 """
 
 from __future__ import annotations
@@ -27,6 +28,10 @@ from .impact import event_countries, event_divisions
 from .policy import DEFAULT_POLICY, ActionRule, Policy
 
 MAX_ACTIONS = 3
+# Fewer actions than this are topped up from fired rules. A local run showed the cost of too few: checks cut the
+# model's unsupported or off-policy actions, often down to one generic step, and both LLM judges scored “actions”
+# lowest for the agent while a single call, which nothing checks, kept two or three.
+MIN_ACTIONS = 2
 # An action to contact the manager must say so; otherwise it is the reader's own step.
 _MANAGER = re.compile(
     r"менеджер|банк|перезвон|обратн\w* звон|manager|bank|call ?back|relationship", re.IGNORECASE
@@ -154,6 +159,93 @@ def _rule_for(product: str, candidates: list[Candidate]) -> Candidate | None:
     return None
 
 
+_WORD = re.compile(r"[^\W\d_]{5,}")
+# generic verbs say nothing about what an action is about
+_GENERIC = {
+    "пров",
+    "обсу",
+    "оцен",
+    "свяж",
+    "запр",
+    "менед",
+    "check",
+    "discu",
+    "revi",
+    "asse",
+    "conta",
+    "manag",
+    "банка",
+}
+
+
+def _topic(text: str) -> set[str]:
+    """Four-letter stems of an action's longer words: “Пересмотрите личный бюджет” meets “Пересмотреть личный…”."""
+    return {w.lower()[:4] for w in _WORD.findall(text or "")} - {g[:4] for g in _GENERIC}
+
+
+def _covered(text: str, kept: list[Action]) -> bool:
+    """A kept action already says it: two content words in common."""
+    want = _topic(text)
+    return any(len(want & _topic(a.text)) >= 2 for a in kept)
+
+
+def _top_up(
+    kept: list[Action],
+    candidates: list[Candidate],
+    content: InsightContent,
+    e: NewsEvent,
+    lang: str,
+    direction: str,
+    offer_products: bool,
+    product_used: bool,
+) -> list[tuple[Action, str]]:
+    """Actions from fired rules, up to `MIN_ACTIONS`, for rules code can decide alone: the subject's direction is
+    known, there is no condition left for the model (a rate that “stays high”), and the product, if any, may be
+    offered. The rule's own wording and rationale are used; the action relies on the insight's first risk or reason."""
+    out: list[tuple[Action, str]] = []
+    have_text = {_norm(a.text) for a in kept}
+    have_products = {_norm(a.product) for a in kept if a.product}
+    basis = [c.claim_id for c in (content.risks or content.why_it_matters)[:1]]
+    # “p” for policy: an id of the model's own (a1, a2…) may belong to an action cut earlier, and the trace must not
+    # name two different actions alike
+    used = {a.action_id for a in kept}
+    for c in candidates:
+        if len(kept) + len(out) >= MIN_ACTIONS:
+            break
+        w = c.rule.when
+        need = w.get("direction_for_subject")
+        if (need and need != direction) or w.get("event_move") or w.get("note"):
+            continue
+        product = c.rule.product(lang)
+        if product and (
+            not offer_products or e.event_type == EventType.TAX or _norm(product) in have_products
+        ):
+            continue
+        kind = ActionKind(c.rule.kind)
+        if kind == ActionKind.APPLY_PRODUCT and (product_used or not product):
+            continue
+        text = c.rule.text(lang)
+        if _norm(text) in have_text or _covered(text, kept):
+            continue
+        aid = next(f"p{i}" for i in range(1, 10) if f"p{i}" not in used)
+        used.add(aid)
+        product_used = product_used or kind == ActionKind.APPLY_PRODUCT
+        out.append(
+            (
+                Action(
+                    action_id=aid,
+                    text=text,
+                    kind=kind,
+                    rationale=c.rule.rationale(lang),
+                    product=product,
+                    claim_ids=basis,
+                ),
+                c.rule.id,
+            )
+        )
+    return out
+
+
 def enforce_actions(
     content: InsightContent,
     candidates: list[Candidate],
@@ -248,6 +340,16 @@ def enforce_actions(
             else:
                 product_used = True
         kept.append(a)
+
+    if len(kept) < MIN_ACTIONS:
+        added = _top_up(kept, candidates, content, e, lang, direction, offer_products, product_used)
+        for a, rule_id in added:
+            notes.append(
+                f"{a.action_id}: added from the fired rule {rule_id} — too few actions survived the checks"
+                if en
+                else f"{a.action_id}: добавлено по сработавшему правилу {rule_id} — после проверок осталось мало действий"
+            )
+        kept += [a for a, _ in added]
 
     if ImpactLevel(content.overall_impact) == ImpactLevel.HIGH and direction == "negative":
         first = next((i for i, a in enumerate(kept) if a.kind == ActionKind.CONTACT_MANAGER), None)
