@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "refract-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Refract: a traceable LLM agent that turns a news event into a grounded, personalised insight for a specific business or person"
 readme = "README.md"
 license = "MIT"

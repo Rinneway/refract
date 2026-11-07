@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-07
+
+The agent without a model (`--demo`, recorded answers of real local models), an interactive console for Windows, macOS and Linux, Docker and CI on all three systems, a news brief, search by meaning across languages, new code checks found in the first local runs (arithmetic on rules from the sources, house views off the topic, tax news of another regime, advice unfit for the subject), experiments that refuse to mix models, and the pilot's results with their limitations.
 
 ### After the first local run
 
