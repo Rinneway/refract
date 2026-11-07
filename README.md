@@ -186,6 +186,8 @@ refract eval report --out runs/exp1 --reference full
 
 Method, metrics and threats to validity: [docs/evaluation.md](docs/evaluation.md). A plan for a paper: [docs/paper/outline.md](docs/paper/outline.md).
 
+**Pilot so far** ([docs/results/smoke-2026-11.md](docs/results/smoke-2026-11.md)): 8 synthetic pairs, local models (qwen3.5:9b writing, gemma4:12b reviewing), three judges. On judge scores the agent beats a plain retelling but not a single call with the same context. What sets it apart is measured by code: no rule errors and no invented numbers reached the reader, against rule errors in 62% of single-call answers. The judges agree poorly with each other (κ 0.12–0.27), and no human labels exist yet, so this is a pilot, not evidence of quality.
+
 ## Project layout
 
 ```text
@@ -201,7 +203,7 @@ src/refract/
   api.py  mcp_server.py  cli.py  shell.py  facade.py  render.py  demo.py
 examples/demo/  synthetic profiles, news, research, evaluation pairs and recorded model answers (ru + en)
 docs/           architecture, agent, data model, configuration, CLI, integrations, deployment, evaluation, paper outline, JSON Schemas
-tests/          183 tests on a scripted model and a fake OpenAI-compatible server — no network needed
+tests/          194 tests on a scripted model and a fake OpenAI-compatible server — no network needed
 ```
 
 ## Data and confidentiality
@@ -215,6 +217,7 @@ Refract grew out of the author's agent component in an earlier team project on n
 - The impact ceiling and the action policy are hand-written rules; thresholds are configurable but not learned.
 - English prompts are translations of prompts tuned on Russian news; check them with the parity run in [docs/evaluation.md](docs/evaluation.md#checking-the-english-prompts) before relying on them.
 - An LLM judge is not a human expert; report agreement between judges and validate on human labels.
+- Quality has been measured only in a pilot: 8 synthetic pairs, LLM judges, no human labels (see above). The checks make answers safer, not richer: after cutting what is wrong they can leave a thinner answer, which judges score lower.
 
 Refract produces information, not individual investment, tax or legal advice.
 
